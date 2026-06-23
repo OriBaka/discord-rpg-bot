@@ -40,11 +40,16 @@ module.exports = {
           '',
           '**Các field:**',
           '`name` — Tên (bao trong ngoặc kép nếu có khoảng trắng)',
-          '`type` — weapon | armor | consumable | material',
+          '`type` — weapon | offhand | armor | accessory | consumable | material | pet',
           `\`tier\` — ${Object.keys(TIERS).join(' | ')}`,
           '`atk`, `def`, `heal` — Chỉ số (số nguyên)',
           '`price`, `sell` — Giá mua/bán',
           '`desc` — Mô tả (trong ngoặc kép)',
+          '`class_req` (hoặc `class`) — melee | magic | ranged (để trống = dùng chung)',
+          '`armor_slot` — head | chest | legs | feet | hands (bắt buộc nếu type=armor)',
+          '`accessory_type` — ring | necklace | special (bắt buộc nếu type=accessory)',
+          '`weapon_type` — sword | axe | bow | staff | shield | orb | quiver... (gợi ý)',
+          '`armor_type` — heavy | medium | light | robe (gợi ý)',
           '',
           `💡 Xem chi tiết item: \`${prefix}info item <id>\``,
         ].join('\n'));
@@ -72,23 +77,44 @@ module.exports = {
       if (!kv.name || !kv.type) {
         return msg.reply('❌ Phải có `name=...` và `type=...`.');
       }
-      const allowedTypes = ['weapon', 'armor', 'consumable', 'material'];
+      const allowedTypes = ['weapon', 'offhand', 'armor', 'accessory', 'consumable', 'material', 'pet'];
       if (!allowedTypes.includes(kv.type)) {
         return msg.reply(`❌ type phải là: ${allowedTypes.join('/')}`);
       }
       const tier = kv.tier || 'common';
       if (!TIERS[tier]) return msg.reply(`❌ tier phải là: ${Object.keys(TIERS).join('/')}`);
+      // Validate accessory_type
+      if (kv.type === 'accessory') {
+        const allowedAcc = ['ring', 'necklace', 'special'];
+        if (!kv.accessory_type || !allowedAcc.includes(kv.accessory_type)) {
+          return msg.reply(`❌ Item type=accessory cần \`accessory_type=...\` (${allowedAcc.join('/')})`);
+        }
+      }
+      // Validate armor_slot
+      if (kv.type === 'armor') {
+        const allowedSlots = ['head', 'chest', 'legs', 'feet', 'hands'];
+        if (!kv.armor_slot || !allowedSlots.includes(kv.armor_slot)) {
+          return msg.reply(`❌ Item type=armor cần \`armor_slot=...\` (${allowedSlots.join('/')})`);
+        }
+      }
 
       try {
-        const it = createItem({
-          id, name: kv.name, type: kv.type, tier,
-          atk: parseInt(kv.atk) || 0,
-          def: parseInt(kv.def) || 0,
-          heal: parseInt(kv.heal) || 0,
-          price: parseInt(kv.price) || 0,
-          sell: parseInt(kv.sell) || 0,
-          desc: kv.desc || '',
-        });
+        const db = require('../db/database');
+        db.prepare(`INSERT INTO items
+          (id, name, type, tier, atk, def, heal, price, sell, desc, class_req, weapon_type, armor_type, accessory_type, armor_slot)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+          .run(
+            id, kv.name, kv.type, tier,
+            parseInt(kv.atk) || 0, parseInt(kv.def) || 0, parseInt(kv.heal) || 0,
+            parseInt(kv.price) || 0, parseInt(kv.sell) || 0,
+            kv.desc || '',
+            kv.class_req || kv.class || '',
+            kv.weapon_type || '',
+            kv.armor_type || '',
+            kv.accessory_type || '',
+            kv.armor_slot || '',
+          );
+        const it = getItem(id);
         return msg.reply(`✅ Đã tạo **${it.name}** (\`${it.id}\`). Xem: \`${prefix}info item ${it.id}\``);
       } catch (err) {
         return msg.reply(`❌ Lỗi: ${err.message}`);
@@ -105,10 +131,12 @@ module.exports = {
 
       const fields = {};
       const numKeys = ['atk', 'def', 'heal', 'price', 'sell'];
-      for (const k of Object.keys(kv)) {
-        if (k === 'name' || k === 'desc') fields[k] = kv[k];
-        else if (k === 'type' || k === 'tier') fields[k] = kv[k];
-        else if (numKeys.includes(k)) fields[k] = parseInt(kv[k]) || 0;
+      const strKeys = ['name', 'desc', 'type', 'tier', 'class_req', 'weapon_type', 'armor_type', 'accessory_type', 'armor_slot'];
+      const keyMap = { class: 'class_req' };
+      for (const rawK of Object.keys(kv)) {
+        const k = keyMap[rawK] || rawK;
+        if (strKeys.includes(k))      fields[k] = kv[rawK];
+        else if (numKeys.includes(k)) fields[k] = parseInt(kv[rawK]) || 0;
       }
       if (fields.tier && !TIERS[fields.tier]) {
         return msg.reply(`❌ tier không hợp lệ.`);
@@ -133,4 +161,4 @@ module.exports = {
 
     return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}item help\``);
   },
-}; 
+};
