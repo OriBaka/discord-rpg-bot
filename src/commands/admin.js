@@ -5,6 +5,10 @@ const {
   addItem, removeItem, addXpAndLevel, getInventory,
 } = require('../game/player');
 const { ITEMS } = require('../game/items');
+const {
+  CLASSES, classInfo, isClassDisabled, setClassDisabled,
+  getClassData, unlockClass, lockClass, setPrimaryClass,
+} = require('../game/classes');
 
 // ===== Danh sách Admin ID =====
 // Thêm Discord User ID của bạn vào đây (chuột phải vào tên bạn trong Discord → Copy User ID)
@@ -64,6 +68,13 @@ module.exports = {
           `\`${prefix}admin stats\` — thống kê server`,
           `\`${prefix}admin announce <text>\` — gửi thông báo`,
           '',
+          '**🎭 Class:**',
+          `\`${prefix}admin classlock <class> [lý do]\` — khoá class (toàn server)`,
+          `\`${prefix}admin classunlock <class>\` — mở khoá class`,
+          `\`${prefix}admin giveclass @user <class>\` — unlock class cho user`,
+          `\`${prefix}admin takeclass @user <class>\` — lock class của user`,
+          `\`${prefix}admin setclass @user <class>\` — đổi class chính của user`,
+          '',
           '💡 Có thể thay `@user` bằng User ID.',
         ].join('\n'));
       return msg.reply({ embeds: [embed] });
@@ -95,6 +106,21 @@ module.exports = {
         .setFooter({ text: `Bởi ${msg.author.username}` })
         .setTimestamp();
       return msg.channel.send({ embeds: [embed] });
+    }
+
+    // ===== class lock/unlock toàn server =====
+    if (sub === 'classlock' || sub === 'disableclass') {
+      const cid = (args[1] || '').toLowerCase();
+      if (!CLASSES[cid]) return msg.reply(`❌ Class không hợp lệ.`);
+      const reason = args.slice(2).join(' ') || 'Đang điều chỉnh';
+      setClassDisabled(cid, true, reason);
+      return msg.reply(`🔒 Đã khoá class **${CLASSES[cid].name}**. Lý do: *${reason}*`);
+    }
+    if (sub === 'classunlock' || sub === 'enableclass') {
+      const cid = (args[1] || '').toLowerCase();
+      if (!CLASSES[cid]) return msg.reply(`❌ Class không hợp lệ.`);
+      setClassDisabled(cid, false);
+      return msg.reply(`🔓 Đã mở khoá class **${CLASSES[cid].name}**.`);
     }
 
     // ===== Các lệnh cần target =====
@@ -173,6 +199,38 @@ module.exports = {
       return msg.reply(`✅ Set **${p.name}** lên Lv.**${lv}** (HP ${max_hp}, ATK ${atk}, DEF ${def}).`);
     }
 
+    // ===== giveclass — unlock 1 class cho user =====
+    if (sub === 'giveclass' || sub === 'unlockclass') {
+      const cid = (args[2] || '').toLowerCase();
+      if (!CLASSES[cid]) return msg.reply(`❌ Class không hợp lệ.`);
+      const r = unlockClass(target.id, cid);
+      if (!r.ok && r.reason === 'already unlocked') {
+        return msg.reply(`💡 **${p.name}** đã có class này rồi.`);
+      }
+      return msg.reply(`✅ Đã unlock **${CLASSES[cid].name}** cho **${p.name}**.`);
+    }
+
+    // ===== takeclass — lock 1 class =====
+    if (sub === 'takeclass' || sub === 'lockclass') {
+      const cid = (args[2] || '').toLowerCase();
+      if (!CLASSES[cid]) return msg.reply(`❌ Class không hợp lệ.`);
+      lockClass(target.id, cid);
+      return msg.reply(`✅ Đã lock **${CLASSES[cid].name}** của **${p.name}**.`);
+    }
+
+    // ===== setclass — đổi primary class =====
+    if (sub === 'setclass') {
+      const cid = (args[2] || '').toLowerCase();
+      if (!CLASSES[cid]) return msg.reply(`❌ Class không hợp lệ.`);
+      const data = getClassData(p);
+      if (!data[cid]) {
+        // Auto unlock
+        unlockClass(target.id, cid);
+      }
+      setPrimaryClass(target.id, cid);
+      return msg.reply(`✅ Đã đặt class chính của **${p.name}** = **${CLASSES[cid].name}**.`);
+    }
+
     // ===== reset =====
     if (sub === 'reset' || sub === 'del') {
       db.prepare('DELETE FROM players WHERE user_id=?').run(target.id);
@@ -204,4 +262,4 @@ module.exports = {
 
     return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}admin help\` để xem.`);
   },
-}; 
+};
