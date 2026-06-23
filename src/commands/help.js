@@ -29,7 +29,9 @@ module.exports = {
           `\`${prefix}hunt <mob_id>\` săn quái chỉ định\n` +
           `\`${prefix}heal\` nghỉ quán trọ\n` +
           `\`${prefix}use <id>\` dùng bình máu` },
-        { name: '💼 Trang bị', value: `\`${prefix}equip <id>\` trang bị vũ khí/giáp` },
+        { name: '💼 Trang bị', value:
+          `\`${prefix}equip <id>\` mặc vũ khí/giáp\n` +
+          `\`${prefix}unequip <weapon|armor|all>\` tháo trang bị` },
         { name: '🏪 Chợ', value:
           `\`${prefix}shop\` xem cửa hàng\n` +
           `\`${prefix}buy <id> [qty]\` mua đồ\n` +
