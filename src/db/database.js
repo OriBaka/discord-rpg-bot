@@ -107,3 +107,7 @@ migrateClass();
 
 const { migrate: migrateSlots } = require('../game/slots');
 migrateSlots();
+
+// ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
+const { renameAll } = require('./rename_items');
+renameAll();
