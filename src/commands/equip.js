@@ -6,10 +6,11 @@ module.exports = {
   aliases: ['trangbi'],
   description: 'Trang bị vũ khí/giáp: !equip <id>',
   async execute(msg, args) {
+    const prefix = process.env.PREFIX || '!';
     const p = getPlayer(msg.author.id);
-    if (!p) return msg.reply('❌ Gõ `!start` để tạo nhân vật trước.');
+    if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
     const id = args[0];
-    if (!id || !ITEMS[id]) return msg.reply('❌ Sai ID. Xem `!inv`.');
+    if (!id || !ITEMS[id]) return msg.reply(`❌ Sai ID. Xem \`${prefix}inv\`.`);
     const it = ITEMS[id];
     if (!['weapon','armor'].includes(it.type)) {
       return msg.reply('❌ Vật phẩm này không trang bị được.');
@@ -19,4 +20,4 @@ module.exports = {
     updatePlayer(msg.author.id, { [field]: id });
     return msg.reply(`✅ Đã trang bị **${it.name}**!`);
   },
-}; 
+};
