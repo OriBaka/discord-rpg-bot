@@ -7,12 +7,13 @@ module.exports = {
   aliases: ['bag', 'inventory', 'tui'],
   description: 'Xem túi đồ',
   async execute(msg) {
+    const prefix = process.env.PREFIX || '!';
     const p = getPlayer(msg.author.id);
-    if (!p) return msg.reply('❌ Gõ `!start` để tạo nhân vật trước nhé!');
+    if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước nhé!`);
 
     const items = getInventory(msg.author.id);
     if (items.length === 0) {
-      return msg.reply('🎒 Túi đồ trống trơn! Đi `!hunt` để nhặt loot nào.');
+      return msg.reply(`🎒 Túi đồ trống trơn! Đi \`${prefix}hunt\` để nhặt loot nào.`);
     }
 
     const grouped = { weapon: [], armor: [], consumable: [], material: [] };
@@ -35,4 +36,4 @@ module.exports = {
 
     return msg.reply({ embeds: [embed] });
   },
-}; 
+};
