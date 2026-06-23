@@ -7,8 +7,9 @@ module.exports = {
   aliases: ['diemdanh'],
   description: 'Điểm danh hàng ngày nhận vàng + hồi máu',
   async execute(msg) {
+    const prefix = process.env.PREFIX || '!';
     const p = getPlayer(msg.author.id);
-    if (!p) return msg.reply('❌ Gõ `!start` để tạo nhân vật trước.');
+    if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
     const now = Date.now();
     const remain = DAY_MS - (now - p.last_daily);
     if (remain > 0) {
@@ -24,4 +25,4 @@ module.exports = {
     });
     return msg.reply(`🎁 Điểm danh thành công! Nhận **${reward}** 💰 và hồi đầy HP.`);
   },
-}; 
+};
