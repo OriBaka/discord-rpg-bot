@@ -27,12 +27,16 @@ function updatePlayer(userId, fields) {
   db.prepare(`UPDATE players SET ${setClause} WHERE user_id = ?`).run(...values, userId);
 }
 
-// ===== Stats có cộng trang bị =====
+// ===== Stats có cộng trang bị (tổng hợp tất cả slot) =====
 function getEffectiveStats(p) {
-  let atk = p.atk, def = p.def;
-  if (p.weapon_id && ITEMS[p.weapon_id]) atk += ITEMS[p.weapon_id].atk || 0;
-  if (p.armor_id  && ITEMS[p.armor_id])  def += ITEMS[p.armor_id].def  || 0;
-  return { atk, def };
+  // Dùng require trong hàm để tránh circular dependency
+  const { getTotalBonus } = require('./slots');
+  const bonus = getTotalBonus(p.user_id);
+  return {
+    atk: p.atk + bonus.atk,
+    def: p.def + bonus.def,
+    bonus_heal: bonus.heal, // hồi máu tự động/trận (necklace bonus)
+  };
 }
 
 // ===== Inventory =====
@@ -100,4 +104,4 @@ module.exports = {
   removeItem,
   hasItem,
   addXpAndLevel,
-}; 
+};
