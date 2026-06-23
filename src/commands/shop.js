@@ -13,9 +13,10 @@ module.exports = {
   aliases: ['store', 'cuahang'],
   description: 'Cửa hàng. !shop để xem, !buy <id>, !sell <id> [qty]',
   async execute(msg, args) {
+    const prefix = process.env.PREFIX || '!';
     const sub = (args[0] || 'list').toLowerCase();
     const p = getPlayer(msg.author.id);
-    if (!p) return msg.reply('❌ Gõ `!start` để tạo nhân vật trước nhé!');
+    if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước nhé!`);
 
     if (sub === 'list' || !['buy','sell'].includes(sub)) {
       const lines = SHOP_IDS.map(id => {
@@ -38,10 +39,10 @@ module.exports.buy = {
   description: 'Mua vật phẩm: !buy <id> [qty]',
   async execute(msg, args) {
     const p = getPlayer(msg.author.id);
-    if (!p) return msg.reply('❌ Gõ `!start` để tạo nhân vật trước.');
+    if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
     const id = args[0]; const qty = Math.max(1, parseInt(args[1]) || 1);
     if (!id || !ITEMS[id] || !SHOP_IDS.includes(id)) {
-      return msg.reply('❌ Vật phẩm không có trong shop. Gõ `!shop` để xem danh sách.');
+      return msg.reply(`❌ Vật phẩm không có trong shop. Gõ \`${prefix}shop\` để xem danh sách.`);
     }
     const it = ITEMS[id];
     const total = it.price * qty;
@@ -58,7 +59,7 @@ module.exports.sell = {
   description: 'Bán vật phẩm: !sell <id> [qty]',
   async execute(msg, args) {
     const p = getPlayer(msg.author.id);
-    if (!p) return msg.reply('❌ Gõ `!start` để tạo nhân vật trước.');
+    if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
     const id = args[0]; const qty = Math.max(1, parseInt(args[1]) || 1);
     if (!id || !ITEMS[id]) return msg.reply('❌ Sai ID vật phẩm.');
     if (!hasItem(msg.author.id, id, qty)) return msg.reply('❌ Không đủ vật phẩm để bán.');
