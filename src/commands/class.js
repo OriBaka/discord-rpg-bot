@@ -147,14 +147,30 @@ module.exports = {
         return msg.reply(`❌ Bạn chưa unlock class này. Dùng \`${prefix}class unlock ${id}\`.`);
       }
 
-      // Bỏ trang bị (vì class mới có thể không equip được đồ cũ)
-      updatePlayer(msg.author.id, { weapon_id: null, armor_id: null });
+      // Bỏ trang bị vũ khí/giáp/phụ kiện class-locked (giữ accessory chung)
+      const { clearEquipped, getEquipped } = require('../game/slots');
+      const { getItem } = require('../game/items');
+      const { canEquipItem } = require('../game/classes');
+      const newPlayer = getPlayer(msg.author.id);
+      const equipped = getEquipped(msg.author.id);
+      let removedCount = 0;
+      for (const slot of Object.keys(equipped)) {
+        const it = getItem(equipped[slot]);
+        if (!it) continue;
+        const ck = canEquipItem(newPlayer, it);
+        if (!ck.ok) {
+          clearEquipped(msg.author.id, slot);
+          removedCount++;
+        }
+      }
 
       const c = classInfo(id);
+      const removeNote = removedCount > 0
+        ? `\n⚠️ Đã tháo **${removedCount}** trang bị không tương thích. Dùng \`${prefix}gear\` xem lại, \`${prefix}equip\` lại nếu cần.`
+        : '';
       return msg.reply(
         `🔄 Đã chuyển sang **${c.name}**!\n` +
-        `📊 Chỉ số đã đồng bộ với class này.\n` +
-        `⚠️ Vũ khí & giáp đã bỏ ra (do có thể không tương thích). Hãy \`${prefix}equip\` lại.`
+        `📊 Chỉ số đã đồng bộ với class này.${removeNote}`
       );
     }
 
@@ -190,4 +206,4 @@ module.exports = {
 
     return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}class\` để xem hướng dẫn.`);
   },
-}; 
+};
