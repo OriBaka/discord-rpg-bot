@@ -104,3 +104,6 @@ module.exports = db;
 // Lưu ý: require ở cuối để tránh vòng lặp require
 const { migrate: migrateClass } = require('../game/classes');
 migrateClass();
+
+const { migrate: migrateSlots } = require('../game/slots');
+migrateSlots();
