@@ -2,6 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 const { getItem, getAllItems, getItemsByType } = require('../game/items');
 const { getMonster, getAllMonsters, getAllZones, getZone, getMonstersInZone } = require('../game/monsters');
 const { tierInfo, tierBadge } = require('../game/tiers');
+const { classInfo } = require('../game/classes');
 const db = require('../db/database');
 
 // ===== Helper: hiển thị 1 item =====
@@ -12,6 +13,12 @@ function itemEmbed(it, prefix) {
     { name: '✨ Độ hiếm', value: tierBadge(it.tier), inline: true },
     { name: '🆔 ID', value: `\`${it.id}\``, inline: true },
   ];
+  if (it.class_req) {
+    const c = classInfo(it.class_req);
+    fields.push({ name: '🎭 Yêu cầu class', value: c?.name || it.class_req, inline: true });
+  }
+  if (it.weapon_type) fields.push({ name: '🗡️ Loại vũ khí', value: it.weapon_type, inline: true });
+  if (it.armor_type)  fields.push({ name: '🦺 Loại giáp',   value: it.armor_type, inline: true });
   if (it.atk)   fields.push({ name: '⚔️ ATK', value: `+${it.atk}`, inline: true });
   if (it.def)   fields.push({ name: '🛡️ DEF', value: `+${it.def}`, inline: true });
   if (it.heal)  fields.push({ name: '❤️ Hồi HP', value: `+${it.heal}`, inline: true });
@@ -186,4 +193,4 @@ module.exports = {
 
     return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}info help\``);
   },
-}; 
+};
