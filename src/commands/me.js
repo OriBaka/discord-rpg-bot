@@ -4,7 +4,7 @@ const { ITEMS } = require('../game/items');
 
 module.exports = {
   name: 'me',
-  aliases: ['profile', 'tt', 'info'],
+  aliases: ['profile', 'tt', 'nv'],
   description: 'Xem thông tin nhân vật',
   async execute(msg) {
     const prefix = process.env.PREFIX || '!';
