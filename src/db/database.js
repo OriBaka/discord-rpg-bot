@@ -99,3 +99,8 @@ const { seedDefaults } = require('./seed');
 seedDefaults(db);
 
 module.exports = db;
+
+// ===== Migrations cho các feature mới (chạy sau khi seed) =====
+// Lưu ý: require ở cuối để tránh vòng lặp require
+const { migrate: migrateClass } = require('../game/classes');
+migrateClass();
