@@ -268,4 +268,4 @@ module.exports = {
   canEquipItem,
   UNLOCK_REQUIREMENTS, checkUnlockRequirements,
   migrate,
-}; 
+};
