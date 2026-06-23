@@ -20,7 +20,8 @@ module.exports = {
           `\`${prefix}start\` tạo nhân vật\n` +
           `\`${prefix}me\` xem hồ sơ\n` +
           `\`${prefix}inv\` xem túi đồ\n` +
-          `\`${prefix}top\` bảng xếp hạng` },
+          `\`${prefix}top\` bảng xếp hạng\n` +
+          `\`${prefix}class\` xem/đổi class` },
         { name: '⚔️ Chiến đấu', value:
           `\`${prefix}hunt\` đi săn auto theo lv\n` +
           `\`${prefix}hunt list\` xem các khu vực\n` +
@@ -45,7 +46,7 @@ module.exports = {
       embed.addFields({
         name: '🛠️ Admin (chỉ bạn thấy)',
         value:
-          `\`${prefix}admin help\` lệnh quản trị người chơi\n` +
+          `\`${prefix}admin help\` lệnh quản trị + class\n` +
           `\`${prefix}item help\` tạo/sửa item\n` +
           `\`${prefix}mob help\` tạo/sửa quái & zone\n` +
           `\`${prefix}shop add/remove/setprice\` chỉnh shop`,
