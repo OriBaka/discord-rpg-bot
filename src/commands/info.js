@@ -17,8 +17,10 @@ function itemEmbed(it, prefix) {
     const c = classInfo(it.class_req);
     fields.push({ name: '🎭 Yêu cầu class', value: c?.name || it.class_req, inline: true });
   }
-  if (it.weapon_type) fields.push({ name: '🗡️ Loại vũ khí', value: it.weapon_type, inline: true });
-  if (it.armor_type)  fields.push({ name: '🦺 Loại giáp',   value: it.armor_type, inline: true });
+  if (it.weapon_type)    fields.push({ name: '🗡️ Loại vũ khí', value: it.weapon_type, inline: true });
+  if (it.armor_slot)     fields.push({ name: '🎽 Slot giáp',   value: it.armor_slot,  inline: true });
+  if (it.armor_type)     fields.push({ name: '🦺 Loại giáp',   value: it.armor_type,  inline: true });
+  if (it.accessory_type) fields.push({ name: '✨ Loại phụ kiện',value: it.accessory_type, inline: true });
   if (it.atk)   fields.push({ name: '⚔️ ATK', value: `+${it.atk}`, inline: true });
   if (it.def)   fields.push({ name: '🛡️ DEF', value: `+${it.def}`, inline: true });
   if (it.heal)  fields.push({ name: '❤️ Hồi HP', value: `+${it.heal}`, inline: true });
@@ -67,7 +69,12 @@ function monsterEmbed(m, prefix) {
 }
 
 function typeLabel(type) {
-  return { weapon: '🗡️ Vũ khí', armor: '🛡️ Giáp', consumable: '🧪 Tiêu hao', material: '📦 Nguyên liệu' }[type] || type;
+  return {
+    weapon: '🗡️ Vũ khí', offhand: '🛡️ Tay phụ', armor: '🦺 Giáp',
+    accessory: '✨ Phụ kiện',
+    consumable: '🧪 Tiêu hao', material: '📦 Nguyên liệu',
+    pet: '🐾 Pet',
+  }[type] || type;
 }
 
 // ===== Command =====
@@ -140,21 +147,37 @@ module.exports = {
       const type = args[1];
       const items = type ? getItemsByType(type) : getAllItems();
       if (items.length === 0) return msg.reply('❌ Không có item nào.');
-      // Group theo type
+      // Group: armor tách theo armor_slot, accessory tách theo accessory_type
       const groups = {};
       for (const it of items) {
-        const k = it.type;
+        let k;
+        if (it.type === 'armor') k = `armor:${it.armor_slot || 'chest'}`;
+        else if (it.type === 'accessory') k = `accessory:${it.accessory_type || 'special'}`;
+        else k = it.type;
         (groups[k] = groups[k] || []).push(it);
       }
+      const labelMap = {
+        weapon: '🗡️ Vũ khí', offhand: '🛡️ Tay phụ',
+        'armor:head': '⛑️ Đầu', 'armor:chest': '👕 Thân', 'armor:legs': '👖 Quần',
+        'armor:feet': '👢 Giày', 'armor:hands': '🧤 Găng',
+        'accessory:ring': '💍 Nhẫn', 'accessory:necklace': '📿 Dây chuyền', 'accessory:special': '✨ Đặc biệt',
+        consumable: '🧪 Tiêu hao', material: '📦 Nguyên liệu', pet: '🐾 Pet',
+      };
       const embed = new EmbedBuilder().setColor(0xFEE75C)
         .setTitle(`📚 Danh sách item${type ? ` (${type})` : ''}`)
         .setFooter({ text: `Xem chi tiết: ${prefix}info item <id>` });
-      for (const k of Object.keys(groups)) {
-        const lines = groups[k].map(it => {
-          const t = tierInfo(it.tier);
-          return `${t.emoji} ${it.name} \`${it.id}\``;
-        });
-        embed.addFields({ name: typeLabel(k), value: lines.join('\n').slice(0, 1024) });
+      // Order
+      const groupOrder = [
+        'weapon', 'offhand',
+        'armor:head', 'armor:chest', 'armor:legs', 'armor:feet', 'armor:hands',
+        'accessory:ring', 'accessory:necklace', 'accessory:special',
+        'consumable', 'material', 'pet',
+      ];
+      for (const k of groupOrder) {
+        if (!groups[k]) continue;
+        groups[k].sort((a, b) => tierInfo(b.tier).order - tierInfo(a.tier).order);
+        const lines = groups[k].map(it => `${tierInfo(it.tier).emoji} ${it.name} \`${it.id}\``);
+        embed.addFields({ name: labelMap[k] || k, value: lines.join('\n').slice(0, 1024) });
       }
       return msg.reply({ embeds: [embed] });
     }
