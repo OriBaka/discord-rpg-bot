@@ -31,11 +31,12 @@ process.stdout.write(`🚀 [BOOT] TOKEN có (length=${TOKEN.length}), PREFIX="${
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.DirectMessages,
   ],
-  partials: [Partials.Channel],
+  partials: [Partials.Channel, Partials.Message, Partials.User],
 });
 process.stdout.write('🚀 [BOOT] Đã tạo Client\n');
 
