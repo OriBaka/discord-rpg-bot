@@ -11,11 +11,12 @@ module.exports = {
   aliases: ['san', 'fight', 'atk'],
   description: 'Đi săn quái vật (cooldown 30s)',
   async execute(msg) {
+    const prefix = process.env.PREFIX || '!';
     const p = getPlayer(msg.author.id);
-    if (!p) return msg.reply('❌ Gõ `!start` để tạo nhân vật trước nhé!');
+    if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước nhé!`);
 
     if (p.hp <= 0) {
-      return msg.reply('💀 Bạn đang gục! Dùng `!heal` hoặc `!daily` để hồi.');
+      return msg.reply(`💀 Bạn đang gục! Dùng \`${prefix}heal\` hoặc \`${prefix}daily\` để hồi.`);
     }
 
     const now = Date.now();
@@ -51,10 +52,10 @@ module.exports = {
     } else {
       embed.setColor(0xED4245).addFields({
         name: '💀 Thất bại!',
-        value: `Bạn đã gục trước ${monster.name}. Dùng \`!heal\` để hồi máu.`,
+        value: `Bạn đã gục trước ${monster.name}. Dùng \`${prefix}heal\` để hồi máu.`,
       });
     }
 
     return msg.reply({ embeds: [embed] });
   },
-}; 
+};
