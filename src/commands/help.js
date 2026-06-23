@@ -19,7 +19,8 @@ module.exports = {
         { name: '👤 Nhân vật', value:
           `\`${prefix}start\` tạo nhân vật\n` +
           `\`${prefix}me\` xem hồ sơ\n` +
-          `\`${prefix}inv\` xem túi đồ\n` +
+          `\`${prefix}inv [filter]\` xem túi đồ (vd \`${prefix}inv weapon\`, \`${prefix}inv ring\`)\n` +
+          `\`${prefix}gear [@user]\` xem trang bị đang mặc\n` +
           `\`${prefix}top\` bảng xếp hạng\n` +
           `\`${prefix}class\` xem/đổi class` },
         { name: '⚔️ Chiến đấu', value:
@@ -30,8 +31,9 @@ module.exports = {
           `\`${prefix}heal\` nghỉ quán trọ\n` +
           `\`${prefix}use <id>\` dùng bình máu` },
         { name: '💼 Trang bị', value:
-          `\`${prefix}equip <id>\` mặc vũ khí/giáp\n` +
-          `\`${prefix}unequip <weapon|armor|all>\` tháo trang bị` },
+          `\`${prefix}equip <id> [slot]\` mặc đồ (auto chọn slot)\n` +
+          `\`${prefix}unequip <slot|all>\` tháo trang bị\n` +
+          `Slots: weapon, offhand, head, chest, legs, feet, hands, ring1, ring2, necklace, special` },
         { name: '🏪 Chợ', value:
           `\`${prefix}shop\` xem cửa hàng\n` +
           `\`${prefix}buy <id> [qty]\` mua đồ\n` +
