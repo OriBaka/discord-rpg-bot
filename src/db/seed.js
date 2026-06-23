@@ -48,6 +48,11 @@ function seedDefaults(db) {
     ['troll_horn',    '🦬 Sừng Troll',       'material', 'epic',   0, 0, 0, 0, 140, 'Cứng như đá'],
     ['dragon_scale',  '🔶 Vảy Rồng',         'material', 'legendary', 0, 0, 0, 0, 300, 'Cứng hơn kim cương'],
     ['void_essence',  '💜 Tinh Chất Hư Vô',  'material', 'legendary', 0, 0, 0, 0, 500, 'Năng lượng nguyên thủy'],
+
+    // === CLASS TOKENS (đặc biệt — dùng để unlock class) ===
+    ['class_token_melee',  '🎖️ Huy Hiệu Chiến Binh', 'material', 'epic', 0, 0, 0, 0, 0, 'Vật phẩm đặc biệt để học class Chiến Binh'],
+    ['class_token_magic',  '🎖️ Huy Hiệu Pháp Sư',    'material', 'epic', 0, 0, 0, 0, 0, 'Vật phẩm đặc biệt để học class Pháp Sư'],
+    ['class_token_ranged', '🎖️ Huy Hiệu Cung Thủ',   'material', 'epic', 0, 0, 0, 0, 0, 'Vật phẩm đặc biệt để học class Cung Thủ'],
   ];
 
   const insItem = db.prepare(`INSERT INTO items
@@ -152,4 +157,4 @@ function seedDefaults(db) {
   console.log(`✅ Seeded: ${items.length} items, ${zones.length} zones, ${monsters.length} monsters, ${drops.length} drops, ${shopItems.length} shop items`);
 }
 
-module.exports = { seedDefaults }; 
+module.exports = { seedDefaults };
