@@ -5,22 +5,13 @@ const {
   addDrop, removeDrop, getZone, getAllZones,
   createZone, updateZone, deleteZone,
 } = require('../game/monsters');
+const { getRestTokens, parseKV } = require('../game/argparse');
 
 function isAdmin(msg) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim());
   return adminIds.includes(msg.author.id)
       || (msg.guild && msg.guild.ownerId === msg.author.id)
       || (msg.member && msg.member.permissions?.has('Administrator'));
-}
-
-function parseKV(args) {
-  const out = {};
-  for (const a of args) {
-    const i = a.indexOf('=');
-    if (i < 0) continue;
-    out[a.slice(0, i).toLowerCase()] = a.slice(i + 1);
-  }
-  return out;
 }
 
 module.exports = {
@@ -53,12 +44,8 @@ module.exports = {
 
     if (!isAdmin(msg)) return msg.reply('🚫 Chỉ admin mới được quản lý quái.');
 
-    // Re-tokenize từ raw để giữ chuỗi trong ngoặc kép
-    const raw = msg.content.slice(prefix.length).trim();
-    const restAfterSub = raw.replace(/^\S+\s+\S+\s*/, '');
-    let tokens = restAfterSub.match(/[^\s"]+|"([^"]*)"/g)?.map(t =>
-      t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t
-    ) || [];
+    // Tokenize phần còn lại (bỏ "mob" + sub-command). Hỗ trợ smart quotes.
+    let tokens = getRestTokens(msg, prefix, 2);
 
     // ===== ZONE management =====
     if (sub === 'zone') {
@@ -188,4 +175,4 @@ module.exports = {
 
     return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}mob help\``);
   },
-}; 
+};
