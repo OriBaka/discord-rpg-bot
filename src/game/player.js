@@ -57,12 +57,19 @@ function addItem(userId, itemId, qty = 1) {
   try {
     const quests = require('./quests');
     quests.onItemCollect(userId, itemId);
-  } catch {}
+  } catch (e) {
+    console.error('[addItem hook quests]', e.message);
+  }
   // Hook: achievement item_collect (auto check)
   try {
     const achievements = require('./achievements');
-    achievements.checkAndGrant(userId);
-  } catch {}
+    const granted = achievements.checkAndGrant(userId);
+    if (granted.length > 0) {
+      console.log(`[addItem] User ${userId} +${qty} ${itemId} → unlocked: ${granted.map(a => a.id).join(', ')}`);
+    }
+  } catch (e) {
+    console.error('[addItem hook achievements]', e.message);
+  }
 }
 
 function removeItem(userId, itemId, qty = 1) {
