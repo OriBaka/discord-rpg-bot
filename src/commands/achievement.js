@@ -145,18 +145,53 @@ async function handleAdmin(msg, args, prefix) {
     const allowedObj = ['kill_count','kill_monster','level_reach','gold_total','item_collect','quest_complete'];
     if (!allowedObj.includes(kv.obj)) return msg.reply(`❌ obj phải là: ${allowedObj.join('/')}`);
 
+    // === Validate target tồn tại ===
+    const db = require('../db/database');
+    let warning = '';
+    if (kv.target) {
+      if (kv.obj === 'item_collect') {
+        const it = db.prepare('SELECT id FROM items WHERE id = ?').get(kv.target);
+        if (!it) {
+          return msg.reply(
+            `❌ Item \`${kv.target}\` không tồn tại! Achievement sẽ không bao giờ trigger.\n` +
+            `💡 Check lại ID — gõ \`${prefix}info items\` để xem danh sách.`
+          );
+        }
+      }
+      if (kv.obj === 'kill_monster') {
+        const m = db.prepare('SELECT id FROM monsters WHERE id = ?').get(kv.target);
+        if (!m) {
+          return msg.reply(
+            `❌ Quái \`${kv.target}\` không tồn tại!\n` +
+            `💡 Gõ \`${prefix}info mobs\` để xem danh sách.`
+          );
+        }
+      }
+    } else if (kv.obj === 'item_collect' || kv.obj === 'kill_monster') {
+      return msg.reply(`❌ obj=${kv.obj} cần có \`target=<id>\`.`);
+    }
+
+    // Handle alias 'tittle' (user thường gõ sai)
+    const title = kv.title || kv.tittle || '';
+    if (kv.tittle && !kv.title) warning = '\n⚠️ Bạn gõ `tittle` — đúng là `title` (1 chữ t). Đã tự xử lý.';
+
+    // Helper: parse int cho phép 0 (khác với ||)
+    const intOr = (v, d) => {
+      const n = parseInt(v);
+      return isNaN(n) ? d : n;
+    };
     const a = achievements.createAchievement({
       id, name: kv.name, desc: kv.desc || '', icon: kv.icon || '🏆',
       objective: kv.obj, target_id: kv.target || '',
-      target_qty: parseInt(kv.qty) || 1,
-      points: parseInt(kv.points) || 10,
-      reward_gold: parseInt(kv.gold) || 0,
-      reward_xp: parseInt(kv.xp) || 0,
+      target_qty: intOr(kv.qty, 1),
+      points: intOr(kv.points, 10),
+      reward_gold: intOr(kv.gold, 0),
+      reward_xp: intOr(kv.xp, 0),
       reward_item: kv.item || '',
-      title: kv.title || '',
+      title,
       created_by: msg.author.id,
     });
-    return msg.reply(`✅ Đã tạo achievement **${a.name}** (\`${a.id}\`).`);
+    return msg.reply(`✅ Đã tạo achievement **${a.name}** (\`${a.id}\`).${warning}`);
   }
 
   return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}ach admin help\``);
