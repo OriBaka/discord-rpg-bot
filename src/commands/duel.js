@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getPlayer, getEffectiveStats, updatePlayer } = require('../game/player');
 const pvp = require('../game/pvp');
 const pets = require('../game/pets');
@@ -141,13 +141,27 @@ module.exports = {
     // Create duel
     const duel = pvp.createDuel(msg.author.id, target.id, goldStake);
 
-    return msg.reply(
-      `⚔️ <@${target.id}>, **${msg.author.username}** thách đấu bạn!\n` +
-      (goldStake > 0 ? `💰 Cược: **${goldStake}** vàng\n` : '🆓 Không cược\n') +
-      `⏳ Bạn có **60 giây** để \`${prefix}duel accept\` hoặc \`${prefix}duel decline\``
+    const embed = new EmbedBuilder()
+      .setColor(0xED4245)
+      .setTitle('⚔️ Lời thách đấu!')
+      .setDescription(
+        `<@${target.id}>, **${msg.author.username}** thách đấu bạn!\n` +
+        (goldStake > 0 ? `💰 Cược: **${goldStake}** vàng\n` : '🆓 Không cược\n') +
+        `⏳ 60 giây để phản hồi`
+      );
+
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId(`duel:accept:${duel.id}:${target.id}`).setLabel('✅ Accept').setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId(`duel:decline:${duel.id}:${target.id}`).setLabel('❌ Decline').setStyle(ButtonStyle.Danger),
     );
+
+    return msg.reply({ embeds: [embed], components: [row] });
   },
 };
+
+// Export thêm helper cho button handler
+module.exports.executeDuel = executeDuel;
+module.exports.getFullStats = getFullStats;
 
 async function executeDuel(msg, duel, prefix) {
   const challenger = getPlayer(duel.challenger);
@@ -199,4 +213,4 @@ async function executeDuel(msg, duel, prefix) {
     );
 
   return msg.reply({ embeds: [embed] });
-           } 
+}
