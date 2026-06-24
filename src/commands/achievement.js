@@ -39,12 +39,13 @@ module.exports = {
       const userAch = new Set(achievements.getPlayerAchievements(msg.author.id).map(a => a.id));
       const lines = all.map(a => {
         const mark = userAch.has(a.id) ? '✅' : '⬜';
-        return `${mark} ${a.icon} **${a.name}** (${a.points}pt) — *${a.desc}*`;
+        return `${mark} ${a.icon} **${a.name}** \`${a.id}\` *(${a.points}pt)*\n   *${a.desc}*`;
       });
+      const text = lines.join('\n');
       const embed = new EmbedBuilder().setColor(0xF1C40F)
         .setTitle(`🏆 Achievements (${userAch.size}/${all.length} unlocked)`)
-        .setDescription(lines.join('\n').slice(0, 4000))
-        .setFooter({ text: `Tổng: ${all.length} thành tựu` });
+        .setDescription(text.slice(0, 4000))
+        .setFooter({ text: `Tổng: ${all.length} thành tựu • Chi tiết: ${prefix}achdebug <id>` });
       return msg.reply({ embeds: [embed] });
     }
 
@@ -106,14 +107,63 @@ async function handleAdmin(msg, args, prefix) {
   if (!sub || sub === 'help') {
     const embed = new EmbedBuilder().setColor(0xED4245).setTitle('🛠️ Achievement Admin')
       .setDescription([
+        `\`${prefix}ach admin list [obj]\` — list tất cả ach (xem ID + thông số)`,
         `\`${prefix}ach admin create <id> name="..." desc="..." icon="🏆" obj=kill_count qty=100 points=25 gold=500 xp=200 item=potion_l:2 title="Hunter"\``,
         `\`${prefix}ach admin delete <id>\``,
         `\`${prefix}ach admin grant @user <id>\` — grant thủ công`,
+        `\`${prefix}achdebug <id> [@user]\` — debug 1 ach (vì sao không trigger)`,
         '',
         'obj values: `kill_count` | `kill_monster` (cần target=mob_id) | `level_reach` | `gold_total` | `item_collect` (cần target=item_id) | `quest_complete`',
         '',
-        '⚠️ Reward sẽ được tự cấp khi user unlock achievement (qua hunt/quest).',
+        '⚠️ Reward + title sẽ tự cấp khi user unlock achievement (qua hunt/quest/addItem).',
       ].join('\n'));
+    return msg.reply({ embeds: [embed] });
+  }
+
+  if (sub === 'list' || sub === 'ls') {
+    const all = achievements.getAllAchievements();
+    if (all.length === 0) return msg.reply('💡 Chưa có achievement nào.');
+
+    // Filter optional: %ach admin list <objective>
+    const filter = args[1]?.toLowerCase();
+    const list = filter ? all.filter(a => a.objective === filter) : all;
+    if (list.length === 0) return msg.reply(`💡 Không có ach nào với objective \`${filter}\`.`);
+
+    // Group theo objective
+    const groups = {};
+    for (const a of list) (groups[a.objective] = groups[a.objective] || []).push(a);
+
+    const embed = new EmbedBuilder().setColor(0xED4245)
+      .setTitle(`🛠️ All Achievements (${list.length}/${all.length})`)
+      .setFooter({ text: `Chi tiết 1 ach: ${prefix}achdebug <id>` });
+
+    for (const [obj, arr] of Object.entries(groups)) {
+      const lines = arr.map(a => {
+        const target = a.target_id ? ` target=\`${a.target_id}\`` : '';
+        const reward = [];
+        if (a.reward_gold) reward.push(`💰${a.reward_gold}`);
+        if (a.reward_xp)   reward.push(`✨${a.reward_xp}`);
+        if (a.reward_item) reward.push(`📦${a.reward_item}`);
+        if (a.title)       reward.push(`🎖️"${a.title}"`);
+        const r = reward.length ? ` → ${reward.join(' ')}` : '';
+        return `\`${a.id}\` ${a.icon} ${a.name} (qty:${a.target_qty} pt:${a.points})${target}${r}`;
+      });
+      const text = lines.join('\n');
+      // Chunk 1024
+      if (text.length <= 1024) {
+        embed.addFields({ name: `📊 ${obj} (${arr.length})`, value: text });
+      } else {
+        let chunk = '', idx = 1;
+        for (const ln of lines) {
+          if (chunk.length + ln.length + 1 > 1024) {
+            embed.addFields({ name: `📊 ${obj} #${idx} (${arr.length})`, value: chunk });
+            chunk = ''; idx++;
+          }
+          chunk += (chunk ? '\n' : '') + ln;
+        }
+        if (chunk) embed.addFields({ name: `📊 ${obj} #${idx}`, value: chunk });
+      }
+    }
     return msg.reply({ embeds: [embed] });
   }
 
