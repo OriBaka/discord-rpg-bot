@@ -94,6 +94,20 @@ client.on('messageCreate', async (msg) => {
   }
 });
 
+// ===== Button Interactions =====
+const buttonHandler = require('./buttons');
+client.on('interactionCreate', async (interaction) => {
+  if (!interaction.isButton()) return;
+  try {
+    await buttonHandler.handle(interaction);
+  } catch (err) {
+    console.error('[button handler]', err);
+    if (!interaction.replied && !interaction.deferred) {
+      await interaction.reply({ content: '⚠️ Lỗi xử lý nút.', ephemeral: true }).catch(()=>{});
+    }
+  }
+});
+
 process.stdout.write('🚀 [BOOT] Đang gọi client.login()...\n');
 client.login(TOKEN)
   .then(() => process.stdout.write('🚀 [BOOT] client.login() resolved!\n'))
