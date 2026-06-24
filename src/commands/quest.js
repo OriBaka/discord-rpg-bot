@@ -5,6 +5,7 @@ const { getItem } = require('../game/items');
 const quests = require('../game/quests');
 const achievements = require('../game/achievements');
 const channels = require('../game/channels');
+const { getRestTokens, parseKV } = require('../game/argparse');
 
 function isAdmin(msg) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim());
@@ -42,16 +43,6 @@ function formatReward(q) {
     }
   }
   return parts.join(' • ') || '—';
-}
-
-function parseKV(args) {
-  const out = {};
-  for (const a of args) {
-    const i = a.indexOf('=');
-    if (i < 0) continue;
-    out[a.slice(0, i).toLowerCase()] = a.slice(i + 1);
-  }
-  return out;
 }
 
 module.exports = {
@@ -224,13 +215,8 @@ async function handleAdmin(msg, args, prefix) {
   }
 
   if (sub === 'create' || sub === 'new') {
-    // re-tokenize để parse string trong ngoặc kép
-    const raw = msg.content.slice(prefix.length).trim();
-    // Bỏ "quest admin create" (3 từ đầu)
-    const rest = raw.replace(/^\S+\s+\S+\s+\S+\s*/, '');
-    const tokens = rest.match(/[^\s"]+|"([^"]*)"/g)?.map(t =>
-      t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t
-    ) || [];
+    // Tokenize bỏ "quest admin create" (3 từ đầu)
+    const tokens = getRestTokens(msg, prefix, 3);
     const id = tokens[0];
     if (!id) return msg.reply('❌ Thiếu quest id.');
     if (quests.getQuest(id)) return msg.reply('❌ Quest id đã tồn tại.');
@@ -275,4 +261,4 @@ async function handleAdmin(msg, args, prefix) {
   }
 
   return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}quest admin help\``);
-      }
+}
