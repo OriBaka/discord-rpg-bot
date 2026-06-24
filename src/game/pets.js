@@ -206,7 +206,7 @@ function hasPet(userId, petId) {
   return row && row.qty > 0;
 }
 
-function addPet(userId, petId, qty = 1) {
+function addPet(userId, petId, qty = 1, context = null) {
   const row = db.prepare('SELECT qty FROM player_pets WHERE user_id=? AND pet_id=?').get(userId, petId);
   if (row) {
     db.prepare('UPDATE player_pets SET qty = qty + ? WHERE user_id=? AND pet_id=?')
@@ -215,6 +215,11 @@ function addPet(userId, petId, qty = 1) {
     db.prepare('INSERT INTO player_pets (user_id, pet_id, qty, obtained_at) VALUES (?,?,?,?)')
       .run(userId, petId, qty, Date.now());
   }
+  // Hook: check achievement
+  try {
+    const achievements = require('./achievements');
+    achievements.checkAndGrant(userId, context);
+  } catch {}
 }
 
 function removePet(userId, petId, qty = 1) {
@@ -263,7 +268,7 @@ function removeShard(userId, shardId, qty) {
 }
 
 // === Combine shards thành pet ===
-function combineShards(userId, petId) {
+function combineShards(userId, petId, context = null) {
   const pet = getPet(petId);
   if (!pet) return { ok: false, reason: 'pet_not_found' };
   if (!pet.shard_id || pet.shard_qty <= 0) return { ok: false, reason: 'no_shard_recipe' };
@@ -272,7 +277,7 @@ function combineShards(userId, petId) {
     return { ok: false, reason: 'not_enough_shards', need: pet.shard_qty, have, shard_id: pet.shard_id };
   }
   removeShard(userId, pet.shard_id, pet.shard_qty);
-  addPet(userId, petId, 1);
+  addPet(userId, petId, 1, context);
   return { ok: true, pet };
 }
 
