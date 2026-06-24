@@ -37,15 +37,20 @@ module.exports = {
     if (sub === 'list' || sub === 'all') {
       const all = achievements.getAllAchievements();
       const userAch = new Set(achievements.getPlayerAchievements(msg.author.id).map(a => a.id));
-      const lines = all.map(a => {
+      // Ẩn hidden ach chưa unlock
+      const visible = all.filter(a => !a.hidden || userAch.has(a.id));
+      const hiddenCount = all.filter(a => a.hidden && !userAch.has(a.id)).length;
+
+      const lines = visible.map(a => {
         const mark = userAch.has(a.id) ? '✅' : '⬜';
-        return `${mark} ${a.icon} **${a.name}** \`${a.id}\` *(${a.points}pt)*\n   *${a.desc}*`;
+        const tag = a.hidden ? ' 🕵️' : '';
+        return `${mark} ${a.icon} **${a.name}** \`${a.id}\` *(${a.points}pt)*${tag}\n   *${a.desc}*`;
       });
       const text = lines.join('\n');
       const embed = new EmbedBuilder().setColor(0xF1C40F)
-        .setTitle(`🏆 Achievements (${userAch.size}/${all.length} unlocked)`)
+        .setTitle(`🏆 Achievements (${userAch.size}/${visible.length} unlocked)`)
         .setDescription(text.slice(0, 4000))
-        .setFooter({ text: `Tổng: ${all.length} thành tựu • Chi tiết: ${prefix}achdebug <id>` });
+        .setFooter({ text: `Tổng hiển thị: ${visible.length}` + (hiddenCount > 0 ? ` • 🕵️ ${hiddenCount} thành tựu ẩn chưa khám phá` : '') });
       return msg.reply({ embeds: [embed] });
     }
 
@@ -108,7 +113,7 @@ async function handleAdmin(msg, args, prefix) {
     const embed = new EmbedBuilder().setColor(0xED4245).setTitle('🛠️ Achievement Admin')
       .setDescription([
         `\`${prefix}ach admin list [obj]\` — list tất cả ach (xem ID + thông số)`,
-        `\`${prefix}ach admin create <id> name="..." desc="..." icon="🏆" obj=kill_count qty=100 points=25 gold=500 xp=200 item=potion_l:2 title="Hunter"\``,
+        `\`${prefix}ach admin create <id> name="..." desc="..." icon="🏆" obj=kill_count qty=100 points=25 gold=500 xp=200 item=potion_l:2 title="Hunter" hidden=true\``,
         `\`${prefix}ach admin delete <id>\``,
         `\`${prefix}ach admin grant @user <id>\` — grant thủ công`,
         `\`${prefix}achdebug <id> [@user]\` — debug 1 ach (vì sao không trigger)`,
@@ -230,6 +235,7 @@ async function handleAdmin(msg, args, prefix) {
       const n = parseInt(v);
       return isNaN(n) ? d : n;
     };
+    const isHidden = kv.hidden === 'true' || kv.hidden === '1' || kv.hidden === 'yes';
     const a = achievements.createAchievement({
       id, name: kv.name, desc: kv.desc || '', icon: kv.icon || '🏆',
       objective: kv.obj, target_id: kv.target || '',
@@ -239,9 +245,11 @@ async function handleAdmin(msg, args, prefix) {
       reward_xp: intOr(kv.xp, 0),
       reward_item: kv.item || '',
       title,
+      hidden: isHidden,
       created_by: msg.author.id,
     });
-    return msg.reply(`✅ Đã tạo achievement **${a.name}** (\`${a.id}\`).${warning}`);
+    const hiddenTag = isHidden ? ' 🕵️ **HIDDEN**' : '';
+    return msg.reply(`✅ Đã tạo achievement **${a.name}** (\`${a.id}\`)${hiddenTag}.${warning}`);
   }
 
   return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}ach admin help\``);
