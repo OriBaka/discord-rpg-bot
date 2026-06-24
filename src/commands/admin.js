@@ -112,7 +112,26 @@ module.exports = {
         .setDescription(text)
         .setFooter({ text: `Bởi ${msg.author.username}` })
         .setTimestamp();
-      return msg.channel.send({ embeds: [embed] });
+
+      // Ưu tiên gửi vào channel announce đã set; nếu chưa set thì gửi tại channel hiện tại
+      const announceChannelId = msg.guild ? channels.getChannel(msg.guild.id, 'announce') : null;
+      if (announceChannelId) {
+        try {
+          const ch = await msg.client.channels.fetch(announceChannelId);
+          if (ch?.isTextBased()) {
+            await ch.send({ embeds: [embed] });
+            if (ch.id !== msg.channel.id) {
+              return msg.reply(`✅ Đã gửi thông báo tới <#${announceChannelId}>.`);
+            }
+            return; // đã gửi ở chính channel này → khỏi reply nữa
+          }
+        } catch (err) {
+          return msg.reply(`❌ Không gửi được tới channel notify: ${err.message}\n💡 Có thể bot không có quyền hoặc channel đã bị xoá.`);
+        }
+      }
+      // Fallback: gửi tại channel đang dùng lệnh
+      await msg.channel.send({ embeds: [embed] });
+      return msg.reply(`💡 Chưa set kênh announce. Dùng \`${prefix}admin channel set announce #kênh\` để cấu hình.`);
     }
 
     // ===== channel notify =====
