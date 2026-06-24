@@ -131,7 +131,7 @@ module.exports = {
       const petDrops = pets.rollPetDrops(monster.id, petBonus.drop_pct);
       for (const d of petDrops) {
         if (d.pet_id) {
-          pets.addPet(msg.author.id, d.pet_id, d.qty);
+          pets.addPet(msg.author.id, d.pet_id, d.qty, ctx);
           const pet = pets.getPet(d.pet_id);
           lootText += `\n🐾 **PET DROP!** ${pet.icon} ${pet.name} ×${d.qty}`;
         } else if (d.shard_id) {
