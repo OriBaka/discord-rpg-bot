@@ -89,20 +89,12 @@ module.exports = {
       // Update quest_complete stats
       const stats = achievements.getPlayerStats(msg.author.id);
       achievements.updatePlayerStats(msg.author.id, { total_quests: stats.total_quests + 1 });
-      const newAchs = achievements.checkAndGrant(msg.author.id);
+      const ctx = { client: msg.client, guildId: msg.guild?.id };
+      const newAchs = achievements.checkAndGrant(msg.author.id, ctx);
 
       let txt = `🎉 Đã nhận thưởng **${q.name}**!\n${formatReward(q)}`;
       if (newAchs.length > 0) {
         txt += `\n\n🏆 **Thành tựu mới**: ${newAchs.map(a => `${a.icon} ${a.name}`).join(', ')}`;
-        try {
-          for (const a of newAchs) {
-            channels.notify(msg.client, msg.guild?.id, 'achievement', {
-              embeds: [new EmbedBuilder().setColor(0xF1C40F)
-                .setTitle(`${a.icon} Achievement Unlocked!`)
-                .setDescription(`<@${msg.author.id}> đã đạt **${a.name}**!\n*${a.desc}*`)],
-            });
-          }
-        } catch {}
       }
       return msg.reply(txt);
     }
