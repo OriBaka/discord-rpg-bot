@@ -1,6 +1,16 @@
 // Wrapper đọc items từ DB (thay cho hardcode trước đây)
 const db = require('../db/database');
 
+// Migration: thêm cột soulbound
+function migrate() {
+  const cols = db.prepare("PRAGMA table_info(items)").all().map(c => c.name);
+  if (!cols.includes('soulbound')) {
+    db.exec(`ALTER TABLE items ADD COLUMN soulbound INTEGER NOT NULL DEFAULT 0`);
+    console.log('🔧 Migrated items: thêm soulbound');
+  }
+}
+migrate();
+
 function getItem(id) {
   return db.prepare('SELECT * FROM items WHERE id = ?').get(id) || null;
 }
