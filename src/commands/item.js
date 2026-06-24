@@ -117,8 +117,8 @@ module.exports = {
 
       const fields = {};
       const numKeys = ['atk', 'def', 'heal', 'price', 'sell', 'soulbound'];
-      const strKeys = ['name', 'desc', 'type', 'tier', 'class_req', 'weapon_type', 'armor_type', 'accessory_type', 'armor_slot'];
-      const keyMap = { class: 'class_req', sb: 'soulbound' };
+      const strKeys = ['name', 'desc', 'type', 'tier', 'class_req', 'weapon_type', 'armor_type', 'accessory_type', 'armor_slot', 'image_url'];
+      const keyMap = { class: 'class_req', sb: 'soulbound', img: 'image_url', image: 'image_url' };
       for (const rawK of Object.keys(kv)) {
         const k = keyMap[rawK] || rawK;
         if (strKeys.includes(k))      fields[k] = kv[rawK];
