@@ -201,6 +201,8 @@ module.exports = {
         lines.join('\n\n')
       )
       .setFooter({ text: `${prefix}pet active <id> để active • ${prefix}pet collection xem tất cả` });
+    // Hiện thumbnail của pet đang active (nếu có image_url)
+    if (active?.image_url) embed.setThumbnail(active.image_url);
     return msg.reply({ embeds: [embed] });
   },
 };
