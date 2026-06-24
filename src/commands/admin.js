@@ -198,7 +198,22 @@ module.exports = {
       if (isNaN(amount)) return msg.reply('❌ Số vàng không hợp lệ.');
       const newGold = Math.max(0, p.gold + amount);
       updatePlayer(target.id, { gold: newGold });
-      return msg.reply(`✅ ${amount >= 0 ? 'Cộng' : 'Trừ'} **${Math.abs(amount)}** 💰 cho **${p.name}**. Tổng: ${newGold}`);
+
+      // Update total_gold stat (chỉ khi cộng dương, không trừ)
+      let achText = '';
+      if (amount > 0) {
+        try {
+          const achievements = require('../game/achievements');
+          const stats = achievements.getPlayerStats(target.id);
+          achievements.updatePlayerStats(target.id, { total_gold: stats.total_gold + amount });
+          const ctx = { client: msg.client, guildId: msg.guild?.id };
+          const newAchs = achievements.checkAndGrant(target.id, ctx);
+          if (newAchs.length > 0) {
+            achText = `\n🏆 Unlock: ${newAchs.map(a => `${a.icon} ${a.name}`).join(', ')}`;
+          }
+        } catch {}
+      }
+      return msg.reply(`✅ ${amount >= 0 ? 'Cộng' : 'Trừ'} **${Math.abs(amount)}** 💰 cho **${p.name}**. Tổng: ${newGold}${achText}`);
     }
 
     // ===== xp =====
@@ -218,29 +233,10 @@ module.exports = {
       if (!itemId || !ITEMS[itemId]) {
         return msg.reply(`❌ Item ID không hợp lệ. Gõ \`${prefix}info items\` xem danh sách.`);
       }
-      addItem(target.id, itemId, qty);
-
-      // Check achievement trigger (item_collect)
-      let achText = '';
-      try {
-        const achievements = require('../game/achievements');
-        const newAchs = achievements.checkAndGrant(target.id);
-        if (newAchs.length > 0) {
-          achText = `\n🏆 ${target.username} unlock achievement: ${newAchs.map(a => `${a.icon} ${a.name}`).join(', ')}`;
-          // Notify channel
-          try {
-            for (const a of newAchs) {
-              channels.notify(msg.client, msg.guild?.id, 'achievement', {
-                embeds: [new EmbedBuilder().setColor(0xF1C40F)
-                  .setTitle(`${a.icon} Achievement Unlocked!`)
-                  .setDescription(`<@${target.id}> đã đạt **${a.name}**!\n*${a.desc}*`)],
-              });
-            }
-          } catch {}
-        }
-      } catch {}
-
-      return msg.reply(`✅ Tặng **${qty}x ${ITEMS[itemId].name}** cho **${p.name}**.${achText}`);
+      // Truyền context để addItem tự apply reward + notify nếu unlock ach
+      const ctx = { client: msg.client, guildId: msg.guild?.id };
+      addItem(target.id, itemId, qty, ctx);
+      return msg.reply(`✅ Tặng **${qty}x ${ITEMS[itemId].name}** cho **${p.name}**.`);
     }
 
     // ===== takeitem =====
