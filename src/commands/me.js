@@ -3,6 +3,7 @@ const { getPlayer, getEffectiveStats, xpToNext } = require('../game/player');
 const { getItem } = require('../game/items');
 const { classInfo, getClassData } = require('../game/classes');
 const { SLOTS, SLOT_ORDER, getEquipped, getTotalBonus } = require('../game/slots');
+const pets = require('../game/pets');
 
 // Lấy emoji ngắn cho mỗi slot (chỉ icon, không có chữ)
 const SLOT_EMOJI = {
@@ -32,24 +33,34 @@ module.exports = {
       ? `${cls.name}${unlockedClasses.length > 1 ? ` *(+${unlockedClasses.length - 1} class khác)*` : ''}`
       : `❓ *Chưa chọn — dùng* \`${prefix}class pick\``;
 
+    // ===== Active pet =====
+    const activePet = pets.getActivePet(msg.author.id);
+
     // ===== Compact gear list =====
-    // 1 dòng cho mỗi slot có item, ngăn cách bằng " | "
-    // Slot rỗng thì hiện emoji + "—" (kiểu xám)
     const gearParts = [];
     let equippedCount = 0;
     for (const slotId of SLOT_ORDER) {
-      if (slotId === 'pet') continue; // Pet là Phase 3, ẩn
-      const itemId = equipped[slotId];
       const emoji = SLOT_EMOJI[slotId] || '◽';
+      if (slotId === 'pet') {
+        // Active pet hiện ở đây
+        if (activePet) {
+          gearParts.push(`${emoji} ${activePet.icon} ${activePet.name}`);
+          equippedCount++;
+        } else {
+          gearParts.push(`${emoji} \`—\``);
+        }
+        continue;
+      }
+      const itemId = equipped[slotId];
       if (itemId) {
         const it = getItem(itemId);
-        gearParts.push(`${emoji} ${it?.name?.replace(/^[^\s]+\s/, '') || itemId}`); // bỏ emoji đầu tên item (đỡ trùng)
+        gearParts.push(`${emoji} ${it?.name?.replace(/^[^\s]+\s/, '') || itemId}`);
         equippedCount++;
       } else {
         gearParts.push(`${emoji} \`—\``);
       }
     }
-    const totalSlots = SLOT_ORDER.length - 1; // trừ pet
+    const totalSlots = SLOT_ORDER.length;
     const gearStr = gearParts.join(' • ');
 
     const embed = new EmbedBuilder()
