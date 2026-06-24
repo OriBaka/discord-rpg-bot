@@ -113,7 +113,9 @@ async function handleAdmin(msg, args, prefix) {
         `\`${prefix}ach admin grant @user <id>\` — grant thủ công`,
         `\`${prefix}achdebug <id> [@user]\` — debug 1 ach (vì sao không trigger)`,
         '',
-        'obj values: `kill_count` | `kill_monster` (cần target=mob_id) | `level_reach` | `gold_total` | `item_collect` (cần target=item_id) | `quest_complete`',
+        'obj values:',
+        '`kill_count` `kill_monster`(target=mob_id) `level_reach` `gold_total` `quest_complete`',
+        '`item_collect`(target=item_id) `pet_count` `pet_tier`(target=tier) `pet_own`(target=pet_id)',
         '',
         '⚠️ Reward + title sẽ tự cấp khi user unlock achievement (qua hunt/quest/addItem).',
       ].join('\n'));
@@ -192,7 +194,7 @@ async function handleAdmin(msg, args, prefix) {
     if (achievements.getAchievement(id)) return msg.reply('❌ Id đã tồn tại.');
     const kv = parseKV(tokens.slice(1));
     if (!kv.name || !kv.obj) return msg.reply('❌ Cần `name="..."` và `obj=...`.');
-    const allowedObj = ['kill_count','kill_monster','level_reach','gold_total','item_collect','quest_complete'];
+    const allowedObj = ['kill_count','kill_monster','level_reach','gold_total','item_collect','quest_complete','pet_count','pet_tier','pet_own'];
     if (!allowedObj.includes(kv.obj)) return msg.reply(`❌ obj phải là: ${allowedObj.join('/')}`);
 
     // === Validate target tồn tại ===
@@ -201,23 +203,21 @@ async function handleAdmin(msg, args, prefix) {
     if (kv.target) {
       if (kv.obj === 'item_collect') {
         const it = db.prepare('SELECT id FROM items WHERE id = ?').get(kv.target);
-        if (!it) {
-          return msg.reply(
-            `❌ Item \`${kv.target}\` không tồn tại! Achievement sẽ không bao giờ trigger.\n` +
-            `💡 Check lại ID — gõ \`${prefix}info items\` để xem danh sách.`
-          );
-        }
+        if (!it) return msg.reply(`❌ Item \`${kv.target}\` không tồn tại!\n💡 Gõ \`${prefix}info items\` để xem.`);
       }
       if (kv.obj === 'kill_monster') {
         const m = db.prepare('SELECT id FROM monsters WHERE id = ?').get(kv.target);
-        if (!m) {
-          return msg.reply(
-            `❌ Quái \`${kv.target}\` không tồn tại!\n` +
-            `💡 Gõ \`${prefix}info mobs\` để xem danh sách.`
-          );
-        }
+        if (!m) return msg.reply(`❌ Quái \`${kv.target}\` không tồn tại!\n💡 Gõ \`${prefix}info mobs\` để xem.`);
       }
-    } else if (kv.obj === 'item_collect' || kv.obj === 'kill_monster') {
+      if (kv.obj === 'pet_own') {
+        const p = db.prepare('SELECT id FROM pets WHERE id = ?').get(kv.target);
+        if (!p) return msg.reply(`❌ Pet \`${kv.target}\` không tồn tại!\n💡 Gõ \`${prefix}pet collection\` để xem.`);
+      }
+      if (kv.obj === 'pet_tier') {
+        const valid = ['common','rare','epic','legendary'];
+        if (!valid.includes(kv.target)) return msg.reply(`❌ tier phải là: ${valid.join('/')}`);
+      }
+    } else if (['item_collect','kill_monster','pet_own','pet_tier'].includes(kv.obj)) {
       return msg.reply(`❌ obj=${kv.obj} cần có \`target=<id>\`.`);
     }
 
