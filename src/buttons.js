@@ -175,4 +175,4 @@ async function handle(interaction) {
   return interaction.reply({ content: '❌ Action không xác định.', ephemeral: true });
 }
 
-module.exports = { handle }; 
+module.exports = { handle };
