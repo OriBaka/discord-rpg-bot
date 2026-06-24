@@ -117,6 +117,9 @@ migrateAchievements();
 const { migrate: migrateChannels } = require('../game/channels');
 migrateChannels();
 
+const { migrate: migratePets } = require('../game/pets');
+migratePets();
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
