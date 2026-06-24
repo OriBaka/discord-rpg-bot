@@ -92,6 +92,30 @@ module.exports = {
         }
         break;
       }
+      case 'pet_count': {
+        const c = db.prepare('SELECT COUNT(*) c FROM player_pets WHERE user_id = ?').get(userId).c;
+        detail = `Pet sở hữu: **${c}** / cần ${ach.target_qty}`;
+        conditionMet = c >= ach.target_qty;
+        break;
+      }
+      case 'pet_tier': {
+        const c = db.prepare(`SELECT COUNT(*) c FROM player_pets pp JOIN pets p ON p.id = pp.pet_id WHERE pp.user_id = ? AND p.tier = ?`).get(userId, ach.target_id).c;
+        detail = `Pet tier ${ach.target_id}: có **${c}** / cần ${ach.target_qty}`;
+        conditionMet = c >= ach.target_qty;
+        break;
+      }
+      case 'pet_own': {
+        const petExists = db.prepare('SELECT id, name FROM pets WHERE id = ?').get(ach.target_id);
+        if (!petExists) {
+          detail = `❌ Pet \`${ach.target_id}\` KHÔNG TỒN TẠI!`;
+        } else {
+          const r = db.prepare('SELECT qty FROM player_pets WHERE user_id=? AND pet_id=?').get(userId, ach.target_id);
+          const have = r?.qty || 0;
+          detail = `Pet \`${ach.target_id}\` (${petExists.name}): có **${have}** / cần ${ach.target_qty}`;
+          conditionMet = have >= ach.target_qty;
+        }
+        break;
+      }
     }
 
     lines.push(`📊 **Condition**: ${detail}`);
