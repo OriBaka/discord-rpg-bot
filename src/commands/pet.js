@@ -217,9 +217,11 @@ async function handleAdmin(msg, args, prefix) {
         `\`${prefix}pet admin delete <id>\``,
         `\`${prefix}pet admin give @user <pet_id> [qty]\` — tặng pet`,
         `\`${prefix}pet admin giveshard @user <shard_id> [qty]\` — tặng shard`,
+        `\`${prefix}pet admin drops [mob_id]\` — xem toàn bộ drop table (hoặc 1 mob)`,
         `\`${prefix}pet admin drop <mob_id> pet=<pet_id> chance=0.05 [qty=1]\` — drop pet trực tiếp`,
         `\`${prefix}pet admin drop <mob_id> shard=<shard_id> chance=0.10 [qty=1]\` — drop shard`,
         `\`${prefix}pet admin undrop <mob_id> <pet_id|shard_id>\``,
+        `\`${prefix}pet admin resetdrops\` — RESET toàn bộ drop về default (⚠️ xóa hết drop custom)`,
         '',
         '💡 Field gold/xp/drop là % (vd: gold=10 = +10% gold)',
       ].join('\n'))] });
@@ -297,6 +299,44 @@ async function handleAdmin(msg, args, prefix) {
     if (!shardId) return msg.reply('❌ Thiếu shard_id.');
     pets.addShard(target.id, shardId, qty);
     return msg.reply(`✅ Tặng ${qty} mảnh \`${shardId}\` cho ${target.username}.`);
+  }
+
+  if (sub === 'drops' || sub === 'droplist') {
+    const filterMob = args[1];
+    const all = pets.getAllPetDrops();
+    const filtered = filterMob ? all.filter(d => d.monster_id === filterMob) : all;
+    if (filtered.length === 0) return msg.reply(filterMob ? `💡 Mob \`${filterMob}\` không có drop.` : '💡 Không có drop nào.');
+
+    // Group theo mob
+    const groups = {};
+    for (const d of filtered) {
+      (groups[d.monster_id] = groups[d.monster_id] || []).push(d);
+    }
+    const lines = [];
+    for (const [mobId, list] of Object.entries(groups)) {
+      const mobName = list[0].mob_name || mobId;
+      lines.push(`**${mobName}** \`${mobId}\``);
+      for (const d of list) {
+        const what = d.pet_id ? `🐾 \`${d.pet_id}\`` : `🧩 \`${d.shard_id}\``;
+        lines.push(`   ${what} × ${d.qty} @ ${(d.chance*100).toFixed(1)}%`);
+      }
+    }
+    return msg.reply({ embeds: [new EmbedBuilder().setColor(0xED4245)
+      .setTitle(`🐾 Pet/Shard Drops (${filtered.length})`)
+      .setDescription(lines.join('\n').slice(0, 4000))] });
+  }
+
+  if (sub === 'resetdrops') {
+    if (args[1] !== 'confirm') {
+      return msg.reply(
+        `⚠️ **Reset drops** sẽ XÓA TOÀN BỘ drop hiện tại (kể cả custom) và set lại default.\n` +
+        `Default gồm 10 direct + 2 shard cho mob tương ứng.\n\n` +
+        `Để xác nhận: \`${prefix}pet admin resetdrops confirm\``
+      );
+    }
+    const oldCount = pets.getAllPetDrops().length;
+    const newCount = pets.resetDropsToDefault();
+    return msg.reply(`✅ Đã reset drop table: ${oldCount} → ${newCount} entries (default).`);
   }
 
   if (sub === 'drop') {
