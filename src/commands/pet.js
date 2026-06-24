@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
+const db = require('../db/database');
 const { getPlayer } = require('../game/player');
 const pets = require('../game/pets');
 const { tierInfo } = require('../game/tiers');
@@ -89,25 +90,81 @@ module.exports = {
     // ===== collection (xem tất cả pet có trong game + đã sưu tầm chưa) =====
     if (sub === 'collection' || sub === 'col' || sub === 'sutam' || sub === 'list') {
       const all = pets.getAllPets();
-      const owned = new Set(pets.getPlayerPets(msg.author.id).map(p => p.id));
-      const lines = all.map(p => {
-        const t = tierInfo(p.tier);
-        const mark = owned.has(p.id) ? '✅' : '❌';
-        const buffs = [];
-        if (p.atk_bonus) buffs.push(`+${p.atk_bonus} ATK`);
-        if (p.def_bonus) buffs.push(`+${p.def_bonus} DEF`);
-        if (p.hp_bonus)  buffs.push(`+${p.hp_bonus} HP`);
-        if (p.gold_bonus_pct) buffs.push(`+${p.gold_bonus_pct}% gold`);
-        if (p.xp_bonus_pct)   buffs.push(`+${p.xp_bonus_pct}% XP`);
-        if (p.drop_bonus_pct) buffs.push(`+${p.drop_bonus_pct}% drop`);
-        const buffStr = buffs.length ? ` *(${buffs.join(', ')})*` : ' *(cosmetic)*';
-        return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`${buffStr}`;
-      });
-      const text = lines.join('\n');
+      const ownedPets = pets.getPlayerPets(msg.author.id);
+      const owned = new Set(ownedPets.map(p => p.id));
+
+      // Ẩn pet "hidden" nếu chưa sở hữu
+      const visible = all.filter(p => !p.hidden || owned.has(p.id));
+
+      // Group theo nguồn gốc
+      const groups = { direct: [], shard: [], special: [] };
+      // Map: pet_id → mob_id drop trực tiếp
+      const directDropMap = {};
+      const dropRows = db.prepare('SELECT pet_id, monster_id, chance FROM pet_drops WHERE pet_id IS NOT NULL').all();
+      for (const r of dropRows) directDropMap[r.pet_id] = { mob: r.monster_id, chance: r.chance };
+
+      for (const p of visible) {
+        if (p.shard_id && p.shard_qty > 0) groups.shard.push(p);
+        else if (directDropMap[p.id])      groups.direct.push(p);
+        else                                groups.special.push(p);
+      }
+
+      const buffOf = (p) => {
+        const b = [];
+        if (p.atk_bonus) b.push(`+${p.atk_bonus} ATK`);
+        if (p.def_bonus) b.push(`+${p.def_bonus} DEF`);
+        if (p.hp_bonus)  b.push(`+${p.hp_bonus} HP`);
+        if (p.gold_bonus_pct) b.push(`+${p.gold_bonus_pct}% gold`);
+        if (p.xp_bonus_pct)   b.push(`+${p.xp_bonus_pct}% XP`);
+        if (p.drop_bonus_pct) b.push(`+${p.drop_bonus_pct}% drop`);
+        return b.length ? b.join(', ') : 'cosmetic';
+      };
+
       const embed = new EmbedBuilder().setColor(0x9B59B6)
-        .setTitle(`🐾 Pet Collection (${owned.size}/${all.length})`)
-        .setDescription(text.slice(0, 4000))
-        .setFooter({ text: `Săn quái → drop pet/shard ngẫu nhiên` });
+        .setTitle(`🐾 Pet Collection — ${owned.size}/${visible.length} unlocked`);
+
+      // Direct drops
+      if (groups.direct.length > 0) {
+        const lines = groups.direct.map(p => {
+          const t = tierInfo(p.tier);
+          const mark = owned.has(p.id) ? '✅' : '❌';
+          const src = directDropMap[p.id];
+          const mobName = src ? db.prepare('SELECT name FROM monsters WHERE id=?').get(src.mob)?.name || src.mob : '?';
+          return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`\n    *${buffOf(p)}*\n    💀 Drop từ: ${mobName} (${(src.chance*100).toFixed(1)}%)`;
+        });
+        embed.addFields({ name: '🎯 Direct Drop (săn quái)', value: lines.join('\n\n').slice(0, 1024) });
+      }
+
+      // Shard craft
+      if (groups.shard.length > 0) {
+        const lines = groups.shard.map(p => {
+          const t = tierInfo(p.tier);
+          const mark = owned.has(p.id) ? '✅' : '❌';
+          const haveShard = pets.getShard(msg.author.id, p.shard_id);
+          const ready = haveShard >= p.shard_qty ? ' ✨ **ĐỦ NGUYÊN LIỆU!**' : '';
+          // Tìm mob drop shard
+          const shardSrc = db.prepare('SELECT monster_id, chance FROM pet_drops WHERE shard_id=?').get(p.shard_id);
+          const mobName = shardSrc ? db.prepare('SELECT name FROM monsters WHERE id=?').get(shardSrc.monster_id)?.name : '?';
+          return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`\n    *${buffOf(p)}*\n    🧩 Cần **${p.shard_qty}× ${p.shard_id}** (bạn có ${haveShard})${ready}\n    💀 Shard drop từ: ${mobName}`;
+        });
+        embed.addFields({ name: '🧩 Shard Craft (ghép mảnh)', value: lines.join('\n\n').slice(0, 1024) });
+      }
+
+      // Special (visible thì hiện — gồm reserve và hidden đã owned)
+      if (groups.special.length > 0) {
+        const lines = groups.special.map(p => {
+          const t = tierInfo(p.tier);
+          const mark = owned.has(p.id) ? '✅' : '❌';
+          const tag = p.hidden ? ' 🕵️ *Hidden*' : ' 🎁 *Special/Event*';
+          return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`${tag}\n    *${buffOf(p)}*`;
+        });
+        embed.addFields({ name: '✨ Special / Event', value: lines.join('\n\n').slice(0, 1024) });
+      }
+
+      const hiddenCount = all.filter(p => p.hidden && !owned.has(p.id)).length;
+      const footer = `${prefix}pet combine <id> ghép • ${prefix}pet shards xem mảnh` +
+                     (hiddenCount > 0 ? ` • 🕵️ ${hiddenCount} pet ẩn chưa tìm thấy` : '');
+      embed.setFooter({ text: footer });
       return msg.reply({ embeds: [embed] });
     }
 
@@ -156,7 +213,7 @@ async function handleAdmin(msg, args, prefix) {
     return msg.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setTitle('🛠️ Pet Admin')
       .setDescription([
         `\`${prefix}pet admin list\` — xem tất cả pet (id + buff)`,
-        `\`${prefix}pet admin create <id> name="..." icon="🐾" tier=epic atk=10 def=5 hp=20 gold=10 xp=5 drop=5 shard=shard_xxx shard_qty=10 desc="..."\``,
+        `\`${prefix}pet admin create <id> name="..." icon="🐾" tier=epic atk=10 def=5 hp=20 gold=10 xp=5 drop=5 shard=shard_xxx shard_qty=10 desc="..." hidden=true\``,
         `\`${prefix}pet admin delete <id>\``,
         `\`${prefix}pet admin give @user <pet_id> [qty]\` — tặng pet`,
         `\`${prefix}pet admin giveshard @user <shard_id> [qty]\` — tặng shard`,
@@ -205,6 +262,7 @@ async function handleAdmin(msg, args, prefix) {
     const kv = parseKV(tokens.slice(1));
     if (!kv.name) return msg.reply('❌ Cần `name="..."`');
     const intOr = (v, d) => { const n = parseInt(v); return isNaN(n) ? d : n; };
+    const isHidden = kv.hidden === 'true' || kv.hidden === '1' || kv.hidden === 'yes';
     const pet = pets.createPet({
       id, name: kv.name, icon: kv.icon || '🐾', tier: kv.tier || 'common',
       desc: kv.desc || '',
@@ -215,9 +273,11 @@ async function handleAdmin(msg, args, prefix) {
       xp_bonus_pct:   intOr(kv.xp, 0),
       drop_bonus_pct: intOr(kv.drop, 0),
       shard_id: kv.shard || '', shard_qty: intOr(kv.shard_qty, 0),
+      hidden: isHidden,
       created_by: msg.author.id,
     });
-    return msg.reply(`✅ Đã tạo pet **${pet.icon} ${pet.name}** (\`${pet.id}\`).`);
+    const hiddenTag = isHidden ? ' 🕵️ **HIDDEN**' : '';
+    return msg.reply(`✅ Đã tạo pet **${pet.icon} ${pet.name}** (\`${pet.id}\`)${hiddenTag}.`);
   }
 
   if (sub === 'give') {
