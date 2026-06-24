@@ -43,6 +43,12 @@ module.exports = {
           `\`${prefix}info item <id>\` chi tiết item\n` +
           `\`${prefix}info mob <id>\` chi tiết quái\n` +
           `\`${prefix}info zone <id>\` chi tiết khu vực` },
+        { name: '📜 Nhiệm vụ & Thành tựu', value:
+          `\`${prefix}quest\` xem quest hằng ngày\n` +
+          `\`${prefix}quest claim <id>\` nhận thưởng\n` +
+          `\`${prefix}quest list\` xem custom quest\n` +
+          `\`${prefix}ach [@user]\` xem thành tựu\n` +
+          `\`${prefix}ach top\` BXH thành tựu` },
         { name: '🎁 Khác', value: `\`${prefix}daily\` điểm danh nhận vàng` },
       );
 
@@ -50,9 +56,11 @@ module.exports = {
       embed.addFields({
         name: '🛠️ Admin (chỉ bạn thấy)',
         value:
-          `\`${prefix}admin help\` lệnh quản trị + class\n` +
+          `\`${prefix}admin help\` quản trị + class + channel notify\n` +
           `\`${prefix}item help\` tạo/sửa item\n` +
           `\`${prefix}mob help\` tạo/sửa quái & zone\n` +
+          `\`${prefix}quest admin\` tạo/sửa quest\n` +
+          `\`${prefix}ach admin\` tạo/sửa achievement\n` +
           `\`${prefix}shop add/remove/setprice\` chỉnh shop`,
       });
     }
