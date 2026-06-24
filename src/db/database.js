@@ -129,6 +129,12 @@ migrateGatherZones();
 const { migrate: migrateRecipes } = require('../game/recipes');
 migrateRecipes();
 
+const { migrate: migratePvp } = require('../game/pvp');
+migratePvp();
+
+const { migrate: migrateTrade } = require('../game/trade');
+migrateTrade();
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
