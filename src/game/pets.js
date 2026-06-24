@@ -59,6 +59,13 @@ function migrate() {
     console.log('🔧 Migrated players: thêm active_pet');
   }
 
+  // Thêm cột hidden cho pets
+  const petCols = db.prepare("PRAGMA table_info(pets)").all().map(c => c.name);
+  if (!petCols.includes('hidden')) {
+    db.exec(`ALTER TABLE pets ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0`);
+    console.log('🔧 Migrated pets: thêm hidden');
+  }
+
   // Seed pet mặc định
   seedDefaults();
 }
@@ -176,13 +183,14 @@ function getAllPets() {
 }
 function createPet(data) {
   db.prepare(`INSERT INTO pets
-    (id, name, icon, tier, desc, atk_bonus, def_bonus, hp_bonus, gold_bonus_pct, xp_bonus_pct, drop_bonus_pct, shard_id, shard_qty, created_by, created_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    (id, name, icon, tier, desc, atk_bonus, def_bonus, hp_bonus, gold_bonus_pct, xp_bonus_pct, drop_bonus_pct, shard_id, shard_qty, hidden, created_by, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(
       data.id, data.name, data.icon || '🐾', data.tier || 'common', data.desc || '',
       data.atk_bonus || 0, data.def_bonus || 0, data.hp_bonus || 0,
       data.gold_bonus_pct || 0, data.xp_bonus_pct || 0, data.drop_bonus_pct || 0,
       data.shard_id || '', data.shard_qty || 0,
+      data.hidden ? 1 : 0,
       data.created_by || 'system', Date.now()
     );
   return getPet(data.id);
