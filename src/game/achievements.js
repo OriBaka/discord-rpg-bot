@@ -162,7 +162,8 @@ function grantAchievement(userId, achId) {
 
 // === Auto-check (gọi sau khi có event) ===
 // Trả về array các achievement vừa unlock (để notify)
-function checkAndGrant(userId) {
+// Optional context { client, guildId }: nếu truyền vào, sẽ tự apply reward + notify channel
+function checkAndGrant(userId, context = null) {
   const stats = getPlayerStats(userId);
   const player = db.prepare('SELECT * FROM players WHERE user_id = ?').get(userId);
   if (!player) return [];
@@ -179,8 +180,7 @@ function checkAndGrant(userId) {
         pass = stats.total_kills >= ach.target_qty;
         break;
       case 'kill_monster':
-        // Cần check theo bảng riêng — đơn giản hoá: chỉ track tổng kills, ai muốn check theo mob phải hook riêng
-        // Sẽ check ở onKillMonster hook
+        // Hook riêng: checkKillMonster
         break;
       case 'gold_total':
         pass = stats.total_gold >= ach.target_qty;
@@ -202,23 +202,84 @@ function checkAndGrant(userId) {
       if (a) unlocked.push(a);
     }
   }
+
+  // Apply rewards + notify nếu có context
+  if (context && unlocked.length > 0) {
+    applyRewardsAndNotify(userId, unlocked, context);
+  }
+
   return unlocked;
 }
 
 // Hook đặc biệt cho kill_monster theo target_id
-function checkKillMonster(userId, monsterId) {
+function checkKillMonster(userId, monsterId, context = null) {
   const unlocked = [];
   const matching = db.prepare("SELECT * FROM achievements WHERE objective = 'kill_monster' AND target_id = ?").all(monsterId);
   for (const ach of matching) {
     if (hasUnlocked(userId, ach.id)) continue;
-    // Đơn giản: kill 1 lần là đạt nếu target_qty = 1
-    // Nếu cần kill N lần thì cần thêm bảng kill_log — giữ đơn giản: chỉ track lần đầu
     if (ach.target_qty === 1) {
       const a = grantAchievement(userId, ach.id);
       if (a) unlocked.push(a);
     }
   }
+  if (context && unlocked.length > 0) {
+    applyRewardsAndNotify(userId, unlocked, context);
+  }
   return unlocked;
+}
+
+// === Helper: apply reward + notify ===
+// context = { client, guildId, userMention? }
+function applyRewardsAndNotify(userId, achs, context) {
+  try {
+    const { getPlayer, updatePlayer, addItem, addXpAndLevel } = require('./player');
+    const { getItem } = require('./items');
+    const channels = require('./channels');
+    const { EmbedBuilder } = require('discord.js');
+
+    for (const a of achs) {
+      // Apply reward
+      if (a.reward_gold) {
+        const p = getPlayer(userId);
+        if (p) updatePlayer(userId, { gold: p.gold + a.reward_gold });
+      }
+      if (a.reward_xp) addXpAndLevel(userId, a.reward_xp);
+      if (a.reward_item) {
+        for (const part of a.reward_item.split(',')) {
+          const [iid, q] = part.split(':');
+          if (iid && getItem(iid)) addItem(userId, iid, parseInt(q) || 1);
+        }
+      }
+      // Auto-set title nếu có
+      if (a.title) {
+        const stats = getPlayerStats(userId);
+        if (!stats.current_title) {
+          updatePlayerStats(userId, { current_title: a.title });
+        }
+      }
+
+      // Notify channel
+      if (context.client && context.guildId) {
+        const rewardText = [];
+        if (a.reward_gold) rewardText.push(`💰 ${a.reward_gold}`);
+        if (a.reward_xp)   rewardText.push(`✨ ${a.reward_xp} XP`);
+        if (a.title)       rewardText.push(`🎖️ Title: ${a.title}`);
+        rewardText.push(`⭐ ${a.points} pt`);
+
+        channels.notify(context.client, context.guildId, 'achievement', {
+          embeds: [new EmbedBuilder().setColor(0xF1C40F)
+            .setTitle(`${a.icon} Achievement Unlocked!`)
+            .setDescription(
+              `<@${userId}> đã đạt **${a.name}**!\n` +
+              `*${a.desc}*\n\n` +
+              `🎁 Reward: ${rewardText.join(' • ')}`
+            )],
+        });
+      }
+    }
+  } catch (e) {
+    console.error('[applyRewardsAndNotify]', e.message);
+  }
 }
 
 module.exports = {
@@ -228,4 +289,5 @@ module.exports = {
   getPlayerStats, updatePlayerStats,
   getPlayerAchievements, hasUnlocked, grantAchievement,
   checkAndGrant, checkKillMonster,
+  applyRewardsAndNotify,
 };
