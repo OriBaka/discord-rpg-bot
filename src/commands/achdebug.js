@@ -98,11 +98,17 @@ module.exports = {
     lines.push(`🎯 **Should unlock?**  → ${conditionMet ? '✅ **YES**' : '❌ NO'}`);
 
     if (!has && conditionMet) {
-      // Force-grant
+      // Force-grant + apply reward + notify
       lines.push('');
       lines.push('🔧 **Auto-fix**: Đang force grant...');
       const a = achievements.grantAchievement(userId, achId);
-      lines.push(a ? `✅ Đã grant **${a.name}**!` : '❌ Grant fail');
+      if (a) {
+        const ctx = { client: msg.client, guildId: msg.guild?.id };
+        achievements.applyRewardsAndNotify(userId, [a], ctx);
+        lines.push(`✅ Đã grant **${a.name}** + apply reward + notify!`);
+      } else {
+        lines.push('❌ Grant fail');
+      }
     }
 
     const embed = new EmbedBuilder()
@@ -111,4 +117,4 @@ module.exports = {
       .setDescription(lines.join('\n'));
     return msg.reply({ embeds: [embed] });
   },
-}; 
+};
