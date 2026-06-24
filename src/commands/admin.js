@@ -197,11 +197,31 @@ module.exports = {
       const itemId = args[2];
       const qty = Math.max(1, parseInt(args[3]) || 1);
       if (!itemId || !ITEMS[itemId]) {
-        const list = Object.keys(ITEMS).join(', ');
-        return msg.reply(`❌ Item ID không hợp lệ.\nDanh sách: \`${list}\``);
+        return msg.reply(`❌ Item ID không hợp lệ. Gõ \`${prefix}info items\` xem danh sách.`);
       }
       addItem(target.id, itemId, qty);
-      return msg.reply(`✅ Tặng **${qty}x ${ITEMS[itemId].name}** cho **${p.name}**.`);
+
+      // Check achievement trigger (item_collect)
+      let achText = '';
+      try {
+        const achievements = require('../game/achievements');
+        const newAchs = achievements.checkAndGrant(target.id);
+        if (newAchs.length > 0) {
+          achText = `\n🏆 ${target.username} unlock achievement: ${newAchs.map(a => `${a.icon} ${a.name}`).join(', ')}`;
+          // Notify channel
+          try {
+            for (const a of newAchs) {
+              channels.notify(msg.client, msg.guild?.id, 'achievement', {
+                embeds: [new EmbedBuilder().setColor(0xF1C40F)
+                  .setTitle(`${a.icon} Achievement Unlocked!`)
+                  .setDescription(`<@${target.id}> đã đạt **${a.name}**!\n*${a.desc}*`)],
+              });
+            }
+          } catch {}
+        }
+      } catch {}
+
+      return msg.reply(`✅ Tặng **${qty}x ${ITEMS[itemId].name}** cho **${p.name}**.${achText}`);
     }
 
     // ===== takeitem =====
