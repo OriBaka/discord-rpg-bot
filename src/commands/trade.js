@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getPlayer } = require('../game/player');
 const { getItem } = require('../game/items');
 const trade = require('../game/trade');
@@ -21,7 +21,7 @@ function formatOffer(offer) {
   return parts.length > 0 ? parts.join('\n') : '*Trống*';
 }
 
-async function showTradeStatus(msg, t, prefix) {
+function buildTradeEmbed(t) {
   const pA = getPlayer(t.user_a);
   const pB = getPlayer(t.user_b);
   const offerA = trade.parseOffer(t.offer_a);
@@ -29,17 +29,25 @@ async function showTradeStatus(msg, t, prefix) {
   const readyA = t.ready_a ? '✅' : '⬜';
   const readyB = t.ready_b ? '✅' : '⬜';
 
-  const embed = new EmbedBuilder().setColor(0xFEE75C)
+  return new EmbedBuilder().setColor(0xFEE75C)
     .setTitle(`🤝 Trade: ${pA?.name || t.user_a} ⇄ ${pB?.name || t.user_b}`)
     .addFields(
       { name: `${readyA} ${pA?.name || 'User A'} đưa`, value: formatOffer(offerA), inline: true },
       { name: `${readyB} ${pB?.name || 'User B'} đưa`, value: formatOffer(offerB), inline: true },
     )
-    .setFooter({ text:
-      `${prefix}trade add gold/item • ${prefix}trade remove • ${prefix}trade ready • ${prefix}trade cancel\n` +
-      `Cả 2 ready → tự động trade. Đổi offer → reset ready.`
-    });
-  return msg.reply({ embeds: [embed] });
+    .setFooter({ text: `Cả 2 ready → tự động execute. Đổi offer → reset ready.` });
+}
+
+function buildTradeButtons(tradeId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId(`trade:ready:${tradeId}`).setLabel('✅ Ready').setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`trade:unready:${tradeId}`).setLabel('⬜ Unready').setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId(`trade:cancel:${tradeId}`).setLabel('❌ Cancel').setStyle(ButtonStyle.Danger),
+  );
+}
+
+async function showTradeStatus(msg, t, prefix) {
+  return msg.reply({ embeds: [buildTradeEmbed(t)], components: [buildTradeButtons(t.id)] });
 }
 
 module.exports = {
@@ -142,18 +150,24 @@ module.exports = {
         const itemId = args[2];
         const qty = Math.max(1, parseInt(args[3]) || 1);
         if (!itemId) return msg.reply(`❌ Cú pháp: \`${prefix}trade add item <id> [qty]\``);
-        if (!getItem(itemId)) return msg.reply(`❌ Item \`${itemId}\` không tồn tại.`);
+        const itemObj = getItem(itemId);
+        if (!itemObj) return msg.reply(`❌ Item \`${itemId}\` không tồn tại.`);
+
+        // Chặn soulbound
+        if (itemObj.soulbound) {
+          return msg.reply(`🔒 **${itemObj.name}** là item soulbound — không thể trade.`);
+        }
 
         // Calculate total qty đã offer + thêm
         const currentQty = offer.items[itemId] || 0;
         const newQty = currentQty + qty;
         const haveRow = require('../db/database').prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(msg.author.id, itemId);
         const have = haveRow?.qty || 0;
-        if (newQty > have) return msg.reply(`❌ Bạn chỉ có ${have}× ${getItem(itemId).name}, đã offer ${currentQty}.`);
+        if (newQty > have) return msg.reply(`❌ Bạn chỉ có ${have}× ${itemObj.name}, đã offer ${currentQty}.`);
 
         offer.items[itemId] = newQty;
         trade.updateOffer(t.id, side, offer);
-        return msg.reply(`✅ Đã thêm **${qty}× ${getItem(itemId).name}** (tổng ${newQty}). Ready reset.`);
+        return msg.reply(`✅ Đã thêm **${qty}× ${itemObj.name}** (tổng ${newQty}). Ready reset.`);
       }
 
       return msg.reply(`❌ \`${prefix}trade add gold <số>\` hoặc \`${prefix}trade add item <id> [qty]\``);
@@ -207,14 +221,18 @@ module.exports = {
     if (existingTarget) return msg.reply(`❌ **${target.username}** đang trong trade khác.`);
 
     const t = trade.createTrade(msg.author.id, target.id);
-    return msg.reply(
-      `🤝 Đã mở phiên trade với <@${target.id}>!\n\n` +
-      `📋 Cả 2 bên thêm gold/item:\n` +
-      `\`${prefix}trade add gold 1000\`\n` +
-      `\`${prefix}trade add item dragon_scale 3\`\n\n` +
-      `🔍 Xem: \`${prefix}trade view\`\n` +
-      `✅ Sẵn sàng: \`${prefix}trade ready\`\n` +
-      `❌ Huỷ: \`${prefix}trade cancel\``
-    );
+    const embed = new EmbedBuilder().setColor(0xFEE75C)
+      .setTitle(`🤝 Trade với ${target.username}`)
+      .setDescription(
+        `Phiên trade đã mở. Cả 2 bên thêm offer:\n` +
+        `\`${prefix}trade add gold 1000\`\n` +
+        `\`${prefix}trade add item dragon_scale 3\`\n\n` +
+        `Sau đó bấm nút Ready bên dưới (hoặc \`${prefix}trade ready\`).`
+      );
+    return msg.reply({ embeds: [embed], components: [buildTradeButtons(t.id)] });
   },
-}; 
+};
+
+module.exports.buildTradeEmbed = buildTradeEmbed;
+module.exports.buildTradeButtons = buildTradeButtons;
+module.exports.formatOffer = formatOffer;
