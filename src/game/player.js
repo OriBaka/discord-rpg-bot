@@ -58,6 +58,11 @@ function addItem(userId, itemId, qty = 1) {
     const quests = require('./quests');
     quests.onItemCollect(userId, itemId);
   } catch {}
+  // Hook: achievement item_collect (auto check)
+  try {
+    const achievements = require('./achievements');
+    achievements.checkAndGrant(userId);
+  } catch {}
 }
 
 function removeItem(userId, itemId, qty = 1) {
