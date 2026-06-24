@@ -91,11 +91,12 @@ module.exports = {
       const cur = getPlayer(msg.author.id);
       updatePlayer(msg.author.id, { gold: cur.gold + loot.gold });
 
-      // === Hooks: quest + stats + achievements ===
+      // Context cho notify + reward
+      const ctx = { client: msg.client, guildId: msg.guild?.id };
+
+      // === Hooks: quest + stats ===
       quests.onKillMonster(msg.author.id, monster.id);
       quests.onEarnGold(msg.author.id, loot.gold);
-
-      // Update player_stats
       const stats = achievements.getPlayerStats(msg.author.id);
       achievements.updatePlayerStats(msg.author.id, {
         total_kills: stats.total_kills + 1,
@@ -104,13 +105,12 @@ module.exports = {
 
       let lootText = `💰 +${loot.gold} vàng\n✨ +${monster.xp} XP`;
       for (const it of loot.items) {
-        addItem(msg.author.id, it.item_id, it.qty);
+        addItem(msg.author.id, it.item_id, it.qty, ctx);
         const itm = getItem(it.item_id);
         lootText += `\n📦 +${it.qty}x ${itm?.name || it.item_id}`;
       }
       if (lvl.levelsGained.length > 0) {
         lootText += `\n\n🎉 **LÊN CẤP!** Bạn đạt Lv.${lvl.newLevel} (HP đầy)`;
-        // Notify levelup
         try {
           channels.notify(msg.client, msg.guild?.id, 'levelup', {
             embeds: [new EmbedBuilder().setColor(0xFEE75C)
@@ -120,38 +120,13 @@ module.exports = {
         } catch {}
       }
 
-      // Check achievements
+      // Check achievements (auto apply reward + notify nhờ ctx)
       const newAchs = [
-        ...achievements.checkAndGrant(msg.author.id),
-        ...achievements.checkKillMonster(msg.author.id, monster.id),
+        ...achievements.checkAndGrant(msg.author.id, ctx),
+        ...achievements.checkKillMonster(msg.author.id, monster.id, ctx),
       ];
       if (newAchs.length > 0) {
-        // Áp dụng reward + notify
-        for (const a of newAchs) {
-          if (a.reward_gold) {
-            const c = getPlayer(msg.author.id);
-            updatePlayer(msg.author.id, { gold: c.gold + a.reward_gold });
-          }
-          if (a.reward_xp) addXpAndLevel(msg.author.id, a.reward_xp);
-          if (a.reward_item) {
-            for (const part of a.reward_item.split(',')) {
-              const [iid, q] = part.split(':');
-              if (iid && getItem(iid)) addItem(msg.author.id, iid, parseInt(q) || 1);
-            }
-          }
-        }
         lootText += `\n\n🏆 **Đạt thành tựu mới:** ${newAchs.map(a => `${a.icon} ${a.name}`).join(', ')}`;
-
-        // Notify channel
-        try {
-          for (const a of newAchs) {
-            channels.notify(msg.client, msg.guild?.id, 'achievement', {
-              embeds: [new EmbedBuilder().setColor(0xF1C40F)
-                .setTitle(`${a.icon} Achievement Unlocked!`)
-                .setDescription(`<@${msg.author.id}> đã đạt **${a.name}**!\n*${a.desc}*\n+${a.points} điểm thành tựu`)],
-            });
-          }
-        } catch {}
       }
 
       embed.setColor(0x57F287).addFields({ name: '🏆 Chiến thắng!', value: lootText });
