@@ -140,7 +140,8 @@ module.exports = {
       const lines = groups[k].map(it => {
         const t = tierInfo(it.tier);
         const eq = equippedIds.has(it.id) ? ' 🟢' : '';
-        return `${t.emoji} ${it.name} ×${it.qty} \`${it.id}\`${eq}`;
+        const sb = it.soulbound ? ' 🔒' : '';
+        return `${t.emoji} ${it.name} ×${it.qty} \`${it.id}\`${eq}${sb}`;
       });
       const text = lines.join('\n');
       if (text.length <= 1024) {
