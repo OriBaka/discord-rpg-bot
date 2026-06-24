@@ -108,6 +108,15 @@ migrateClass();
 const { migrate: migrateSlots } = require('../game/slots');
 migrateSlots();
 
+const { migrate: migrateQuests } = require('../game/quests');
+migrateQuests();
+
+const { migrate: migrateAchievements } = require('../game/achievements');
+migrateAchievements();
+
+const { migrate: migrateChannels } = require('../game/channels');
+migrateChannels();
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
