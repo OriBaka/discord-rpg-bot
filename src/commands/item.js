@@ -38,6 +38,7 @@ module.exports = {
           '`accessory_type` — ring | necklace | special (bắt buộc nếu type=accessory)',
           '`weapon_type` — sword | axe | bow | staff | shield | orb | quiver... (gợi ý)',
           '`armor_type` — heavy | medium | light | robe (gợi ý)',
+          '`soulbound` (hoặc `sb`) — true/false: cấm trade item này',
           '',
           `💡 Xem chi tiết item: \`${prefix}info item <id>\``,
         ].join('\n'));
@@ -80,11 +81,12 @@ module.exports = {
         }
       }
 
+      const isSb = kv.soulbound === 'true' || kv.soulbound === '1' || kv.sb === 'true' || kv.sb === '1';
       try {
         const db = require('../db/database');
         db.prepare(`INSERT INTO items
-          (id, name, type, tier, atk, def, heal, price, sell, desc, class_req, weapon_type, armor_type, accessory_type, armor_slot)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+          (id, name, type, tier, atk, def, heal, price, sell, desc, class_req, weapon_type, armor_type, accessory_type, armor_slot, soulbound)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
           .run(
             id, kv.name, kv.type, tier,
             parseInt(kv.atk) || 0, parseInt(kv.def) || 0, parseInt(kv.heal) || 0,
@@ -95,9 +97,11 @@ module.exports = {
             kv.armor_type || '',
             kv.accessory_type || '',
             kv.armor_slot || '',
+            isSb ? 1 : 0,
           );
         const it = getItem(id);
-        return msg.reply(`✅ Đã tạo **${it.name}** (\`${it.id}\`). Xem: \`${prefix}info item ${it.id}\``);
+        const sbTag = isSb ? ' 🔒 **SOULBOUND**' : '';
+        return msg.reply(`✅ Đã tạo **${it.name}** (\`${it.id}\`)${sbTag}. Xem: \`${prefix}info item ${it.id}\``);
       } catch (err) {
         return msg.reply(`❌ Lỗi: ${err.message}`);
       }
@@ -112,12 +116,15 @@ module.exports = {
       if (Object.keys(kv).length === 0) return msg.reply('❌ Cần ít nhất 1 field để sửa.');
 
       const fields = {};
-      const numKeys = ['atk', 'def', 'heal', 'price', 'sell'];
+      const numKeys = ['atk', 'def', 'heal', 'price', 'sell', 'soulbound'];
       const strKeys = ['name', 'desc', 'type', 'tier', 'class_req', 'weapon_type', 'armor_type', 'accessory_type', 'armor_slot'];
-      const keyMap = { class: 'class_req' };
+      const keyMap = { class: 'class_req', sb: 'soulbound' };
       for (const rawK of Object.keys(kv)) {
         const k = keyMap[rawK] || rawK;
         if (strKeys.includes(k))      fields[k] = kv[rawK];
+        else if (k === 'soulbound') {
+          fields.soulbound = (kv[rawK] === 'true' || kv[rawK] === '1' || kv[rawK] === 'yes') ? 1 : 0;
+        }
         else if (numKeys.includes(k)) fields[k] = parseInt(kv[rawK]) || 0;
       }
       if (fields.tier && !TIERS[fields.tier]) {
