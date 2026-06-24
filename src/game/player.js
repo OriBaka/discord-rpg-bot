@@ -44,7 +44,8 @@ function getInventory(userId) {
   return db.prepare('SELECT * FROM inventory WHERE user_id = ?').all(userId);
 }
 
-function addItem(userId, itemId, qty = 1) {
+// context optional: { client, guildId } để notify channel khi unlock achievement
+function addItem(userId, itemId, qty = 1, context = null) {
   const row = db.prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(userId, itemId);
   if (row) {
     db.prepare('UPDATE inventory SET qty = qty + ? WHERE user_id=? AND item_id=?')
@@ -60,10 +61,10 @@ function addItem(userId, itemId, qty = 1) {
   } catch (e) {
     console.error('[addItem hook quests]', e.message);
   }
-  // Hook: achievement item_collect (auto check)
+  // Hook: achievement item_collect (auto check + notify)
   try {
     const achievements = require('./achievements');
-    const granted = achievements.checkAndGrant(userId);
+    const granted = achievements.checkAndGrant(userId, context);
     if (granted.length > 0) {
       console.log(`[addItem] User ${userId} +${qty} ${itemId} → unlocked: ${granted.map(a => a.id).join(', ')}`);
     }
