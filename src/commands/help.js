@@ -82,7 +82,9 @@ module.exports = {
           `\`${prefix}pet admin\` tạo/sửa pet + drop\n` +
           `\`${prefix}gz\` quản lý mining/fishing zones\n` +
           `\`${prefix}craft admin\` / \`${prefix}cook admin\` tạo/sửa recipe\n` +
-          `\`${prefix}shop add/remove/setprice\` chỉnh shop`,
+          `\`${prefix}shop add/remove/setprice\` chỉnh shop\n` +
+          `\`${prefix}setimage <type> <id> <url>\` gán ảnh\n` +
+          `\`${prefix}sla\` quản lý slash commands`,
       });
     }
 
