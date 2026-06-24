@@ -9,6 +9,7 @@ const { getItem } = require('../game/items');
 const quests = require('../game/quests');
 const achievements = require('../game/achievements');
 const channels = require('../game/channels');
+const pets = require('../game/pets');
 
 const COOLDOWN_MS = 30 * 1000;
 
@@ -86,28 +87,57 @@ module.exports = {
       .setDescription(`${zoneNote}\n\n` + result.log.slice(-6).join('\n'));
 
     if (result.win) {
-      const loot = rollLoot(monster);
-      const lvl = addXpAndLevel(msg.author.id, monster.xp);
+      // === Apply pet bonus ===
+      const petBonus = pets.getPetBonus(msg.author.id);
+      const rawLoot = rollLoot(monster);
+      const goldGain = Math.floor(rawLoot.gold * (1 + petBonus.gold_pct / 100));
+      const xpGain   = Math.floor(monster.xp  * (1 + petBonus.xp_pct / 100));
+
+      const lvl = addXpAndLevel(msg.author.id, xpGain);
       const cur = getPlayer(msg.author.id);
-      updatePlayer(msg.author.id, { gold: cur.gold + loot.gold });
+      updatePlayer(msg.author.id, { gold: cur.gold + goldGain });
 
       // Context cho notify + reward
       const ctx = { client: msg.client, guildId: msg.guild?.id };
 
       // === Hooks: quest + stats ===
       quests.onKillMonster(msg.author.id, monster.id);
-      quests.onEarnGold(msg.author.id, loot.gold);
+      quests.onEarnGold(msg.author.id, goldGain);
       const stats = achievements.getPlayerStats(msg.author.id);
       achievements.updatePlayerStats(msg.author.id, {
         total_kills: stats.total_kills + 1,
-        total_gold:  stats.total_gold  + loot.gold,
+        total_gold:  stats.total_gold  + goldGain,
       });
 
-      let lootText = `💰 +${loot.gold} vàng\n✨ +${monster.xp} XP`;
+      // Pet drop bonus áp dụng vào item drop
+      const loot = { gold: goldGain, items: rawLoot.items };
+      // Re-roll items với drop bonus (đơn giản: roll lại 1 lần với bonus)
+      // Hoặc bonus áp ở đây khi rollLoot — để đơn giản giữ rawLoot, chỉ áp dụng cho pet drop
+
+      let lootText = `💰 +${loot.gold} vàng\n✨ +${xpGain} XP`;
+      if (petBonus.gold_pct || petBonus.xp_pct) {
+        const tags = [];
+        if (petBonus.gold_pct) tags.push(`+${petBonus.gold_pct}% gold`);
+        if (petBonus.xp_pct)   tags.push(`+${petBonus.xp_pct}% XP`);
+        lootText += `  *(pet: ${tags.join(', ')})*`;
+      }
       for (const it of loot.items) {
         addItem(msg.author.id, it.item_id, it.qty, ctx);
         const itm = getItem(it.item_id);
         lootText += `\n📦 +${it.qty}x ${itm?.name || it.item_id}`;
+      }
+
+      // === Pet/shard drops ===
+      const petDrops = pets.rollPetDrops(monster.id, petBonus.drop_pct);
+      for (const d of petDrops) {
+        if (d.pet_id) {
+          pets.addPet(msg.author.id, d.pet_id, d.qty);
+          const pet = pets.getPet(d.pet_id);
+          lootText += `\n🐾 **PET DROP!** ${pet.icon} ${pet.name} ×${d.qty}`;
+        } else if (d.shard_id) {
+          pets.addShard(msg.author.id, d.shard_id, d.qty);
+          lootText += `\n🧩 +${d.qty}x \`${d.shard_id}\` (mảnh pet)`;
+        }
       }
       if (lvl.levelsGained.length > 0) {
         lootText += `\n\n🎉 **LÊN CẤP!** Bạn đạt Lv.${lvl.newLevel} (HP đầy)`;
