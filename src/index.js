@@ -72,9 +72,17 @@ for (const file of cmdFiles) {
 console.log(`✅ Đã load ${new Set(client.commands.values()).size} lệnh.`);
 
 // ===== Events =====
-client.once('ready', () => {
+client.once('ready', async () => {
   console.log(`🤖 Bot online với tên ${client.user.tag}`);
-  client.user.setActivity(`${PREFIX}help | RPG cày cuốc`);
+  client.user.setActivity(`${PREFIX}help | /me | RPG cày cuốc`);
+
+  // Deploy slash commands
+  try {
+    const { deploySlashCommands } = require('./slash/deploy');
+    await deploySlashCommands(client);
+  } catch (err) {
+    console.error('[slash deploy on ready]', err);
+  }
 });
 
 client.on('messageCreate', async (msg) => {
@@ -94,17 +102,42 @@ client.on('messageCreate', async (msg) => {
   }
 });
 
-// ===== Button Interactions =====
+// ===== Interactions: Buttons + Slash + Autocomplete =====
 const buttonHandler = require('./buttons');
+const slashHandler = require('./slash/handler');
+
 client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isButton()) return;
-  try {
-    await buttonHandler.handle(interaction);
-  } catch (err) {
-    console.error('[button handler]', err);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: '⚠️ Lỗi xử lý nút.', ephemeral: true }).catch(()=>{});
+  // Buttons
+  if (interaction.isButton()) {
+    try {
+      await buttonHandler.handle(interaction);
+    } catch (err) {
+      console.error('[button handler]', err);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: '⚠️ Lỗi xử lý nút.', ephemeral: true }).catch(()=>{});
+      }
     }
+    return;
+  }
+
+  // Slash commands
+  if (interaction.isChatInputCommand()) {
+    try {
+      await slashHandler.handleCommand(interaction, client);
+    } catch (err) {
+      console.error('[slash command]', err);
+    }
+    return;
+  }
+
+  // Autocomplete
+  if (interaction.isAutocomplete()) {
+    try {
+      await slashHandler.handleAutocomplete(interaction);
+    } catch (err) {
+      console.error('[autocomplete]', err);
+    }
+    return;
   }
 });
 
