@@ -26,6 +26,7 @@ function itemEmbed(it, prefix) {
   if (it.heal)  fields.push({ name: '❤️ Hồi HP', value: `+${it.heal}`, inline: true });
   if (it.price) fields.push({ name: '💰 Giá mua', value: `${it.price}`, inline: true });
   if (it.sell)  fields.push({ name: '💸 Giá bán', value: `${it.sell}`, inline: true });
+  if (it.soulbound) fields.push({ name: '🔒 Soulbound', value: 'Không thể trade', inline: true });
 
   const embed = new EmbedBuilder()
     .setColor(t.color)
