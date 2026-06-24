@@ -40,6 +40,7 @@ function migrate() {
 
   // Seed achievements mặc định
   seedDefaults();
+  seedNewAchievements();  // Seed bổ sung (chỉ insert các ID mới chưa có)
 }
 
 function seedDefaults() {
@@ -78,7 +79,21 @@ function seedDefaults() {
     ['collect_dragon_scale', 'Scale Collector', 'Collect 10 Dragon Scales', '🔶', 'item_collect', 'dragon_scale', 10, 30, 500, 0, '', ''],
     ['collect_elixir',       'Alchemist',       'Possess 5 Elixir of Life', '✨', 'item_collect', 'elixir', 5, 40, 1000, 0, '', 'Alchemist'],
 
-    // === Pet collection (mới) ===
+  ];
+
+  const ins = db.prepare(`INSERT INTO achievements
+    (id, name, desc, icon, objective, target_id, target_qty, points, reward_gold, reward_xp, reward_item, title, created_by, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'system', ?)`);
+  const now = Date.now();
+  for (const a of list) ins.run(...a, now);
+  console.log(`🌱 Seeded ${list.length} achievements`);
+}
+
+// Seed bổ sung — chỉ insert achievement có ID chưa tồn tại.
+// Thêm achievement mới ở đây trong các phase tương lai để không phụ thuộc reset DB.
+function seedNewAchievements() {
+  const list = [
+    // === Pet achievements (thêm ở Phase 3.2) ===
     ['pet_first',           'Pet Tamer',        'Obtain your first pet',       '🐾', 'pet_count',       '', 1,    15, 200,  0, '', ''],
     ['pet_collect_5',       'Pet Lover',        'Own 5 different pets',        '🐾', 'pet_count',       '', 5,    30, 800,  0, '', ''],
     ['pet_collect_10',      'Pet Master',       'Own 10 different pets',       '🐾', 'pet_count',       '', 10,   60, 2500, 0, '', 'Beast Master'],
@@ -89,12 +104,20 @@ function seedDefaults() {
     ['pet_own_king_slime',  'Slime Lord',       'Combine the King Slime pet',  '👑', 'pet_own',         'pet_king_slime', 1, 80, 3000, 0, '', 'Slime Lord'],
   ];
 
-  const ins = db.prepare(`INSERT INTO achievements
+  const checkStmt = db.prepare('SELECT 1 FROM achievements WHERE id = ?');
+  const insStmt = db.prepare(`INSERT INTO achievements
     (id, name, desc, icon, objective, target_id, target_qty, points, reward_gold, reward_xp, reward_item, title, created_by, created_at)
     VALUES (?,?,?,?,?,?,?,?,?,?,?,?, 'system', ?)`);
+
+  let added = 0;
   const now = Date.now();
-  for (const a of list) ins.run(...a, now);
-  console.log(`🌱 Seeded ${list.length} achievements`);
+  for (const a of list) {
+    if (!checkStmt.get(a[0])) {
+      insStmt.run(...a, now);
+      added++;
+    }
+  }
+  if (added > 0) console.log(`🌱 Seeded ${added} new achievements`);
 }
 
 // === CRUD ===
