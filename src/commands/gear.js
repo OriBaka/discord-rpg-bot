@@ -57,7 +57,14 @@ module.exports = {
 
     const embed = new EmbedBuilder()
       .setColor(cls?.color || 0x5865F2)
-      .setTitle(`💼 Trang bị: ${p.name}`)
+      .setTitle(`💼 Trang bị: ${p.name}`);
+    // Thumbnail = vũ khí chính (nếu có image)
+    const weaponId = equipped['weapon'];
+    if (weaponId) {
+      const w = getItem(weaponId);
+      if (w?.image_url) embed.setThumbnail(w.image_url);
+    }
+    embed
       .setDescription(
         (cls ? `🎭 **${cls.name}** — Lv.${p.level}\n\n` : '') +
         lines.join('\n')
@@ -76,4 +83,4 @@ module.exports = {
 
     return msg.reply({ embeds: [embed] });
   },
-}; 
+};
