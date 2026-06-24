@@ -322,6 +322,38 @@ function getPetDrops(monsterId) {
   return db.prepare('SELECT * FROM pet_drops WHERE monster_id = ?').all(monsterId);
 }
 
+function getAllPetDrops() {
+  return db.prepare(`SELECT pd.*, m.name as mob_name FROM pet_drops pd
+    LEFT JOIN monsters m ON m.id = pd.monster_id ORDER BY pd.monster_id`).all();
+}
+
+// === Reset toàn bộ drop table về default seed (admin tool) ===
+function resetDropsToDefault() {
+  db.prepare('DELETE FROM pet_drops').run();
+
+  // Cùng list với seedDefaults (drops section)
+  const drops = [
+    // Direct drops — baby/mini cho mỗi mob có pet
+    ['giant_rat',    'pet_baby_rat',          null, 0.020, 1],
+    ['wolf',         'pet_wolf_cub',          null, 0.010, 1],
+    ['forest_bear',  'pet_bear_cub',          null, 0.012, 1],
+    ['bat',          'pet_bat',               null, 0.015, 1],
+    ['cave_spider',  'pet_spider',            null, 0.012, 1],
+    ['scorpion',     'pet_baby_scorpion',     null, 0.015, 1],
+    ['yeti',         'pet_yeti_cub',          null, 0.010, 1],
+    ['young_dragon', 'pet_dragonling',        null, 0.025, 1],
+    ['dragon',       'pet_mini_dragon',       null, 0.020, 1],
+    ['void_dragon',  'pet_mini_void_dragon',  null, 0.030, 1],
+    // Shard drops
+    ['slime',        null, 'slime_shard',  0.40, 1],
+    ['snowman',      null, 'snow_ball',    0.35, 1],
+  ];
+
+  const ins = db.prepare('INSERT INTO pet_drops (monster_id, pet_id, shard_id, chance, qty) VALUES (?,?,?,?,?)');
+  for (const d of drops) ins.run(...d);
+  return drops.length;
+}
+
 // === Roll pet drops khi giết quái ===
 function rollPetDrops(monsterId, dropBonusPct = 0) {
   const drops = getPetDrops(monsterId);
@@ -356,6 +388,7 @@ module.exports = {
   getShard, getAllShards, addShard, removeShard,
   combineShards,
   getActivePet, setActivePet,
-  addPetDrop, removePetDrop, getPetDrops, rollPetDrops,
+  addPetDrop, removePetDrop, getPetDrops, getAllPetDrops, rollPetDrops,
+  resetDropsToDefault,
   getPetBonus,
 };
