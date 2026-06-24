@@ -13,6 +13,13 @@ function itemEmbed(it, prefix) {
     { name: '✨ Độ hiếm', value: tierBadge(it.tier), inline: true },
     { name: '🆔 ID', value: `\`${it.id}\``, inline: true },
   ];
+
+  // Embed builder + thumbnail nếu có
+  const embedBase = new EmbedBuilder()
+    .setColor(t.color)
+    .setTitle(it.name)
+    .setDescription(it.desc || '*(Không có mô tả)*');
+  if (it.image_url) embedBase.setThumbnail(it.image_url);
   if (it.class_req) {
     const c = classInfo(it.class_req);
     fields.push({ name: '🎭 Yêu cầu class', value: c?.name || it.class_req, inline: true });
@@ -28,18 +35,14 @@ function itemEmbed(it, prefix) {
   if (it.sell)  fields.push({ name: '💸 Giá bán', value: `${it.sell}`, inline: true });
   if (it.soulbound) fields.push({ name: '🔒 Soulbound', value: 'Không thể trade', inline: true });
 
-  const embed = new EmbedBuilder()
-    .setColor(t.color)
-    .setTitle(it.name)
-    .setDescription(it.desc || '*(Không có mô tả)*')
-    .addFields(fields);
+  embedBase.addFields(fields);
 
   if (it.type === 'weapon' || it.type === 'armor') {
-    embed.setFooter({ text: `Trang bị: ${prefix}equip ${it.id}` });
+    embedBase.setFooter({ text: `Trang bị: ${prefix}equip ${it.id}` });
   } else if (it.type === 'consumable') {
-    embed.setFooter({ text: `Sử dụng: ${prefix}use ${it.id}` });
+    embedBase.setFooter({ text: `Sử dụng: ${prefix}use ${it.id}` });
   }
-  return embed;
+  return embedBase;
 }
 
 // ===== Helper: hiển thị 1 monster =====
@@ -52,7 +55,7 @@ function monsterEmbed(m, prefix) {
 
   const zone = getZone(m.zone_id);
 
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(0xED4245).setTitle(`👹 ${m.name}`)
     .addFields(
       { name: '🆔 ID', value: `\`${m.id}\``, inline: true },
@@ -67,6 +70,8 @@ function monsterEmbed(m, prefix) {
       { name: '📦 Drop', value: dropText },
     )
     .setFooter({ text: `Săn: ${prefix}hunt ${m.id}` });
+  if (m.image_url) embed.setThumbnail(m.image_url);
+  return embed;
 }
 
 function typeLabel(type) {
@@ -140,6 +145,7 @@ module.exports = {
           { name: '🎚️ Lv yêu cầu', value: `${z.min_level}`, inline: true },
           { name: '👹 Quái trong zone', value: mobList },
         );
+      if (z.image_url) embed.setImage(z.image_url); // zone dùng image to (background)
       return msg.reply({ embeds: [embed] });
     }
 
