@@ -1,25 +1,13 @@
 const { EmbedBuilder } = require('discord.js');
 const { getItem, createItem, updateItem, deleteItem } = require('../game/items');
 const { TIERS } = require('../game/tiers');
+const { getRestTokens, parseKV } = require('../game/argparse');
 
 function isAdmin(msg) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim());
   return adminIds.includes(msg.author.id)
       || (msg.guild && msg.guild.ownerId === msg.author.id)
       || (msg.member && msg.member.permissions?.has('Administrator'));
-}
-
-// Parse arg dạng key=value (atk=10 def=5 price=100 ...)
-function parseKV(args) {
-  const out = {};
-  for (const a of args) {
-    const i = a.indexOf('=');
-    if (i < 0) continue;
-    const k = a.slice(0, i).toLowerCase();
-    const v = a.slice(i + 1);
-    out[k] = v;
-  }
-  return out;
 }
 
 module.exports = {
@@ -58,15 +46,9 @@ module.exports = {
 
     if (!isAdmin(msg)) return msg.reply('🚫 Chỉ admin mới được quản lý item.');
 
-    // Gộp lại args để parse string có dấu nháy
-    // Vì Discord tách args bằng space, ta cần re-join và parse lại
-    const raw = msg.content.slice(prefix.length).trim();
-    // Bỏ "item create" hoặc "item edit" ra
-    const restAfterSub = raw.replace(/^\S+\s+\S+\s*/, ''); // bỏ "item create"
-    // Tách bằng regex để giữ chuỗi trong ngoặc kép
-    const tokens = restAfterSub.match(/[^\s"]+|"([^"]*)"/g)?.map(t =>
-      t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t
-    ) || [];
+    // Tokenize phần còn lại (bỏ command "item" và sub-command như "create"/"edit")
+    // Hỗ trợ cả smart quotes (mobile tự đổi " → "")
+    const tokens = getRestTokens(msg, prefix, 2);
 
     // ===== item create =====
     if (sub === 'create' || sub === 'new') {
