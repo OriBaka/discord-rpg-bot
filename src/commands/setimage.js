@@ -84,15 +84,27 @@ module.exports = {
       return msg.reply(`🗑️ Đã xóa ảnh của ${type} \`${id}\`.`);
     }
 
-    // Validate URL
-    if (!images.isValidImageUrl(url)) {
-      return msg.reply(`❌ URL không hợp lệ. Phải:\n• Bắt đầu bằng \`https://\`\n• Kết thúc bằng .png/.jpg/.jpeg/.gif/.webp\n\n💡 GitHub raw format: \`https://raw.githubusercontent.com/USER/REPO/main/folder/file.png\``);
+    // Auto-convert GitHub permalink/blob URL → raw URL
+    const original = url;
+    const normalized = images.normalizeUrl(url);
+    const wasConverted = normalized !== original;
+
+    // Validate URL (sau khi convert)
+    if (!images.isValidImageUrl(normalized)) {
+      return msg.reply(
+        `❌ URL không hợp lệ. Phải:\n` +
+        `• Bắt đầu bằng \`https://\`\n` +
+        `• Kết thúc bằng .png/.jpg/.jpeg/.gif/.webp\n\n` +
+        `💡 GitHub permalink cũng được — bot sẽ tự convert thành raw URL.\n` +
+        `Format raw: \`https://raw.githubusercontent.com/USER/REPO/main/folder/file.png\``
+      );
     }
 
-    images.setImage(table, id, url);
-    return msg.reply({ embeds: [new EmbedBuilder().setColor(0x57F287)
+    images.setImage(table, id, normalized);
+    const embed = new EmbedBuilder().setColor(0x57F287)
       .setTitle(`✅ Đã set ảnh cho ${type} \`${id}\``)
-      .setDescription(`[URL](${url})`)
-      .setImage(url)] });
+      .setDescription(`[URL](${normalized})` + (wasConverted ? `\n\n🔧 *Đã tự convert từ GitHub permalink → raw URL*` : ''))
+      .setImage(normalized);
+    return msg.reply({ embeds: [embed] });
   },
-}; 
+};
