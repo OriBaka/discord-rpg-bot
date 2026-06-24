@@ -85,6 +85,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setTitle(`⚔️ Đụng độ ${monster.name}!`)
       .setDescription(`${zoneNote}\n\n` + result.log.slice(-6).join('\n'));
+    if (monster.image_url) embed.setThumbnail(monster.image_url);
 
     if (result.win) {
       // === Apply pet bonus ===
