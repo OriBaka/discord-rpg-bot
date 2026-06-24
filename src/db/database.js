@@ -135,6 +135,10 @@ migratePvp();
 const { migrate: migrateTrade } = require('../game/trade');
 migrateTrade();
 
+// Image support cho items/monsters/zones/pets/achievements (chạy SAU các migrate trên)
+const { migrate: migrateImages } = require('../game/images');
+migrateImages();
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
