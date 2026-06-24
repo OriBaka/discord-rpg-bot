@@ -77,17 +77,22 @@ function setStatus(tradeId, status) {
 }
 
 // ===== Validate inputs =====
-// Trả về { ok, error? } — check user có đủ gold/item để trade
+// Trả về { ok, error? } — check user có đủ gold/item để trade + check soulbound
 function validateOffer(userId, offer) {
   const p = getPlayer(userId);
   if (!p) return { ok: false, error: 'no_player' };
   if (offer.gold > p.gold) return { ok: false, error: `Không đủ vàng: cần ${offer.gold}, có ${p.gold}` };
   for (const [itemId, qty] of Object.entries(offer.items)) {
+    const it = getItem(itemId);
+    if (!it) return { ok: false, error: `Item ${itemId} không tồn tại.` };
+    // Check soulbound
+    if (it.soulbound) {
+      return { ok: false, error: `🔒 **${it.name}** là soulbound — không thể trade!` };
+    }
     if (!hasItem(userId, itemId, qty)) {
-      const it = getItem(itemId);
       const haveRow = db.prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(userId, itemId);
       const have = haveRow?.qty || 0;
-      return { ok: false, error: `Không đủ ${it?.name || itemId}: cần ${qty}, có ${have}` };
+      return { ok: false, error: `Không đủ ${it.name}: cần ${qty}, có ${have}` };
     }
   }
   return { ok: true };
@@ -153,4 +158,4 @@ module.exports = {
   updateOffer, setReady, setStatus,
   validateOffer, executeTrade,
   getSide, getOffer,
-}; 
+};
