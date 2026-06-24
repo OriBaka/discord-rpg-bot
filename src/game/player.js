@@ -53,6 +53,11 @@ function addItem(userId, itemId, qty = 1) {
     db.prepare('INSERT INTO inventory (user_id, item_id, qty) VALUES (?, ?, ?)')
       .run(userId, itemId, qty);
   }
+  // Hook: quest item collection
+  try {
+    const quests = require('./quests');
+    quests.onItemCollect(userId, itemId);
+  } catch {}
 }
 
 function removeItem(userId, itemId, qty = 1) {
@@ -90,6 +95,23 @@ function addXpAndLevel(userId, xpGain) {
   }
 
   updatePlayer(userId, { xp, level, max_hp, atk, def, hp: max_hp /* full hồi khi lên cấp */ });
+
+  // Auto-sync class_data nếu có primary_class
+  if (p.primary_class && lvlUps.length > 0) {
+    try {
+      const { syncPrimaryClassData } = require('./classes');
+      syncPrimaryClassData(userId);
+    } catch {}
+  }
+
+  // Hook: quest tracking
+  if (lvlUps.length > 0) {
+    try {
+      const quests = require('./quests');
+      quests.onLevelUp(userId, level);
+    } catch {}
+  }
+
   return { newLevel: level, levelsGained: lvlUps, xpToNext: xpToNext(level), xp };
 }
 
