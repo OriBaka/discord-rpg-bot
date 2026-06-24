@@ -77,6 +77,16 @@ function seedDefaults() {
     // === Collection ===
     ['collect_dragon_scale', 'Scale Collector', 'Collect 10 Dragon Scales', '🔶', 'item_collect', 'dragon_scale', 10, 30, 500, 0, '', ''],
     ['collect_elixir',       'Alchemist',       'Possess 5 Elixir of Life', '✨', 'item_collect', 'elixir', 5, 40, 1000, 0, '', 'Alchemist'],
+
+    // === Pet collection (mới) ===
+    ['pet_first',           'Pet Tamer',        'Obtain your first pet',       '🐾', 'pet_count',       '', 1,    15, 200,  0, '', ''],
+    ['pet_collect_5',       'Pet Lover',        'Own 5 different pets',        '🐾', 'pet_count',       '', 5,    30, 800,  0, '', ''],
+    ['pet_collect_10',      'Pet Master',       'Own 10 different pets',       '🐾', 'pet_count',       '', 10,   60, 2500, 0, '', 'Beast Master'],
+    ['pet_legendary_first', 'Legendary Tamer',  'Own a legendary pet',         '🌟', 'pet_tier',        'legendary', 1, 100, 5000, 0, '', 'Legendary Tamer'],
+    ['pet_legendary_3',     'Mythic Collector', 'Own 3 legendary pets',        '🌟', 'pet_tier',        'legendary', 3, 200, 15000, 0, '', 'Mythic Collector'],
+    ['pet_own_dragonling',  'Dragon Friend',    'Own the Dragonling pet',      '🐉', 'pet_own',         'pet_dragonling', 1, 75, 2000, 0, '', 'Dragon Friend'],
+    ['pet_own_void_cat',    'Void Whisperer',   'Own the Void Cat pet',        '🐈‍⬛', 'pet_own',        'pet_void_cat', 1, 150, 8000, 0, '', 'Void Whisperer'],
+    ['pet_own_king_slime',  'Slime Lord',       'Combine the King Slime pet',  '👑', 'pet_own',         'pet_king_slime', 1, 80, 3000, 0, '', 'Slime Lord'],
   ];
 
   const ins = db.prepare(`INSERT INTO achievements
@@ -194,6 +204,26 @@ function checkAndGrant(userId, context = null) {
       case 'item_collect': {
         const row = db.prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(userId, ach.target_id);
         pass = row && row.qty >= ach.target_qty;
+        break;
+      }
+      case 'pet_count': {
+        // Đếm số pet khác nhau user sở hữu
+        const c = db.prepare('SELECT COUNT(*) c FROM player_pets WHERE user_id = ?').get(userId).c;
+        pass = c >= ach.target_qty;
+        break;
+      }
+      case 'pet_tier': {
+        // Đếm pet theo tier
+        const c = db.prepare(`SELECT COUNT(*) c FROM player_pets pp
+          JOIN pets p ON p.id = pp.pet_id
+          WHERE pp.user_id = ? AND p.tier = ?`).get(userId, ach.target_id).c;
+        pass = c >= ach.target_qty;
+        break;
+      }
+      case 'pet_own': {
+        // Sở hữu 1 pet cụ thể
+        const r = db.prepare('SELECT qty FROM player_pets WHERE user_id=? AND pet_id=?').get(userId, ach.target_id);
+        pass = r && r.qty >= ach.target_qty;
         break;
       }
     }
