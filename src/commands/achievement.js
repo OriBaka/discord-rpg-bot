@@ -2,22 +2,13 @@ const { EmbedBuilder } = require('discord.js');
 const db = require('../db/database');
 const { getPlayer } = require('../game/player');
 const achievements = require('../game/achievements');
+const { getRestTokens, parseKV } = require('../game/argparse');
 
 function isAdmin(msg) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim());
   return adminIds.includes(msg.author.id)
       || (msg.guild && msg.guild.ownerId === msg.author.id)
       || (msg.member && msg.member.permissions?.has('Administrator'));
-}
-
-function parseKV(args) {
-  const out = {};
-  for (const a of args) {
-    const i = a.indexOf('=');
-    if (i < 0) continue;
-    out[a.slice(0, i).toLowerCase()] = a.slice(i + 1);
-  }
-  return out;
 }
 
 function resolveTarget(msg, arg) {
@@ -144,11 +135,8 @@ async function handleAdmin(msg, args, prefix) {
   }
 
   if (sub === 'create' || sub === 'new') {
-    const raw = msg.content.slice(prefix.length).trim();
-    const rest = raw.replace(/^\S+\s+\S+\s+\S+\s*/, '');
-    const tokens = rest.match(/[^\s"]+|"([^"]*)"/g)?.map(t =>
-      t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1) : t
-    ) || [];
+    // Tokenize bỏ "ach admin create" (3 từ đầu). Hỗ trợ smart quotes.
+    const tokens = getRestTokens(msg, prefix, 3);
     const id = tokens[0];
     if (!id) return msg.reply('❌ Thiếu id.');
     if (achievements.getAchievement(id)) return msg.reply('❌ Id đã tồn tại.');
@@ -172,4 +160,4 @@ async function handleAdmin(msg, args, prefix) {
   }
 
   return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}ach admin help\``);
-} 
+}
