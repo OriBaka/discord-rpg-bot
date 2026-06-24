@@ -68,30 +68,54 @@ function seedDefaults() {
   if (count > 0) return;
 
   // [id, name, icon, tier, desc, atk, def, hp, gold_pct, xp_pct, drop_pct, shard_id, shard_qty]
+  // Quy ước:
+  //   - Pet "tự nhiên" (động vật/sinh vật thật) → drop trực tiếp từ động vật cùng loài
+  //   - Pet "ghép từ mảnh" → từ quái dạng vật thể (slime, snowman)
+  //   - Pet "đặc biệt" (Bunny/Fox/Owl/Unicorn) → reserve, admin tự gán mob hoặc dùng cho event
   const pets = [
-    // === COSMETIC (non-buff, dễ kiếm) ===
-    ['pet_butterfly', 'Butterfly',     '🦋', 'common', 'A graceful butterfly',     0, 0, 0, 0, 0, 0, '', 0],
-    ['pet_ladybug',   'Ladybug',       '🐞', 'common', 'A lucky little ladybug',   0, 0, 0, 0, 0, 0, '', 0],
-    ['pet_bunny',     'Forest Bunny',  '🐰', 'common', 'Hops along happily',       0, 0, 5, 0, 0, 0, '', 0],
+    // ============================================================
+    // === DIRECT DROP — Động vật & sinh vật (drop từ quái cùng loài)
+    // ============================================================
+    // COMMON
+    ['pet_baby_rat',  'Baby Rat',      '🐭', 'common', 'Cute little rat (+5 HP, +2% gold)',   0,  0, 5,  2, 0, 0, '', 0],
 
-    // === LOW BUFF ===
-    ['pet_chick',     'Chick',         '🐤', 'common', 'A fluffy chick (+5 ATK)',  5, 0, 0, 0, 0, 0, '', 0],
-    ['pet_piggy',     'Piggy',         '🐷', 'common', 'A round pig (+10 HP)',     0, 0, 10, 0, 0, 0, '', 0],
-    ['pet_turtle',    'Turtle',        '🐢', 'rare',   'Slow but tough (+8 DEF)',  0, 8, 20, 0, 0, 0, '', 0],
+    // RARE
+    ['pet_wolf_cub',  'Wolf Cub',      '🐺', 'rare',   'Loyal wolf cub (+10 ATK, +15 HP)',    10, 0, 15, 0, 0, 0, '', 0],
+    ['pet_bear_cub',  'Bear Cub',      '🐻', 'rare',   'Sturdy bear cub (+10 DEF, +20 HP)',   0, 10, 20, 0, 0, 0, '', 0],
+    ['pet_bat',       'Pet Bat',       '🦇', 'rare',   'Loyal bat (+5% drop rate, +2 ATK)',   2,  0, 0,  0, 0, 5, '', 0],
+    ['pet_spider',    'Pet Spider',    '🕷️', 'rare',   'Tiny spider companion (+8 ATK, +3 DEF)',  8,  3, 0,  0, 0, 0, '', 0],
+    ['pet_baby_scorpion', 'Baby Scorpion', '🦂', 'rare', 'Small but venomous (+8 ATK, +2 DEF)', 8, 2, 0, 0, 0, 0, '', 0],
 
-    // === MEDIUM BUFF (shard-only) ===
-    ['pet_fox',       'Fox',           '🦊', 'rare',   'Cunning fox (+5% gold)',   3, 2, 0, 5, 0, 0, 'shard_fox', 5],
-    ['pet_wolf_cub',  'Wolf Cub',      '🐺', 'rare',   'Loyal wolf cub (+10 ATK)', 10, 0, 15, 0, 0, 0, 'shard_wolf', 5],
-    ['pet_owl',       'Wise Owl',      '🦉', 'rare',   'Boosts learning (+10% XP)', 0, 0, 0, 0, 10, 0, 'shard_owl', 5],
+    // EPIC
+    ['pet_yeti_cub',  'Yeti Cub',      '🦍', 'epic',   'Fluffy yeti (+15 ATK, +10 DEF, +30 HP)',     15, 10, 30, 0, 0, 0, '', 0],
 
-    // === HIGH BUFF (rare drop hoặc shard) ===
-    ['pet_panda',     'Panda',         '🐼', 'epic',   'Cute & strong (+15 HP, +5 DEF)', 0, 5, 30, 0, 0, 0, 'shard_panda', 10],
-    ['pet_phoenix',   'Phoenix',       '🔥', 'epic',   'Reborn from ashes (+20 ATK, +10% XP)', 20, 0, 0, 0, 10, 0, 'shard_phoenix', 10],
-    ['pet_unicorn',   'Unicorn',       '🦄', 'epic',   'Magical creature (+15% gold, +10% drop)', 0, 0, 0, 15, 0, 10, 'shard_unicorn', 10],
+    // LEGENDARY
+    ['pet_dragonling',     'Dragonling',      '🐉', 'legendary', 'Baby young dragon (+20 ATK, +15 DEF, +30 HP)', 20, 15, 30, 0, 0, 0, '', 0],
+    ['pet_mini_dragon',    'Mini Dragon',     '🐲', 'legendary', 'Tiny ancient dragon (+30 ATK, +20 DEF, +50 HP)', 30, 20, 50, 0, 0, 0, '', 0],
+    ['pet_mini_void_dragon', 'Mini Void Dragon', '🌌', 'legendary', 'Tiny void dragon (+10% all, +20 ATK/DEF)',    20, 20, 0, 10, 10, 10, '', 0],
 
-    // === LEGENDARY (very rare) ===
-    ['pet_dragonling','Dragonling',    '🐉', 'legendary', 'Baby dragon (+30 ATK, +20 DEF, +50 HP)', 30, 20, 50, 0, 0, 0, 'shard_dragon', 20],
-    ['pet_void_cat',  'Void Cat',      '🐈‍⬛', 'legendary', 'Cat from the void (+10% all bonuses)', 15, 15, 0, 10, 10, 10, 'shard_void', 25],
+    // ============================================================
+    // === SHARD CRAFT — Pet từ quái dạng vật thể (slime, snowman)
+    // ============================================================
+    // Slime pet — ghép từ slime_shard (drop từ slime)
+    ['pet_slime',       'Slime Pet',      '🟢', 'rare', 'A cute jellyball companion (+10 HP, +5% drop)', 0, 3, 10, 0, 0, 5, 'slime_shard', 8],
+    ['pet_king_slime',  'King Slime',     '👑', 'epic', 'King of slimes (+20 HP, +10 DEF, +10% drop)',   3, 10, 20, 0, 0, 10, 'slime_shard', 25],
+
+    // Snowman pet — ghép từ snow_ball (drop từ snowman)
+    ['pet_snowman',     'Snowman Pal',    '⛄', 'rare', 'Frosty companion (+8 DEF, +15 HP)',            0, 8, 15, 0, 0, 0, 'snow_ball', 8],
+    ['pet_frost_king',  'Frost King',     '❄️', 'epic', 'Lord of winter (+15 DEF, +10 ATK, +30 HP)',    10, 15, 30, 0, 0, 0, 'snow_ball', 25],
+
+    // ============================================================
+    // === SPECIAL/EVENT — Reserve cho admin gán mob hoặc làm event reward
+    // ============================================================
+    ['pet_butterfly', 'Butterfly',     '🦋', 'common', '[Special] A graceful butterfly (cosmetic)',     0,  0, 0,  0, 0, 0, '', 0],
+    ['pet_ladybug',   'Ladybug',       '🐞', 'common', '[Special] A lucky little ladybug (+3% gold)',   0,  0, 0,  3, 0, 0, '', 0],
+    ['pet_bunny',     'Forest Bunny',  '🐰', 'common', '[Special] Hops along happily (+10 HP)',         0,  0, 10, 0, 0, 0, '', 0],
+    ['pet_fox',       'Fox',           '🦊', 'rare',   '[Special] Cunning fox (+5% gold, +3 ATK)',      3,  2, 0,  5, 0, 0, '', 0],
+    ['pet_owl',       'Wise Owl',      '🦉', 'rare',   '[Special] Boosts learning (+10% XP)',           0,  0, 0,  0, 10, 0, '', 0],
+    ['pet_phoenix',   'Phoenix',       '🔥', 'epic',   '[Special] Reborn from ashes (+20 ATK, +10% XP)', 20, 0, 0, 0, 10, 0, '', 0],
+    ['pet_unicorn',   'Unicorn',       '🦄', 'epic',   '[Special] Magical creature (+15% gold, +10% drop)', 0, 0, 0, 15, 0, 10, '', 0],
+    ['pet_void_cat',  'Void Cat',      '🐈‍⬛', 'legendary', '[Special] Cat from the void (+10% all)',     15, 15, 0, 10, 10, 10, '', 0],
   ];
 
   const insPet = db.prepare(`INSERT INTO pets
@@ -101,30 +125,40 @@ function seedDefaults() {
   for (const p of pets) insPet.run(...p, now);
 
   // === DROPS ===
-  // Common pet drop trực tiếp từ quái yếu (tỷ lệ thấp)
-  // Shard drop từ quái mạnh hơn (tỷ lệ cao hơn nhưng cần nhiều)
+  // Quy tắc:
+  //   - Mỗi mob chỉ drop tối đa 1 pet HOẶC 1 loại shard (không cùng lúc nhiều loại)
+  //   - Động vật/sinh vật/insect → drop PET TRỰC TIẾP (rate thấp)
+  //   - Vật thể/cấu trúc (slime, snowman) → drop SHARD để ghép
+  //   - Quái hình người/undead (goblin, orc, troll, mummy) → KHÔNG drop pet
   const drops = [
-    // Direct drops (rất hiếm, cảm giác may mắn)
-    ['slime',        'pet_butterfly', null, 0.01, 1],
-    ['giant_rat',    'pet_ladybug',   null, 0.01, 1],
-    ['wolf',         'pet_bunny',     null, 0.02, 1],
-    ['forest_bear',  'pet_chick',     null, 0.02, 1],
-    ['bat',          'pet_piggy',     null, 0.015, 1],
-    ['cave_spider',  'pet_turtle',    null, 0.02, 1],
+    // ============================================================
+    // === DIRECT DROPS — 1 pet baby/mini cho mỗi mob ===
+    // ============================================================
+    // Forest
+    ['giant_rat',    'pet_baby_rat',          null, 0.020, 1],  // baby version
+    ['wolf',         'pet_wolf_cub',          null, 0.010, 1],  // cub
+    ['forest_bear',  'pet_bear_cub',          null, 0.012, 1],  // cub
 
-    // Shard drops
-    ['wolf',         null, 'shard_fox',     0.10, 1],
-    ['goblin',       null, 'shard_wolf',    0.10, 1],
-    ['goblin_chief', null, 'shard_owl',     0.15, 1],
-    ['scorpion',     null, 'shard_panda',   0.08, 1],
-    ['mummy',        null, 'shard_phoenix', 0.05, 1],
-    ['orc',          null, 'shard_unicorn', 0.05, 1],
-    ['yeti',         null, 'shard_unicorn', 0.05, 1],
-    ['troll',        null, 'shard_panda',   0.10, 1],
-    ['young_dragon', null, 'shard_dragon',  0.20, 1],
-    ['dragon',       null, 'shard_dragon',  0.40, 1],
-    ['void_dragon',  null, 'shard_void',    0.30, 1],
-    ['void_dragon',  null, 'shard_dragon',  0.80, 2],
+    // Cave
+    ['bat',          'pet_bat',               null, 0.015, 1],  // chính loài
+    ['cave_spider',  'pet_spider',            null, 0.012, 1],  // chính loài
+
+    // Desert
+    ['scorpion',     'pet_baby_scorpion',     null, 0.015, 1],  // baby version
+
+    // Mountain
+    ['yeti',         'pet_yeti_cub',          null, 0.010, 1],  // cub
+
+    // Dragon Lair — mini/baby dragon
+    ['young_dragon', 'pet_dragonling',        null, 0.025, 1],  // baby version
+    ['dragon',       'pet_mini_dragon',       null, 0.020, 1],  // mini version
+    ['void_dragon',  'pet_mini_void_dragon',  null, 0.030, 1],  // mini version
+
+    // ============================================================
+    // === SHARD DROPS — Vật thể (ghép pet) ===
+    // ============================================================
+    ['slime',        null, 'slime_shard',  0.40, 1],
+    ['snowman',      null, 'snow_ball',    0.35, 1],
   ];
 
   const insDrop = db.prepare('INSERT INTO pet_drops (monster_id, pet_id, shard_id, chance, qty) VALUES (?,?,?,?,?)');
@@ -311,4 +345,4 @@ module.exports = {
   getActivePet, setActivePet,
   addPetDrop, removePetDrop, getPetDrops, rollPetDrops,
   getPetBonus,
-}; 
+};
