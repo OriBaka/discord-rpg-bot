@@ -49,6 +49,12 @@ module.exports = {
           `\`${prefix}quest list\` xem custom quest\n` +
           `\`${prefix}ach [@user]\` xem thành tựu\n` +
           `\`${prefix}ach top\` BXH thành tựu` },
+        { name: '🐾 Pet', value:
+          `\`${prefix}pet\` xem pet của mình\n` +
+          `\`${prefix}pet active <id>\` chọn pet đi theo\n` +
+          `\`${prefix}pet shards\` xem mảnh pet\n` +
+          `\`${prefix}pet combine <id>\` ghép mảnh thành pet\n` +
+          `\`${prefix}pet collection\` xem tất cả pet có thể có` },
         { name: '🎁 Khác', value: `\`${prefix}daily\` điểm danh nhận vàng` },
       );
 
@@ -61,6 +67,7 @@ module.exports = {
           `\`${prefix}mob help\` tạo/sửa quái & zone\n` +
           `\`${prefix}quest admin\` tạo/sửa quest\n` +
           `\`${prefix}ach admin\` tạo/sửa achievement\n` +
+          `\`${prefix}pet admin\` tạo/sửa pet + drop\n` +
           `\`${prefix}shop add/remove/setprice\` chỉnh shop`,
       });
     }
