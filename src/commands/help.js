@@ -55,6 +55,12 @@ module.exports = {
           `\`${prefix}pet shards\` xem mảnh pet\n` +
           `\`${prefix}pet combine <id>\` ghép mảnh thành pet\n` +
           `\`${prefix}pet collection\` xem tất cả pet có thể có` },
+        { name: '🛠️ Nghề', value:
+          `\`${prefix}job [@user]\` xem level các nghề\n` +
+          `\`${prefix}mine [zone]\` đào mỏ (mining)\n` +
+          `\`${prefix}fish [zone]\` câu cá (fishing)\n` +
+          `\`${prefix}craft list\` / \`${prefix}craft <recipe>\` chế tạo\n` +
+          `\`${prefix}cook list\` / \`${prefix}cook <recipe>\` nấu ăn` },
         { name: '🎁 Khác', value: `\`${prefix}daily\` điểm danh nhận vàng` },
       );
 
@@ -68,6 +74,8 @@ module.exports = {
           `\`${prefix}quest admin\` tạo/sửa quest\n` +
           `\`${prefix}ach admin\` tạo/sửa achievement\n` +
           `\`${prefix}pet admin\` tạo/sửa pet + drop\n` +
+          `\`${prefix}gz\` quản lý mining/fishing zones\n` +
+          `\`${prefix}craft admin\` / \`${prefix}cook admin\` tạo/sửa recipe\n` +
           `\`${prefix}shop add/remove/setprice\` chỉnh shop`,
       });
     }
