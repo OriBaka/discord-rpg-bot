@@ -120,6 +120,15 @@ migrateChannels();
 const { migrate: migratePets } = require('../game/pets');
 migratePets();
 
+const { migrate: migrateJobs } = require('../game/jobs');
+migrateJobs();
+
+const { migrate: migrateGatherZones } = require('../game/gather_zones');
+migrateGatherZones();
+
+const { migrate: migrateRecipes } = require('../game/recipes');
+migrateRecipes();
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
