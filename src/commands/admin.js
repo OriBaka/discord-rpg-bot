@@ -9,6 +9,7 @@ const {
   CLASSES, classInfo, isClassDisabled, setClassDisabled,
   getClassData, unlockClass, lockClass, setPrimaryClass,
 } = require('../game/classes');
+const channels = require('../game/channels');
 
 // ===== Danh sách Admin ID =====
 // Thêm Discord User ID của bạn vào đây (chuột phải vào tên bạn trong Discord → Copy User ID)
@@ -75,6 +76,12 @@ module.exports = {
           `\`${prefix}admin takeclass @user <class>\` — lock class của user`,
           `\`${prefix}admin setclass @user <class>\` — đổi class chính của user`,
           '',
+          '**📢 Notify channels:**',
+          `\`${prefix}admin channel set <type> #kênh\` — set kênh thông báo`,
+          `\`${prefix}admin channel unset <type>\` — bỏ`,
+          `\`${prefix}admin channel list\` — xem các channel đã setup`,
+          `Type: quest | achievement | levelup | announce`,
+          '',
           '💡 Có thể thay `@user` bằng User ID.',
         ].join('\n'));
       return msg.reply({ embeds: [embed] });
@@ -106,6 +113,41 @@ module.exports = {
         .setFooter({ text: `Bởi ${msg.author.username}` })
         .setTimestamp();
       return msg.channel.send({ embeds: [embed] });
+    }
+
+    // ===== channel notify =====
+    if (sub === 'channel' || sub === 'ch') {
+      if (!msg.guild) return msg.reply('❌ Phải dùng trong server.');
+      const action = (args[1] || '').toLowerCase();
+
+      if (action === 'list') {
+        const list = channels.listChannels(msg.guild.id);
+        if (list.length === 0) return msg.reply('💡 Chưa setup channel nào.');
+        const lines = list.map(r => `**${r.type}** → <#${r.channel_id}>`);
+        return msg.reply(`📢 **Notify channels:**\n${lines.join('\n')}`);
+      }
+
+      if (action === 'set') {
+        const type = (args[2] || '').toLowerCase();
+        if (!channels.VALID_TYPES.includes(type)) {
+          return msg.reply(`❌ Type phải là: ${channels.VALID_TYPES.join(' | ')}`);
+        }
+        // Lấy channel từ mention hoặc channel hiện tại
+        const ch = msg.mentions.channels.first() || msg.channel;
+        channels.setChannel(msg.guild.id, type, ch.id);
+        return msg.reply(`✅ Đã set channel **${type}** → <#${ch.id}>`);
+      }
+
+      if (action === 'unset' || action === 'remove' || action === 'rm') {
+        const type = (args[2] || '').toLowerCase();
+        if (!channels.VALID_TYPES.includes(type)) {
+          return msg.reply(`❌ Type phải là: ${channels.VALID_TYPES.join(' | ')}`);
+        }
+        const ok = channels.unsetChannel(msg.guild.id, type);
+        return msg.reply(ok ? `✅ Đã bỏ channel **${type}**.` : `❌ Channel **${type}** chưa được set.`);
+      }
+
+      return msg.reply(`❌ Cú pháp: \`${prefix}admin channel set/unset/list <type> [#kênh]\``);
     }
 
     // ===== class lock/unlock toàn server =====
