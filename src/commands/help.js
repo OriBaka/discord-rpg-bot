@@ -61,6 +61,12 @@ module.exports = {
           `\`${prefix}fish [zone]\` câu cá (fishing)\n` +
           `\`${prefix}craft list\` / \`${prefix}craft <recipe>\` chế tạo\n` +
           `\`${prefix}cook list\` / \`${prefix}cook <recipe>\` nấu ăn` },
+        { name: '⚔️ PvP & Trade', value:
+          `\`${prefix}duel @user [gold]\` thách đấu\n` +
+          `\`${prefix}duel accept/decline\` phản hồi\n` +
+          `\`${prefix}duel top\` BXH PvP\n` +
+          `\`${prefix}trade @user\` mở phiên trao đổi\n` +
+          `\`${prefix}trade help\` xem hướng dẫn chi tiết` },
         { name: '🎁 Khác', value: `\`${prefix}daily\` điểm danh nhận vàng` },
       );
 
