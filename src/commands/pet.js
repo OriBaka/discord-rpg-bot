@@ -52,7 +52,8 @@ module.exports = {
       if (!petId) return msg.reply(`❌ Cú pháp: \`${prefix}pet combine <pet_id>\`. Xem shard: \`${prefix}pet shards\``);
       const pet = pets.getPet(petId);
       if (!pet) return msg.reply(`❌ Pet \`${petId}\` không tồn tại.`);
-      const r = pets.combineShards(msg.author.id, petId);
+      const ctx = { client: msg.client, guildId: msg.guild?.id };
+      const r = pets.combineShards(msg.author.id, petId, ctx);
       if (!r.ok) {
         const reasons = {
           pet_not_found: '❌ Pet không tồn tại.',
@@ -224,7 +225,8 @@ async function handleAdmin(msg, args, prefix) {
     if (!target) return msg.reply('❌ Cần mention user.');
     const petId = args[2]; const qty = parseInt(args[3]) || 1;
     if (!petId || !pets.getPet(petId)) return msg.reply('❌ Pet id sai.');
-    pets.addPet(target.id, petId, qty);
+    const ctx = { client: msg.client, guildId: msg.guild?.id };
+    pets.addPet(target.id, petId, qty, ctx);
     return msg.reply(`✅ Tặng ${qty} **${pets.getPet(petId).name}** cho ${target.username}.`);
   }
 
@@ -265,4 +267,4 @@ async function handleAdmin(msg, args, prefix) {
   }
 
   return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}pet admin help\``);
-} 
+}
