@@ -16,6 +16,7 @@ function migrate() {
       reward_xp   INTEGER NOT NULL DEFAULT 0,
       reward_item TEXT NOT NULL DEFAULT '',
       title       TEXT NOT NULL DEFAULT '',  -- Title nhận được khi unlock
+      hidden      INTEGER NOT NULL DEFAULT 0, -- Ẩn khỏi list (chỉ hiện khi unlock)
       created_by  TEXT NOT NULL DEFAULT 'system',
       created_at  INTEGER NOT NULL DEFAULT 0
     );
@@ -37,6 +38,13 @@ function migrate() {
       current_title  TEXT NOT NULL DEFAULT ''
     );
   `);
+
+  // Migration: thêm cột hidden nếu chưa có
+  const achCols = db.prepare("PRAGMA table_info(achievements)").all().map(c => c.name);
+  if (!achCols.includes('hidden')) {
+    db.exec(`ALTER TABLE achievements ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0`);
+    console.log('🔧 Migrated achievements: thêm hidden');
+  }
 
   // Seed achievements mặc định
   seedDefaults();
@@ -130,13 +138,14 @@ function getAllAchievements() {
 function createAchievement(data) {
   const now = Date.now();
   db.prepare(`INSERT INTO achievements
-    (id, name, desc, icon, objective, target_id, target_qty, points, reward_gold, reward_xp, reward_item, title, created_by, created_at)
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+    (id, name, desc, icon, objective, target_id, target_qty, points, reward_gold, reward_xp, reward_item, title, hidden, created_by, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
     .run(
       data.id, data.name, data.desc || '', data.icon || '🏆',
       data.objective, data.target_id || '', data.target_qty || 1,
       data.points || 10, data.reward_gold || 0, data.reward_xp || 0,
       data.reward_item || '', data.title || '',
+      data.hidden ? 1 : 0,
       data.created_by || 'system', now
     );
   return getAchievement(data.id);
