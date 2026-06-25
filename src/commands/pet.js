@@ -224,6 +224,7 @@ async function handleAdmin(msg, args, prefix) {
         `\`${prefix}pet admin drop <mob_id> shard=<shard_id> chance=0.10 [qty=1]\` — drop shard`,
         `\`${prefix}pet admin undrop <mob_id> <pet_id|shard_id>\``,
         `\`${prefix}pet admin resetdrops\` — RESET toàn bộ drop về default (⚠️ xóa hết drop custom)`,
+        `\`${prefix}pet admin cleanup\` — xóa pet thừa không có trong code seed mới (⚠️ kèm xóa player_pets)`,
         '',
         '💡 Field gold/xp/drop là % (vd: gold=10 = +10% gold)',
       ].join('\n'))] });
@@ -341,6 +342,34 @@ async function handleAdmin(msg, args, prefix) {
     return msg.reply(`✅ Đã reset drop table: ${oldCount} → ${newCount} entries (default).`);
   }
 
+  if (sub === 'cleanup') {
+    // Preview trước
+    const allPets = pets.getAllPets();
+    const keepList = ['pet_baby_rat','pet_wolf_cub','pet_bear_cub','pet_bat','pet_spider',
+                      'pet_baby_scorpion','pet_yeti_cub','pet_dragonling','pet_mini_dragon',
+                      'pet_mini_void_dragon','pet_slime','pet_snowman','pet_void_cat'];
+    const toDelete = allPets.filter(p => !keepList.includes(p.id));
+
+    if (toDelete.length === 0) {
+      return msg.reply('✅ Đã sạch — không có pet thừa nào.');
+    }
+
+    if (args[1] !== 'confirm') {
+      return msg.reply(
+        `⚠️ **Cleanup pets** sẽ XÓA ${toDelete.length} pet không có trong code seed mới:\n` +
+        toDelete.map(p => `   • ${p.icon} ${p.name} \`${p.id}\``).join('\n') +
+        `\n\n⚠️ User đang sở hữu pet này sẽ mất vĩnh viễn!\n` +
+        `Để xác nhận: \`${prefix}pet admin cleanup confirm\``
+      );
+    }
+
+    const result = pets.cleanupExtraPets();
+    return msg.reply(
+      `🗑️ Đã cleanup ${result.deleted} pets, giữ lại ${result.kept}.\n` +
+      `Pet bị xóa: ${result.deletedIds.join(', ')}`
+    );
+  }
+
   if (sub === 'drop') {
     const mobId = args[1];
     if (!mobId) return msg.reply(`❌ Cú pháp: \`${prefix}pet admin drop <mob_id> pet=<id> chance=0.05\``);
@@ -369,4 +398,4 @@ async function handleAdmin(msg, args, prefix) {
   }
 
   return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}pet admin help\``);
-}
+  }
