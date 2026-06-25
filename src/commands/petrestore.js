@@ -1,9 +1,8 @@
-// One-time restore command: !petrestore confirm
+// petrestore.js — restore + fix 3 con lỗi còn lại
 const { EmbedBuilder } = require('discord.js');
 const db = require('../db/database');
 
 const MISSING_PETS = [
-  // [id, name, icon, tier, desc, atk, def, hp, gold_pct, xp_pct, drop_pct, shard_id, shard_qty]
   ['pet_baby_rat',        'Baby Rat',        '🐭', 'common',    'Cute little rat (+5 HP, +2% gold)',               0,  0,  5,  2,  0,  0, '',            0],
   ['pet_bear_cub',        'Bear Cub',        '🐻', 'rare',      'Sturdy bear cub (+10 DEF, +20 HP)',               0, 10, 20,  0,  0,  0, '',            0],
   ['pet_bat',             'Pet Bat',         '🦇', 'rare',      'Loyal bat (+5% drop rate, +2 ATK)',               2,  0,  0,  0,  0,  5, '',            0],
@@ -31,57 +30,87 @@ const MISSING_DROPS = [
 
 const name = 'petrestore';
 const aliases = [];
-const description = 'Restore pets bị mất sau cleanup (admin only)';
+const description = 'Restore + fix pets bị lỗi (admin only)';
 
 async function execute(msg, args) {
   if (!msg.member?.permissions?.has('ManageGuild')) {
     return msg.reply('❌ Cần quyền Manage Guild.');
   }
 
-  // Lấy danh sách pet đang có
+  const sub = args[0];
+
+  // ── %petrestore fix3 ── xóa 2 con thừa, ẩn void_cat
+  if (sub === 'fix3') {
+    if (args[1] !== 'confirm') {
+      return msg.reply(
+        `⚠️ **Fix 3 con pet lỗi:**\n` +
+        `• 🐺 **Wolf Cub** \`pet_wolf_cub\` — XÓA hoàn toàn\n` +
+        `• 🐉 **Dragonling** \`pet_dragonling\` — XÓA hoàn toàn (đã có Mini Dragon)\n` +
+        `• 🐈‍⬛ **Void Cat** \`pet_void_cat\` — ẩn (hidden=1, giữ cho event)\n\n` +
+        `Gõ \`%petrestore fix3 confirm\` để xác nhận.`
+      );
+    }
+
+    const fixes = [];
+
+    // Xóa wolf_cub
+    db.prepare(`UPDATE players SET active_pet='' WHERE active_pet='pet_wolf_cub'`).run();
+    db.prepare(`DELETE FROM player_pets WHERE pet_id='pet_wolf_cub'`).run();
+    db.prepare(`DELETE FROM pet_drops WHERE pet_id='pet_wolf_cub'`).run();
+    db.prepare(`DELETE FROM pets WHERE id='pet_wolf_cub'`).run();
+    fixes.push('🗑️ Đã xóa pet_wolf_cub');
+
+    // Xóa dragonling
+    db.prepare(`UPDATE players SET active_pet='' WHERE active_pet='pet_dragonling'`).run();
+    db.prepare(`DELETE FROM player_pets WHERE pet_id='pet_dragonling'`).run();
+    db.prepare(`DELETE FROM pet_drops WHERE pet_id='pet_dragonling'`).run();
+    db.prepare(`DELETE FROM pets WHERE id='pet_dragonling'`).run();
+    fixes.push('🗑️ Đã xóa pet_dragonling');
+
+    // Ẩn void_cat
+    db.prepare(`UPDATE pets SET hidden=1 WHERE id='pet_void_cat'`).run();
+    fixes.push('👻 Đã ẩn pet_void_cat (hidden=1)');
+
+    return msg.reply(`✅ Hoàn tất:\n${fixes.join('\n')}\n\nGõ \`%pet collection\` để kiểm tra.`);
+  }
+
+  // ── %petrestore (preview) ──
   const existingPetIds = new Set(db.prepare('SELECT id FROM pets').all().map(r => r.id));
   const toRestorePets = MISSING_PETS.filter(p => !existingPetIds.has(p[0]));
 
-  if (args[0] !== 'confirm') {
-    if (toRestorePets.length === 0) {
-      return msg.reply('✅ Không có pet nào cần restore — tất cả đã có trong DB.');
+  if (sub !== 'confirm') {
+    const lines = [];
+    if (toRestorePets.length > 0) {
+      lines.push(`🐾 Sẽ thêm lại **${toRestorePets.length}** pet bị thiếu:`);
+      lines.push(...toRestorePets.map(p => `   • ${p[2]} **${p[1]}** \`${p[0]}\``));
+      lines.push('', `Gõ \`%petrestore confirm\` để xác nhận.`);
+    } else {
+      lines.push('✅ Không có pet nào cần restore.');
     }
-    return msg.reply(
-      `🔧 **Pet Restore** sẽ thêm lại ${toRestorePets.length} pet bị thiếu:\n` +
-      toRestorePets.map(p => `   • ${p[2]} **${p[1]}** \`${p[0]}\``).join('\n') +
-      `\n\nGõ \`!petrestore confirm\` để xác nhận.`
-    );
+    lines.push('', '💡 Để sửa 3 con lỗi còn lại: `%petrestore fix3`');
+    return msg.reply(lines.join('\n'));
   }
 
-  // Kiểm tra cột hidden có tồn tại không
+  // ── %petrestore confirm ──
   const petCols = db.prepare('PRAGMA table_info(pets)').all().map(c => c.name);
   const hasHidden = petCols.includes('hidden');
 
-  // Insert pets còn thiếu
   const insPet = hasHidden
-    ? db.prepare(`INSERT INTO pets (id, name, icon, tier, desc, atk_bonus, def_bonus, hp_bonus, gold_bonus_pct, xp_bonus_pct, drop_bonus_pct, shard_id, shard_qty, hidden, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)`)
-    : db.prepare(`INSERT INTO pets (id, name, icon, tier, desc, atk_bonus, def_bonus, hp_bonus, gold_bonus_pct, xp_bonus_pct, drop_bonus_pct, shard_id, shard_qty, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+    ? db.prepare(`INSERT INTO pets (id,name,icon,tier,desc,atk_bonus,def_bonus,hp_bonus,gold_bonus_pct,xp_bonus_pct,drop_bonus_pct,shard_id,shard_qty,hidden,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,0,?)`)
+    : db.prepare(`INSERT INTO pets (id,name,icon,tier,desc,atk_bonus,def_bonus,hp_bonus,gold_bonus_pct,xp_bonus_pct,drop_bonus_pct,shard_id,shard_qty,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
 
-  let restoredPets = 0;
-  for (const p of toRestorePets) {
-    insPet.run(...p, Date.now());
-    restoredPets++;
-  }
+  const insDrop = db.prepare('INSERT OR IGNORE INTO pet_drops (monster_id,pet_id,shard_id,chance,qty) VALUES (?,?,?,?,?)');
 
-  // Insert drops còn thiếu (check từng cái riêng lẻ, tránh lỗi COALESCE)
-  const insDrop = db.prepare('INSERT OR IGNORE INTO pet_drops (monster_id, pet_id, shard_id, chance, qty) VALUES (?,?,?,?,?)');
-  let restoredDrops = 0;
-  for (const d of MISSING_DROPS) {
-    const changes = insDrop.run(...d).changes;
-    if (changes > 0) restoredDrops++;
-  }
+  let restoredPets = 0, restoredDrops = 0;
+  for (const p of toRestorePets) { insPet.run(...p, Date.now()); restoredPets++; }
+  for (const d of MISSING_DROPS) { if (insDrop.run(...d).changes > 0) restoredDrops++; }
 
   const embed = new EmbedBuilder().setColor(0x2ECC71)
     .setTitle('✅ Pet Restore hoàn tất')
     .setDescription(
       `🐾 Đã thêm lại **${restoredPets}** pets\n` +
       `💀 Đã thêm lại **${restoredDrops}** drop entries\n\n` +
-      `Gõ \`!pet collection\` để kiểm tra.`
+      `Tiếp theo gõ \`%petrestore fix3\` để xóa 2 con thừa + ẩn void cat.`
     );
   return msg.reply({ embeds: [embed] });
 }
