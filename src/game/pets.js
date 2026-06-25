@@ -106,23 +106,14 @@ function seedDefaults() {
     // ============================================================
     // Slime pet — ghép từ slime_shard (drop từ slime)
     ['pet_slime',       'Slime Pet',      '🟢', 'rare', 'A cute jellyball companion (+10 HP, +5% drop)', 0, 3, 10, 0, 0, 5, 'slime_shard', 8],
-    ['pet_king_slime',  'King Slime',     '👑', 'epic', 'King of slimes (+20 HP, +10 DEF, +10% drop)',   3, 10, 20, 0, 0, 10, 'slime_shard', 25],
 
     // Snowman pet — ghép từ snow_ball (drop từ snowman)
     ['pet_snowman',     'Snowman Pal',    '⛄', 'rare', 'Frosty companion (+8 DEF, +15 HP)',            0, 8, 15, 0, 0, 0, 'snow_ball', 8],
-    ['pet_frost_king',  'Frost King',     '❄️', 'epic', 'Lord of winter (+15 DEF, +10 ATK, +30 HP)',    10, 15, 30, 0, 0, 0, 'snow_ball', 25],
 
     // ============================================================
-    // === SPECIAL/EVENT — Reserve cho admin gán mob hoặc làm event reward
+    // === SPECIAL/EVENT — Reserve cho event/lootbox
     // ============================================================
-    ['pet_butterfly', 'Butterfly',     '🦋', 'common', '[Special] A graceful butterfly (cosmetic)',     0,  0, 0,  0, 0, 0, '', 0],
-    ['pet_ladybug',   'Ladybug',       '🐞', 'common', '[Special] A lucky little ladybug (+3% gold)',   0,  0, 0,  3, 0, 0, '', 0],
-    ['pet_bunny',     'Forest Bunny',  '🐰', 'common', '[Special] Hops along happily (+10 HP)',         0,  0, 10, 0, 0, 0, '', 0],
-    ['pet_fox',       'Fox',           '🦊', 'rare',   '[Special] Cunning fox (+5% gold, +3 ATK)',      3,  2, 0,  5, 0, 0, '', 0],
-    ['pet_owl',       'Wise Owl',      '🦉', 'rare',   '[Special] Boosts learning (+10% XP)',           0,  0, 0,  0, 10, 0, '', 0],
-    ['pet_phoenix',   'Phoenix',       '🔥', 'epic',   '[Special] Reborn from ashes (+20 ATK, +10% XP)', 20, 0, 0, 0, 10, 0, '', 0],
-    ['pet_unicorn',   'Unicorn',       '🦄', 'epic',   '[Special] Magical creature (+15% gold, +10% drop)', 0, 0, 0, 15, 0, 10, '', 0],
-    ['pet_void_cat',  'Void Cat',      '🐈‍⬛', 'legendary', '[Special] Cat from the void (+10% all)',     15, 15, 0, 10, 10, 10, '', 0],
+    ['pet_void_cat',  'Void Cat',      '🐈‍⬛', 'legendary', '[Event] Cat from the void (+10% all)',     15, 15, 0, 10, 10, 10, '', 0],
   ];
 
   const insPet = db.prepare(`INSERT INTO pets
@@ -327,6 +318,38 @@ function getAllPetDrops() {
     LEFT JOIN monsters m ON m.id = pd.monster_id ORDER BY pd.monster_id`).all();
 }
 
+// === Cleanup pet thừa: xóa các pet không có trong default list ===
+// keepList: array các pet_id muốn giữ (default = list trong seed mới)
+function cleanupExtraPets(keepList = null) {
+  const defaultKeep = [
+    'pet_baby_rat', 'pet_wolf_cub', 'pet_bear_cub', 'pet_bat', 'pet_spider',
+    'pet_baby_scorpion', 'pet_yeti_cub', 'pet_dragonling', 'pet_mini_dragon',
+    'pet_mini_void_dragon', 'pet_slime', 'pet_snowman', 'pet_void_cat',
+  ];
+  const keep = keepList || defaultKeep;
+
+  // Lấy tất cả pet hiện có
+  const all = db.prepare('SELECT id FROM pets').all().map(r => r.id);
+  const toDelete = all.filter(id => !keep.includes(id));
+
+  if (toDelete.length === 0) return { deleted: 0, kept: all.length };
+
+  const delPet = db.prepare('DELETE FROM pets WHERE id = ?');
+  const delPlayerPet = db.prepare('DELETE FROM player_pets WHERE pet_id = ?');
+  const delDrop = db.prepare('DELETE FROM pet_drops WHERE pet_id = ?');
+  // Unset active_pet nếu user đang active pet bị xóa
+  const unsetActive = db.prepare("UPDATE players SET active_pet = '' WHERE active_pet = ?");
+
+  for (const id of toDelete) {
+    delPlayerPet.run(id);
+    delDrop.run(id);
+    unsetActive.run(id);
+    delPet.run(id);
+  }
+
+  return { deleted: toDelete.length, kept: all.length - toDelete.length, deletedIds: toDelete };
+}
+
 // === Reset toàn bộ drop table về default seed (admin tool) ===
 function resetDropsToDefault() {
   db.prepare('DELETE FROM pet_drops').run();
@@ -389,6 +412,6 @@ module.exports = {
   combineShards,
   getActivePet, setActivePet,
   addPetDrop, removePetDrop, getPetDrops, getAllPetDrops, rollPetDrops,
-  resetDropsToDefault,
+  resetDropsToDefault, cleanupExtraPets,
   getPetBonus,
 };
