@@ -60,7 +60,7 @@ module.exports = {
       if (!kv.name || !kv.type) {
         return msg.reply('❌ Phải có `name=...` và `type=...`.');
       }
-      const allowedTypes = ['weapon', 'offhand', 'armor', 'accessory', 'consumable', 'material', 'pet'];
+      const allowedTypes = ['weapon', 'offhand', 'armor', 'accessory', 'consumable', 'material', 'pet', 'lootbox'];
       if (!allowedTypes.includes(kv.type)) {
         return msg.reply(`❌ type phải là: ${allowedTypes.join('/')}`);
       }
