@@ -139,6 +139,10 @@ migrateTrade();
 const { migrate: migrateImages } = require('../game/images');
 migrateImages();
 
+// Lootbox system
+const { migrate: migrateLootbox } = require('../game/lootbox');
+migrateLootbox();
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
