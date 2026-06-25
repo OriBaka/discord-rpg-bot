@@ -209,4 +209,193 @@ module.exports = {
 
 // ===== Admin =====
 async function handleAdmin(msg, args, prefix) {
-  const sub = (args[0] || '').toLower
+  const sub = (args[0] || '').toLowerCase();
+
+  if (!sub || sub === 'help') {
+    return msg.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setTitle('🛠️ Pet Admin')
+      .setDescription([
+        `\`${prefix}pet admin list\` — xem tất cả pet (id + buff)`,
+        `\`${prefix}pet admin create <id> name="..." icon="🐾" tier=epic atk=10 def=5 hp=20 gold=10 xp=5 drop=5 shard=shard_xxx shard_qty=10 desc="..." hidden=true\``,
+        `\`${prefix}pet admin delete <id>\``,
+        `\`${prefix}pet admin give @user <pet_id> [qty]\` — tặng pet`,
+        `\`${prefix}pet admin giveshard @user <shard_id> [qty]\` — tặng shard`,
+        `\`${prefix}pet admin drops [mob_id]\` — xem toàn bộ drop table (hoặc 1 mob)`,
+        `\`${prefix}pet admin drop <mob_id> pet=<pet_id> chance=0.05 [qty=1]\` — drop pet trực tiếp`,
+        `\`${prefix}pet admin drop <mob_id> shard=<shard_id> chance=0.10 [qty=1]\` — drop shard`,
+        `\`${prefix}pet admin undrop <mob_id> <pet_id|shard_id>\``,
+        `\`${prefix}pet admin resetdrops\` — RESET toàn bộ drop về default (⚠️ xóa hết drop custom)`,
+        `\`${prefix}pet admin cleanup\` — xóa pet thừa không có trong code seed mới (⚠️ kèm xóa player_pets)`,
+        '',
+        '💡 Field gold/xp/drop là % (vd: gold=10 = +10% gold)',
+      ].join('\n'))] });
+  }
+
+  if (sub === 'list') {
+    const all = pets.getAllPets();
+    const groups = {};
+    for (const p of all) (groups[p.tier] = groups[p.tier] || []).push(p);
+    const embed = new EmbedBuilder().setColor(0xED4245).setTitle(`🐾 All Pets (${all.length})`);
+    for (const [tier, arr] of Object.entries(groups)) {
+      const lines = arr.map(p => {
+        const buffs = [];
+        if (p.atk_bonus) buffs.push(`A${p.atk_bonus}`);
+        if (p.def_bonus) buffs.push(`D${p.def_bonus}`);
+        if (p.hp_bonus)  buffs.push(`H${p.hp_bonus}`);
+        if (p.gold_bonus_pct) buffs.push(`G${p.gold_bonus_pct}%`);
+        if (p.xp_bonus_pct)   buffs.push(`X${p.xp_bonus_pct}%`);
+        if (p.drop_bonus_pct) buffs.push(`D${p.drop_bonus_pct}%`);
+        const shard = p.shard_id ? ` shard:${p.shard_id}×${p.shard_qty}` : '';
+        return `\`${p.id}\` ${p.icon} ${p.name} [${buffs.join(',') || 'cosmetic'}]${shard}`;
+      });
+      embed.addFields({ name: `📊 ${tier}`, value: lines.join('\n').slice(0, 1024) });
+    }
+    return msg.reply({ embeds: [embed] });
+  }
+
+  if (sub === 'delete' || sub === 'del') {
+    const id = args[1];
+    if (!id) return msg.reply('❌ Thiếu id.');
+    const ok = pets.deletePet(id);
+    return msg.reply(ok ? `🗑️ Đã xoá pet \`${id}\`` : '❌ Pet không tồn tại.');
+  }
+
+  if (sub === 'create' || sub === 'new') {
+    const tokens = getRestTokens(msg, prefix, 3);
+    const id = tokens[0];
+    if (!id) return msg.reply('❌ Thiếu id.');
+    if (pets.getPet(id)) return msg.reply('❌ Id đã tồn tại.');
+    const kv = parseKV(tokens.slice(1));
+    if (!kv.name) return msg.reply('❌ Cần `name="..."`');
+    const intOr = (v, d) => { const n = parseInt(v); return isNaN(n) ? d : n; };
+    const isHidden = kv.hidden === 'true' || kv.hidden === '1' || kv.hidden === 'yes';
+    const pet = pets.createPet({
+      id, name: kv.name, icon: kv.icon || '🐾', tier: kv.tier || 'common',
+      desc: kv.desc || '',
+      atk_bonus: intOr(kv.atk, 0),
+      def_bonus: intOr(kv.def, 0),
+      hp_bonus:  intOr(kv.hp, 0),
+      gold_bonus_pct: intOr(kv.gold, 0),
+      xp_bonus_pct:   intOr(kv.xp, 0),
+      drop_bonus_pct: intOr(kv.drop, 0),
+      shard_id: kv.shard || '', shard_qty: intOr(kv.shard_qty, 0),
+      hidden: isHidden,
+      created_by: msg.author.id,
+    });
+    const hiddenTag = isHidden ? ' 🕵️ **HIDDEN**' : '';
+    return msg.reply(`✅ Đã tạo pet **${pet.icon} ${pet.name}** (\`${pet.id}\`)${hiddenTag}.`);
+  }
+
+  if (sub === 'give') {
+    const target = msg.mentions.users.first();
+    if (!target) return msg.reply('❌ Cần mention user.');
+    const petId = args[2]; const qty = parseInt(args[3]) || 1;
+    if (!petId || !pets.getPet(petId)) return msg.reply('❌ Pet id sai.');
+    const ctx = { client: msg.client, guildId: msg.guild?.id };
+    pets.addPet(target.id, petId, qty, ctx);
+    return msg.reply(`✅ Tặng ${qty} **${pets.getPet(petId).name}** cho ${target.username}.`);
+  }
+
+  if (sub === 'giveshard') {
+    const target = msg.mentions.users.first();
+    if (!target) return msg.reply('❌ Cần mention user.');
+    const shardId = args[2]; const qty = parseInt(args[3]) || 1;
+    if (!shardId) return msg.reply('❌ Thiếu shard_id.');
+    pets.addShard(target.id, shardId, qty);
+    return msg.reply(`✅ Tặng ${qty} mảnh \`${shardId}\` cho ${target.username}.`);
+  }
+
+  if (sub === 'drops' || sub === 'droplist') {
+    const filterMob = args[1];
+    const all = pets.getAllPetDrops();
+    const filtered = filterMob ? all.filter(d => d.monster_id === filterMob) : all;
+    if (filtered.length === 0) return msg.reply(filterMob ? `💡 Mob \`${filterMob}\` không có drop.` : '💡 Không có drop nào.');
+
+    // Group theo mob
+    const groups = {};
+    for (const d of filtered) {
+      (groups[d.monster_id] = groups[d.monster_id] || []).push(d);
+    }
+    const lines = [];
+    for (const [mobId, list] of Object.entries(groups)) {
+      const mobName = list[0].mob_name || mobId;
+      lines.push(`**${mobName}** \`${mobId}\``);
+      for (const d of list) {
+        const what = d.pet_id ? `🐾 \`${d.pet_id}\`` : `🧩 \`${d.shard_id}\``;
+        lines.push(`   ${what} × ${d.qty} @ ${(d.chance*100).toFixed(1)}%`);
+      }
+    }
+    return msg.reply({ embeds: [new EmbedBuilder().setColor(0xED4245)
+      .setTitle(`🐾 Pet/Shard Drops (${filtered.length})`)
+      .setDescription(lines.join('\n').slice(0, 4000))] });
+  }
+
+  if (sub === 'resetdrops') {
+    if (args[1] !== 'confirm') {
+      return msg.reply(
+        `⚠️ **Reset drops** sẽ XÓA TOÀN BỘ drop hiện tại (kể cả custom) và set lại default.\n` +
+        `Default gồm 10 direct + 2 shard cho mob tương ứng.\n\n` +
+        `Để xác nhận: \`${prefix}pet admin resetdrops confirm\``
+      );
+    }
+    const oldCount = pets.getAllPetDrops().length;
+    const newCount = pets.resetDropsToDefault();
+    return msg.reply(`✅ Đã reset drop table: ${oldCount} → ${newCount} entries (default).`);
+  }
+
+  if (sub === 'cleanup') {
+    // Preview trước
+    const allPets = pets.getAllPets();
+    const keepList = ['pet_baby_rat','pet_wolf_cub','pet_bear_cub','pet_bat','pet_spider',
+                      'pet_baby_scorpion','pet_yeti_cub','pet_dragonling','pet_mini_dragon',
+                      'pet_mini_void_dragon','pet_slime','pet_snowman','pet_void_cat'];
+    const toDelete = allPets.filter(p => !keepList.includes(p.id));
+
+    if (toDelete.length === 0) {
+      return msg.reply('✅ Đã sạch — không có pet thừa nào.');
+    }
+
+    if (args[1] !== 'confirm') {
+      return msg.reply(
+        `⚠️ **Cleanup pets** sẽ XÓA ${toDelete.length} pet không có trong code seed mới:\n` +
+        toDelete.map(p => `   • ${p.icon} ${p.name} \`${p.id}\``).join('\n') +
+        `\n\n⚠️ User đang sở hữu pet này sẽ mất vĩnh viễn!\n` +
+        `Để xác nhận: \`${prefix}pet admin cleanup confirm\``
+      );
+    }
+
+    const result = pets.cleanupExtraPets();
+    return msg.reply(
+      `🗑️ Đã cleanup ${result.deleted} pets, giữ lại ${result.kept}.\n` +
+      `Pet bị xóa: ${result.deletedIds.join(', ')}`
+    );
+  }
+
+  if (sub === 'drop') {
+    const mobId = args[1];
+    if (!mobId) return msg.reply(`❌ Cú pháp: \`${prefix}pet admin drop <mob_id> pet=<id> chance=0.05\``);
+    const tokens = getRestTokens(msg, prefix, 4); // bỏ "pet admin drop mob_id"
+    const kv = parseKV(tokens);
+    if (!kv.pet && !kv.shard) return msg.reply('❌ Cần `pet=<id>` hoặc `shard=<id>`.');
+    const chance = parseFloat(kv.chance);
+    if (isNaN(chance) || chance < 0 || chance > 1) return msg.reply('❌ `chance` phải 0-1 (vd 0.05).');
+    const qty = parseInt(kv.qty) || 1;
+    try {
+      pets.addPetDrop(mobId, { pet_id: kv.pet || null, shard_id: kv.shard || null, chance, qty });
+      const what = kv.pet ? `pet **${kv.pet}**` : `shard **${kv.shard}**`;
+      return msg.reply(`✅ Đã set drop ${what} từ \`${mobId}\` (${Math.round(chance*100)}% × ${qty}).`);
+    } catch (err) {
+      return msg.reply(`❌ ${err.message}`);
+    }
+  }
+
+  if (sub === 'undrop') {
+    const mobId = args[1]; const id = args[2];
+    if (!mobId || !id) return msg.reply(`❌ Cú pháp: \`${prefix}pet admin undrop <mob_id> <pet_id|shard_id>\``);
+    // Thử cả pet và shard
+    let ok = pets.removePetDrop(mobId, id, null);
+    if (!ok) ok = pets.removePetDrop(mobId, null, id);
+    return msg.reply(ok ? `🗑️ Đã xoá drop.` : '❌ Không có drop này.');
+  }
+
+  return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}pet admin help\``);
+      }
