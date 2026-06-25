@@ -109,7 +109,6 @@ function seedNewAchievements() {
     ['pet_legendary_3',     'Mythic Collector', 'Own 3 legendary pets',        '🌟', 'pet_tier',        'legendary', 3, 200, 15000, 0, '', 'Mythic Collector'],
     ['pet_own_dragonling',  'Dragon Friend',    'Own the Dragonling pet',      '🐉', 'pet_own',         'pet_dragonling', 1, 75, 2000, 0, '', 'Dragon Friend'],
     ['pet_own_void_cat',    'Void Whisperer',   'Own the Void Cat pet',        '🐈‍⬛', 'pet_own',        'pet_void_cat', 1, 150, 8000, 0, '', 'Void Whisperer'],
-    ['pet_own_king_slime',  'Slime Lord',       'Combine the King Slime pet',  '👑', 'pet_own',         'pet_king_slime', 1, 80, 3000, 0, '', 'Slime Lord'],
   ];
 
   const checkStmt = db.prepare('SELECT 1 FROM achievements WHERE id = ?');
