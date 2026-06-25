@@ -343,20 +343,24 @@ async function handleAdmin(msg, args, prefix) {
   }
 
   if (sub === 'cleanup') {
-    // Preview trước
+    // Preview trước — auto-detect pet không có nguồn hợp lệ
     const allPets = pets.getAllPets();
-    const keepList = ['pet_baby_rat','pet_wolf_cub','pet_bear_cub','pet_bat','pet_spider',
-                      'pet_baby_scorpion','pet_yeti_cub','pet_dragonling','pet_mini_dragon',
-                      'pet_mini_void_dragon','pet_slime','pet_snowman','pet_void_cat'];
-    const toDelete = allPets.filter(p => !keepList.includes(p.id));
+    const petsWithDrop = new Set(
+      db.prepare('SELECT DISTINCT pet_id FROM pet_drops WHERE pet_id IS NOT NULL').all().map(r => r.pet_id)
+    );
+    const toDelete = allPets.filter(p => {
+      const hasDirectDrop = petsWithDrop.has(p.id);
+      const hasShardRecipe = p.shard_id && p.shard_qty > 0;
+      return !hasDirectDrop && !hasShardRecipe;
+    });
 
     if (toDelete.length === 0) {
-      return msg.reply('✅ Đã sạch — không có pet thừa nào.');
+      return msg.reply('✅ Đã sạch — không có pet thừa nào (mọi pet đều có mob drop hoặc shard recipe).');
     }
 
     if (args[1] !== 'confirm') {
       return msg.reply(
-        `⚠️ **Cleanup pets** sẽ XÓA ${toDelete.length} pet không có trong code seed mới:\n` +
+        `⚠️ **Cleanup pets** sẽ XÓA ${toDelete.length} pet không có mob drop VÀ không có shard recipe:\n` +
         toDelete.map(p => `   • ${p.icon} ${p.name} \`${p.id}\``).join('\n') +
         `\n\n⚠️ User đang sở hữu pet này sẽ mất vĩnh viễn!\n` +
         `Để xác nhận: \`${prefix}pet admin cleanup confirm\``
@@ -398,4 +402,4 @@ async function handleAdmin(msg, args, prefix) {
   }
 
   return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}pet admin help\``);
-      }
+}
