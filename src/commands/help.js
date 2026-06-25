@@ -84,6 +84,7 @@ module.exports = {
           `\`${prefix}craft admin\` / \`${prefix}cook admin\` tạo/sửa recipe\n` +
           `\`${prefix}shop add/remove/setprice\` chỉnh shop\n` +
           `\`${prefix}setimage <type> <id> <url>\` gán ảnh\n` +
+          `\`${prefix}lootbox\` quản lý hộp quà event\n` +
           `\`${prefix}sla\` quản lý slash commands`,
       });
     }
