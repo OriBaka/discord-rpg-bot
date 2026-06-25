@@ -318,21 +318,32 @@ function getAllPetDrops() {
     LEFT JOIN monsters m ON m.id = pd.monster_id ORDER BY pd.monster_id`).all();
 }
 
-// === Cleanup pet thừa: xóa các pet không có trong default list ===
-// keepList: array các pet_id muốn giữ (default = list trong seed mới)
+// === Cleanup pet thừa: xóa các pet không có nguồn hợp lệ ===
+// "Có nguồn hợp lệ" = có entry trong pet_drops (drop trực tiếp) HOẶC có shard_id (ghép mảnh)
+// keepList: nếu truyền vào thì dùng whitelist đó thay vì auto-detect
 function cleanupExtraPets(keepList = null) {
-  const defaultKeep = [
-    'pet_baby_rat', 'pet_wolf_cub', 'pet_bear_cub', 'pet_bat', 'pet_spider',
-    'pet_baby_scorpion', 'pet_yeti_cub', 'pet_dragonling', 'pet_mini_dragon',
-    'pet_mini_void_dragon', 'pet_slime', 'pet_snowman', 'pet_void_cat',
-  ];
-  const keep = keepList || defaultKeep;
-
   // Lấy tất cả pet hiện có
-  const all = db.prepare('SELECT id FROM pets').all().map(r => r.id);
-  const toDelete = all.filter(id => !keep.includes(id));
+  const all = db.prepare('SELECT id, shard_id, shard_qty FROM pets').all();
 
-  if (toDelete.length === 0) return { deleted: 0, kept: all.length };
+  let toDelete;
+  if (keepList) {
+    // Chế độ whitelist thủ công
+    toDelete = all.filter(p => !keepList.includes(p.id)).map(p => p.id);
+  } else {
+    // Auto-detect: giữ lại pet có drop entry HOẶC có shard recipe
+    const petsWithDrop = new Set(
+      db.prepare('SELECT DISTINCT pet_id FROM pet_drops WHERE pet_id IS NOT NULL').all().map(r => r.pet_id)
+    );
+    toDelete = all
+      .filter(p => {
+        const hasDirectDrop = petsWithDrop.has(p.id);
+        const hasShardRecipe = p.shard_id && p.shard_qty > 0;
+        return !hasDirectDrop && !hasShardRecipe;
+      })
+      .map(p => p.id);
+  }
+
+  if (toDelete.length === 0) return { deleted: 0, kept: all.length, deletedIds: [] };
 
   const delPet = db.prepare('DELETE FROM pets WHERE id = ?');
   const delPlayerPet = db.prepare('DELETE FROM player_pets WHERE pet_id = ?');
