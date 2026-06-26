@@ -1,8 +1,10 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getPlayer, updatePlayer, addItem, removeItem, hasItem } = require('../game/player');
 const { getItem } = require('../game/items');
 const { tierInfo } = require('../game/tiers');
 const db = require('../db/database');
+
+const ITEMS_PER_PAGE = 10;
 
 function isAdmin(msg) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim());
@@ -17,6 +19,48 @@ function getShopList() {
     ORDER BY i.type, s.price`).all();
 }
 
+function renderShopPage(player, page = 0) {
+  const rows = getShopList();
+  if (rows.length === 0) return null;
+
+  const totalPages = Math.ceil(rows.length / ITEMS_PER_PAGE);
+  const start = page * ITEMS_PER_PAGE;
+  const end = start + ITEMS_PER_PAGE;
+  const pageItems = rows.slice(start, end);
+
+  const embed = new EmbedBuilder()
+    .setColor(0xEB459E)
+    .setTitle(`🏪 Cửa Hàng (Trang ${page + 1}/${totalPages})`)
+    .setFooter({ text: `Vàng: ${player.gold} 💰 • ${process.env.PREFIX || '!'}buy  [qty]` });
+
+  const groups = {};
+  for (const r of pageItems) (groups[r.type] = groups[r.type] || []).push(r);
+
+  const labels = { weapon: '🗡️ Vũ khí', armor: '🛡️ Giáp', consumable: '🧪 Tiêu hao', material: '📦 Nguyên liệu' };
+  for (const type of Object.keys(groups)) {
+    const lines = groups[type].map(r => {
+      const emoji = tierInfo(r.tier).emoji;
+      return `${emoji} ${r.name} — **${r.price}** 💰 \`${r.item_id}\``;
+    });
+    embed.addFields({ name: labels[type] || type, value: lines.join('\n').slice(0, 1024) });
+  }
+
+  const buttons = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`shop:prev:${page - 1}`)
+      .setLabel('⬅️ Trước')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(page === 0),
+    new ButtonBuilder()
+      .setCustomId(`shop:next:${page + 1}`)
+      .setLabel('Sau ➡️')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(page >= totalPages - 1)
+  );
+
+  return { embed, buttons, totalPages };
+}
+
 module.exports = {
   name: 'shop',
   aliases: ['store', 'cuahang'],
@@ -26,11 +70,10 @@ module.exports = {
     const sub = (args[0] || '').toLowerCase();
     const p = getPlayer(msg.author.id);
 
-    // ===== Admin: !shop add <id> [price] =====
     if (sub === 'add') {
       if (!isAdmin(msg)) return msg.reply('🚫 Chỉ admin mới được thêm/sửa shop.');
       const id = args[1]; const customPrice = parseInt(args[2]);
-      if (!id) return msg.reply(`❌ Cú pháp: \`${prefix}shop add <item_id> [giá]\``);
+      if (!id) return msg.reply(`❌ Cú pháp: \`${prefix}shop add  [giá]\``);
       const it = getItem(id);
       if (!it) return msg.reply(`❌ Item \`${id}\` không tồn tại.`);
       const price = isNaN(customPrice) ? it.price : customPrice;
@@ -39,67 +82,48 @@ module.exports = {
       return msg.reply(`✅ Đã thêm **${it.name}** vào shop với giá **${price}** 💰`);
     }
 
-    // ===== Admin: !shop remove <id> =====
     if (sub === 'remove' || sub === 'rm' || sub === 'del') {
       if (!isAdmin(msg)) return msg.reply('🚫 Chỉ admin.');
       const id = args[1];
-      if (!id) return msg.reply(`❌ Cú pháp: \`${prefix}shop remove <item_id>\``);
+      if (!id) return msg.reply(`❌ Cú pháp: \`${prefix}shop remove \``);
       const r = db.prepare('DELETE FROM shop WHERE item_id = ?').run(id);
       if (r.changes === 0) return msg.reply('❌ Không có item này trong shop.');
       return msg.reply(`✅ Đã xoá \`${id}\` khỏi shop.`);
     }
 
-    // ===== Admin: !shop setprice <id> <giá> =====
     if (sub === 'setprice' || sub === 'price') {
       if (!isAdmin(msg)) return msg.reply('🚫 Chỉ admin.');
       const id = args[1]; const price = parseInt(args[2]);
       if (!id || isNaN(price) || price <= 0) {
-        return msg.reply(`❌ Cú pháp: \`${prefix}shop setprice <item_id> <giá>\``);
+        return msg.reply(`❌ Cú pháp: \`${prefix}shop setprice  \``);
       }
       const r = db.prepare('UPDATE shop SET price = ? WHERE item_id = ?').run(price, id);
       if (r.changes === 0) return msg.reply('❌ Item chưa có trong shop. Dùng `shop add` trước.');
       return msg.reply(`✅ Đã đặt giá \`${id}\` = **${price}** 💰`);
     }
 
-    // ===== !shop list (mặc định) =====
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước nhé!`);
 
-    const rows = getShopList();
-    if (rows.length === 0) {
-      return msg.reply('🏪 Shop trống! Admin có thể thêm item bằng `shop add <id>`.');
+    const result = renderShopPage(p, 0);
+    if (!result) {
+      return msg.reply('🏪 Shop trống! Admin có thể thêm item bằng `shop add `.');
     }
 
-    // Group theo type
-    const groups = {};
-    for (const r of rows) (groups[r.type] = groups[r.type] || []).push(r);
-
-    const embed = new EmbedBuilder()
-      .setColor(0xEB459E).setTitle('🏪 Cửa Hàng')
-      .setFooter({ text: `Vàng: ${p.gold} 💰 • ${prefix}buy <id> [qty]` });
-
-    const labels = { weapon: '🗡️ Vũ khí', armor: '🛡️ Giáp', consumable: '🧪 Tiêu hao', material: '📦 Nguyên liệu' };
-    for (const type of Object.keys(groups)) {
-      const lines = groups[type].map(r => {
-        const emoji = tierInfo(r.tier).emoji;
-        return `${emoji} ${r.name} — **${r.price}** 💰 \`${r.item_id}\``;
-      });
-      embed.addFields({ name: labels[type] || type, value: lines.join('\n').slice(0, 1024) });
-    }
-    return msg.reply({ embeds: [embed] });
+    return msg.reply({ embeds: [result.embed], components: [result.buttons] });
   },
+  renderShopPage,
 };
 
-// ===== buy =====
 module.exports.buy = {
   name: 'buy',
   aliases: ['mua'],
-  description: 'Mua vật phẩm: !buy <id> [qty]',
+  description: 'Mua vật phẩm: !buy  [qty]',
   async execute(msg, args) {
     const prefix = process.env.PREFIX || '!';
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
     const id = args[0]; const qty = Math.max(1, parseInt(args[1]) || 1);
-    if (!id) return msg.reply(`❌ Cú pháp: \`${prefix}buy <id> [qty]\``);
+    if (!id) return msg.reply(`❌ Cú pháp: \`${prefix}buy  [qty]\``);
 
     const shopRow = db.prepare('SELECT price FROM shop WHERE item_id = ?').get(id);
     if (!shopRow) return msg.reply('❌ Vật phẩm không có trong shop. Gõ `' + prefix + 'shop` để xem.');
@@ -114,17 +138,16 @@ module.exports.buy = {
   },
 };
 
-// ===== sell =====
 module.exports.sell = {
   name: 'sell',
   aliases: ['ban'],
-  description: 'Bán vật phẩm: !sell <id> [qty]',
+  description: 'Bán vật phẩm: !sell  [qty]',
   async execute(msg, args) {
     const prefix = process.env.PREFIX || '!';
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
     const id = args[0]; const qty = Math.max(1, parseInt(args[1]) || 1);
-    if (!id) return msg.reply(`❌ Cú pháp: \`${prefix}sell <id> [qty]\``);
+    if (!id) return msg.reply(`❌ Cú pháp: \`${prefix}sell  [qty]\``);
     const it = getItem(id);
     if (!it) return msg.reply('❌ Sai ID vật phẩm.');
     if (!hasItem(msg.author.id, id, qty)) return msg.reply('❌ Không đủ vật phẩm để bán.');
