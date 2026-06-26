@@ -385,7 +385,7 @@ const definitions = [
     data: new SlashCommandBuilder()
       .setName('admin')
       .setDescription('Lệnh quản trị (chỉ Admin)')
-      .setDefaultMemberPermissions('Administrator')
+      .setDefaultMemberPermissions(8n) // 8 = Administrator permission
       .addSubcommandGroup(group =>
         group.setName('player').setDescription('Quản lý người chơi')
           .addSubcommand(s => s.setName('gold').setDescription('Cộng/trừ vàng')
