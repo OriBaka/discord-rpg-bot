@@ -162,7 +162,6 @@ async function handle(interaction) {
         const res = trade.executeTrade(t2);
         if (!res.ok) {
           trade.setReady(tradeId, side, false);
-          const t3 = trade.getTradeById(tradeId);
           return interaction.reply({ content: `❌ Trade failed: ${res.error}`, ephemeral: true });
         }
         const pA = getPlayer(t2.user_a);
