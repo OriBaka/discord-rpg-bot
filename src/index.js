@@ -7,7 +7,6 @@ process.on('unhandledRejection', (err) => {
   console.error('💥 UNHANDLED REJECTION:', err);
 });
 
-// Ép console không buffer (Railway hay buffer log nodejs)
 process.stdout.write('🚀 [BOOT] index.js bắt đầu chạy...\n');
 
 require('dotenv').config();
@@ -40,7 +39,6 @@ const client = new Client({
 });
 process.stdout.write('🚀 [BOOT] Đã tạo Client\n');
 
-// ===== Load commands =====
 client.commands = new Collection();
 const cmdDir = path.join(__dirname, 'commands');
 
@@ -52,7 +50,6 @@ function registerCommand(cmd) {
 
 process.stdout.write(`🚀 [BOOT] Bắt đầu load commands từ ${cmdDir}\n`);
 const cmdFiles = fs.readdirSync(cmdDir).filter(f => f.endsWith('.js'));
-process.stdout.write(`🚀 [BOOT] Tìm thấy ${cmdFiles.length} file command\n`);
 
 for (const file of cmdFiles) {
   try {
@@ -71,12 +68,9 @@ for (const file of cmdFiles) {
 
 console.log(`✅ Đã load ${new Set(client.commands.values()).size} lệnh.`);
 
-// ===== Events =====
 client.once('ready', async () => {
   console.log(`🤖 Bot online với tên ${client.user.tag}`);
   client.user.setActivity(`${PREFIX}help | /me | RPG cày cuốc`);
-
-  // Deploy slash commands
   try {
     const { deploySlashCommands } = require('./slash/deploy');
     await deploySlashCommands(client);
@@ -88,12 +82,10 @@ client.once('ready', async () => {
 client.on('messageCreate', async (msg) => {
   if (msg.author.bot) return;
   if (!msg.content.startsWith(PREFIX)) return;
-
   const args = msg.content.slice(PREFIX.length).trim().split(/\s+/);
   const name = (args.shift() || '').toLowerCase();
   const cmd = client.commands.get(name);
   if (!cmd) return;
-
   try {
     await cmd.execute(msg, args);
   } catch (err) {
@@ -102,49 +94,28 @@ client.on('messageCreate', async (msg) => {
   }
 });
 
-// ===== Interactions: Buttons + Slash + Autocomplete =====
 const buttonHandler = require('./buttons');
+const menuHandler = require('./menus');
 const slashHandler = require('./slash/handler');
 
 client.on('interactionCreate', async (interaction) => {
-  // Buttons
   if (interaction.isButton()) {
-    try {
-      await buttonHandler.handle(interaction);
-    } catch (err) {
-      console.error('[button handler]', err);
-      if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: '⚠️ Lỗi xử lý nút.', ephemeral: true }).catch(()=>{});
-      }
-    }
+    try { await buttonHandler.handle(interaction); } catch (err) { console.error('[button]', err); }
     return;
   }
-
-  // Slash commands
+  if (interaction.isStringSelectMenu()) {
+    try { await menuHandler.handle(interaction); } catch (err) { console.error('[menu]', err); }
+    return;
+  }
   if (interaction.isChatInputCommand()) {
-    try {
-      await slashHandler.handleCommand(interaction, client);
-    } catch (err) {
-      console.error('[slash command]', err);
-    }
+    try { await slashHandler.handleCommand(interaction, client); } catch (err) { console.error('[slash]', err); }
     return;
   }
-
-  // Autocomplete
   if (interaction.isAutocomplete()) {
-    try {
-      await slashHandler.handleAutocomplete(interaction);
-    } catch (err) {
-      console.error('[autocomplete]', err);
-    }
+    try { await slashHandler.handleAutocomplete(interaction); } catch (err) { console.error('[auto]', err); }
     return;
   }
 });
 
 process.stdout.write('🚀 [BOOT] Đang gọi client.login()...\n');
-client.login(TOKEN)
-  .then(() => process.stdout.write('🚀 [BOOT] client.login() resolved!\n'))
-  .catch(err => {
-    console.error('❌ LOGIN FAIL:', err);
-    process.exit(1);
-  });
+client.login(TOKEN).catch(err => console.error('❌ LOGIN FAIL:', err));
