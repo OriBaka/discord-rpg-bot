@@ -379,6 +379,130 @@ const definitions = [
     data: new SlashCommandBuilder().setName('help').setDescription('Hướng dẫn các lệnh'),
     handler: simpleHandler('help'),
   },
+
+  // ====== ADMIN (Slash Admin) ======
+  {
+    data: new SlashCommandBuilder()
+      .setName('admin')
+      .setDescription('Lệnh quản trị (chỉ Admin)')
+      .setDefaultMemberPermissions('Administrator')
+      .addSubcommandGroup(group =>
+        group.setName('player').setDescription('Quản lý người chơi')
+          .addSubcommand(s => s.setName('gold').setDescription('Cộng/trừ vàng')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true))
+            .addIntegerOption(o => o.setName('amount').setDescription('Số vàng (+/-)').setRequired(true)))
+          .addSubcommand(s => s.setName('xp').setDescription('Cộng XP')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true))
+            .addIntegerOption(o => o.setName('amount').setDescription('Số XP').setRequired(true)))
+          .addSubcommand(s => s.setName('item').setDescription('Tặng item')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true))
+            .addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true).setAutocomplete(true))
+            .addIntegerOption(o => o.setName('qty').setDescription('Số lượng').setRequired(false)))
+          .addSubcommand(s => s.setName('takeitem').setDescription('Lấy lại item')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true))
+            .addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true).setAutocomplete(true))
+            .addIntegerOption(o => o.setName('qty').setDescription('Số lượng').setRequired(false)))
+          .addSubcommand(s => s.setName('sethp').setDescription('Set HP')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true))
+            .addIntegerOption(o => o.setName('hp').setDescription('HP mới').setRequired(true)))
+          .addSubcommand(s => s.setName('setlevel').setDescription('Set level')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true))
+            .addIntegerOption(o => o.setName('level').setDescription('Level mới (1-100)').setRequired(true)))
+          .addSubcommand(s => s.setName('heal').setDescription('Hồi đầy HP')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true)))
+          .addSubcommand(s => s.setName('reset').setDescription('Xoá nhân vật')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true)))
+          .addSubcommand(s => s.setName('look').setDescription('Xem chi tiết người chơi')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true)))
+          .addSubcommand(s => s.setName('stats').setDescription('Thống kê server')))
+      .addSubcommandGroup(group =>
+        group.setName('class').setDescription('Quản lý class')
+          .addSubcommand(s => s.setName('give').setDescription('Unlock class cho user')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true))
+            .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES)))
+          .addSubcommand(s => s.setName('take').setDescription('Lock class của user')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true))
+            .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES)))
+          .addSubcommand(s => s.setName('set').setDescription('Đổi class chính')
+            .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true))
+            .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES)))
+          .addSubcommand(s => s.setName('lock').setDescription('Khoá class toàn server')
+            .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES))
+            .addStringOption(o => o.setName('reason').setDescription('Lý do').setRequired(false)))
+          .addSubcommand(s => s.setName('unlock').setDescription('Mở khoá class')
+            .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES))))
+      .addSubcommandGroup(group =>
+        group.setName('channel').setDescription('Quản lý kênh thông báo')
+          .addSubcommand(s => s.setName('set').setDescription('Set kênh thông báo')
+            .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true)
+              .addChoices(
+                { name: 'quest', value: 'quest' },
+                { name: 'achievement', value: 'achievement' },
+                { name: 'levelup', value: 'levelup' },
+                { name: 'announce', value: 'announce' }
+              ))
+            .addChannelOption(o => o.setName('channel').setDescription('Kênh').setRequired(true)))
+          .addSubcommand(s => s.setName('unset').setDescription('Bỏ kênh thông báo')
+            .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true)
+              .addChoices(
+                { name: 'quest', value: 'quest' },
+                { name: 'achievement', value: 'achievement' },
+                { name: 'levelup', value: 'levelup' },
+                { name: 'announce', value: 'announce' }
+              )))
+          .addSubcommand(s => s.setName('list').setDescription('Xem các kênh đã set')))
+      .addSubcommand(s => s.setName('announce').setDescription('Gửi thông báo')
+        .addStringOption(o => o.setName('message').setDescription('Nội dung thông báo').setRequired(true))),
+    handler: { cmdName: 'admin', extractArgs: (i) => {
+      const group = i.options.getSubcommandGroup(false);
+      const sub = i.options.getSubcommand();
+
+      if (group === 'player') {
+        const user = i.options.getUser('user');
+        if (sub === 'gold') return ['gold', user, i.options.getInteger('amount')];
+        if (sub === 'xp') return ['xp', user, i.options.getInteger('amount')];
+        if (sub === 'item') {
+          const qty = i.options.getInteger('qty');
+          return qty ? ['item', user, i.options.getString('item'), qty] : ['item', user, i.options.getString('item')];
+        }
+        if (sub === 'takeitem') {
+          const qty = i.options.getInteger('qty');
+          return qty ? ['takeitem', user, i.options.getString('item'), qty] : ['takeitem', user, i.options.getString('item')];
+        }
+        if (sub === 'sethp') return ['sethp', user, i.options.getInteger('hp')];
+        if (sub === 'setlevel') return ['setlevel', user, i.options.getInteger('level')];
+        if (sub === 'heal') return ['heal', user];
+        if (sub === 'reset') return ['reset', user];
+        if (sub === 'look') return ['look', user];
+        if (sub === 'stats') return ['stats'];
+      }
+
+      if (group === 'class') {
+        const user = i.options.getUser('user');
+        const cls = i.options.getString('class');
+        const reason = i.options.getString('reason');
+        if (sub === 'give') return ['giveclass', user, cls];
+        if (sub === 'take') return ['takeclass', user, cls];
+        if (sub === 'set') return ['setclass', user, cls];
+        if (sub === 'lock') return ['classlock', cls, reason];
+        if (sub === 'unlock') return ['classunlock', cls];
+      }
+
+      if (group === 'channel') {
+        const type = i.options.getString('type');
+        const ch = i.options.getChannel('channel');
+        if (sub === 'set') return ['channel', 'set', type, ch];
+        if (sub === 'unset') return ['channel', 'unset', type];
+        if (sub === 'list') return ['channel', 'list'];
+      }
+
+      if (sub === 'announce') {
+        return ['announce', i.options.getString('message')];
+      }
+
+      return [];
+    }},
+  },
 ];
 
 module.exports = { definitions };
