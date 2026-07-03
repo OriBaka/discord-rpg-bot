@@ -1,6 +1,7 @@
 // Auto-deploy slash commands tới Discord khi bot ready
 const { REST, Routes } = require('discord.js');
 const { definitions } = require('./definitions');
+const { definitions: adminDefs } = require('./admin_definitions');
 
 async function deploySlashCommands(client) {
   const token = process.env.DISCORD_TOKEN;
@@ -10,7 +11,9 @@ async function deploySlashCommands(client) {
     return;
   }
 
-  const cmds = definitions.map(d => d.data.toJSON());
+  // Merge player + admin definitions
+  const allDefs = [...definitions, ...adminDefs];
+  const cmds = allDefs.map(d => d.data.toJSON());
   const rest = new REST({ version: '10' }).setToken(token);
 
   // GUILD_ID mode (deploy nhanh, chỉ 1 server) hoặc GLOBAL (~1h sync)
