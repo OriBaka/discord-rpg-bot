@@ -531,9 +531,23 @@ const ROUTES = {
   slashadm: routeSlashadm,
 };
 
+// Check admin: dùng env ADMIN_IDS + owner + Administrator permission
+function isAdminInteraction(interaction) {
+  const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (adminIds.includes(interaction.user.id)) return true;
+  if (interaction.guild && interaction.guild.ownerId === interaction.user.id) return true;
+  if (interaction.member?.permissions?.has?.('Administrator')) return true;
+  return false;
+}
+
 async function handle(interaction, client) {
   const router = ROUTES[interaction.commandName];
   if (!router) return null; // Không phải admin slash
+
+  // Check quyền admin trước khi làm gì
+  if (!isAdminInteraction(interaction)) {
+    return interaction.reply({ content: '🚫 Bạn không có quyền dùng lệnh admin.', ephemeral: true });
+  }
 
   // Defer
   try {
