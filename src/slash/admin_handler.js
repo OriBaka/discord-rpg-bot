@@ -65,6 +65,23 @@ function routeAdm(interaction) {
       const text = interaction.options.getString('text');
       return { cmdName: 'admin', args: ['announce', ...text.split(' ')] };
     }
+    case 'cdlist':
+      return { cmdName: 'admin', args: ['cd', 'list'] };
+    case 'cdset': {
+      const action = interaction.options.getString('action');
+      const ms = interaction.options.getInteger('ms');
+      return { cmdName: 'admin', args: ['cd', 'set', action, String(ms)] };
+    }
+    case 'cdreset': {
+      const action = interaction.options.getString('action');
+      return { cmdName: 'admin', args: ['cd', 'reset', action] };
+    }
+    case 'cdresetall':
+      return { cmdName: 'admin', args: ['cd', 'resetall'] };
+    case 'shopreset': {
+      const confirm = interaction.options.getBoolean('confirm');
+      return { cmdName: 'admin', args: ['shopreset', confirm ? 'confirm' : ''] };
+    }
   }
 }
 
