@@ -4,8 +4,27 @@ const { getItem } = require('../game/items');
 const jobs = require('../game/jobs');
 const gz = require('../game/gather_zones');
 const { tierInfo } = require('../game/tiers');
+const settings = require('../game/settings');
 
 const JOB = 'fishing';
+
+function resolveFishCd(zone) {
+  const override = settings.getCdOverride('fishing', zone.id) ?? settings.getCdOverride('fishing');
+  return override ?? zone.cooldown_ms;
+}
+
+function hasTool(userId, weaponType) {
+  const db = require('../db/database');
+  return db.prepare(`
+    SELECT i.id, i.tier FROM inventory inv
+    JOIN items i ON i.id = inv.item_id
+    WHERE inv.user_id=? AND i.weapon_type=? AND inv.qty > 0
+  `).all(userId, weaponType);
+}
+
+function tierBonusMult(tier) {
+  return { common: 1.0, rare: 1.15, epic: 1.3, legendary: 1.5 }[tier] || 1.0;
+}
 
 function formatTime(ms) {
   const s = Math.ceil(ms / 1000);
@@ -56,11 +75,26 @@ module.exports = {
       return msg.reply(`🔒 **${zone.name}** yêu cầu Fishing Lv.${zone.min_job_level} (bạn Lv.${job.level}).`);
     }
 
-    const remain = jobs.getCooldownRemaining(msg.author.id, JOB, zone.cooldown_ms);
+    // Check tool: cần fishing rod
+    const rods = hasTool(msg.author.id, 'fishing_rod');
+    if (rods.length === 0) {
+      return msg.reply(`🎣 Bạn cần **Fishing Rod** để câu! Mua ở shop (\`${process.env.PREFIX || '%'}shop\`).`);
+    }
+    const bestRod = rods.sort((a, b) => {
+      const order = { legendary: 4, epic: 3, rare: 2, common: 1 };
+      return (order[b.tier] || 0) - (order[a.tier] || 0);
+    })[0];
+    const mult = tierBonusMult(bestRod.tier);
+
+    const cdMs = resolveFishCd(zone);
+    const remain = jobs.getCooldownRemaining(msg.author.id, JOB, cdMs);
     if (remain > 0) return msg.reply(`⏳ Còn **${formatTime(remain)}** nữa mới câu tiếp được.`);
 
     jobs.setCooldown(msg.author.id, JOB);
     const drops = gz.rollDrops(zoneId);
+    for (const d of drops) {
+      d.qty = Math.max(1, Math.round(d.qty * mult));
+    }
 
     let dropText = '';
     if (drops.length === 0) {
@@ -86,4 +120,4 @@ module.exports = {
       .setFooter({ text: `+${zone.base_xp} Fishing XP • Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     return msg.reply({ embeds: [embed] });
   },
-}; 
+};
