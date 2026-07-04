@@ -57,15 +57,8 @@ async function handle(interaction) {
       }
     }
 
-    // === /mobadm ===
+    // === /mobadm (monster CRUD, không còn group zone) ===
     if (cmdName === 'mobadm') {
-      const group = interaction.options.getSubcommandGroup(false);
-      if (group === 'zone') {
-        if (optName === 'id') {
-          const zones = db.prepare('SELECT id, name FROM zones ORDER BY name LIMIT 100').all();
-          return interaction.respond(filterChoices(zones.map(z => toChoice(z.id, z.name)), input));
-        }
-      }
       if (optName === 'id' || optName === 'mob') {
         const mobs = db.prepare('SELECT id, name FROM monsters ORDER BY name LIMIT 100').all();
         return interaction.respond(filterChoices(mobs.map(m => toChoice(m.id, m.name)), input));
@@ -77,6 +70,14 @@ async function handle(interaction) {
       if (optName === 'item') {
         const items = db.prepare('SELECT id, name FROM items ORDER BY name LIMIT 200').all();
         return interaction.respond(filterChoices(items.map(i => toChoice(i.id, i.name)), input));
+      }
+    }
+
+    // === /mobzone (zone CRUD, tách khỏi /mobadm) ===
+    if (cmdName === 'mobzone') {
+      if (optName === 'id') {
+        const zones = db.prepare('SELECT id, name FROM zones ORDER BY name LIMIT 100').all();
+        return interaction.respond(filterChoices(zones.map(z => toChoice(z.id, z.name)), input));
       }
     }
 
