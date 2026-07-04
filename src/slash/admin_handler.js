@@ -26,50 +26,7 @@ function kvString(obj) {
 
 // /adm — Player admin actions (dùng lệnh %admin ...)
 function routeAdm(interaction) {
-  const group = interaction.options.getSubcommandGroup(false);
   const sub = interaction.options.getSubcommand();
-
-  // === Class subcommand group ===
-  if (group === 'class') {
-    const cls = interaction.options.getString('class');
-    if (sub === 'lock') {
-      const reason = interaction.options.getString('reason') || '';
-      return { cmdName: 'admin', args: ['classlock', cls, ...reason.split(' ').filter(Boolean)] };
-    }
-    if (sub === 'unlock') {
-      return { cmdName: 'admin', args: ['classunlock', cls] };
-    }
-    if (sub === 'give') {
-      const u = interaction.options.getUser('user');
-      return { cmdName: 'admin', args: ['giveclass', u, cls], _users: [u] };
-    }
-    if (sub === 'take') {
-      const u = interaction.options.getUser('user');
-      return { cmdName: 'admin', args: ['takeclass', u, cls], _users: [u] };
-    }
-    if (sub === 'set') {
-      const u = interaction.options.getUser('user');
-      return { cmdName: 'admin', args: ['setclass', u, cls], _users: [u] };
-    }
-  }
-
-  // === Channel subcommand group ===
-  if (group === 'channel') {
-    if (sub === 'list') return { cmdName: 'admin', args: ['channel', 'list'] };
-    const type = interaction.options.getString('type');
-    if (sub === 'set') {
-      const ch = interaction.options.getChannel('channel');
-      // Nếu có mention channel → thay msg.mentions.channels
-      return {
-        cmdName: 'admin',
-        args: ['channel', 'set', type, ch ? `<#${ch.id}>` : ''],
-        _channels: ch ? [ch] : [],
-      };
-    }
-    if (sub === 'unset') {
-      return { cmdName: 'admin', args: ['channel', 'unset', type] };
-    }
-  }
 
   // === Player actions (no group) ===
   const u = interaction.options.getUser('user');
@@ -108,6 +65,51 @@ function routeAdm(interaction) {
       const text = interaction.options.getString('text');
       return { cmdName: 'admin', args: ['announce', ...text.split(' ')] };
     }
+  }
+}
+
+// /admclass — Class management (dùng %admin classlock/classunlock/giveclass/takeclass/setclass)
+function routeAdmclass(interaction) {
+  const sub = interaction.options.getSubcommand();
+  const cls = interaction.options.getString('class');
+
+  if (sub === 'lock') {
+    const reason = interaction.options.getString('reason') || '';
+    return { cmdName: 'admin', args: ['classlock', cls, ...reason.split(' ').filter(Boolean)] };
+  }
+  if (sub === 'unlock') {
+    return { cmdName: 'admin', args: ['classunlock', cls] };
+  }
+  if (sub === 'give') {
+    const u = interaction.options.getUser('user');
+    return { cmdName: 'admin', args: ['giveclass', u, cls], _users: [u] };
+  }
+  if (sub === 'take') {
+    const u = interaction.options.getUser('user');
+    return { cmdName: 'admin', args: ['takeclass', u, cls], _users: [u] };
+  }
+  if (sub === 'set') {
+    const u = interaction.options.getUser('user');
+    return { cmdName: 'admin', args: ['setclass', u, cls], _users: [u] };
+  }
+}
+
+// /admchannel — Channel notify (dùng %admin channel set/unset/list)
+function routeAdmchannel(interaction) {
+  const sub = interaction.options.getSubcommand();
+
+  if (sub === 'list') return { cmdName: 'admin', args: ['channel', 'list'] };
+  const type = interaction.options.getString('type');
+  if (sub === 'set') {
+    const ch = interaction.options.getChannel('channel');
+    return {
+      cmdName: 'admin',
+      args: ['channel', 'set', type, ch ? `<#${ch.id}>` : ''],
+      _channels: ch ? [ch] : [],
+    };
+  }
+  if (sub === 'unset') {
+    return { cmdName: 'admin', args: ['channel', 'unset', type] };
   }
 }
 
@@ -157,24 +159,7 @@ function routeItemadm(interaction) {
 
 // /mobadm — Monster & Zone CRUD
 function routeMobadm(interaction) {
-  const group = interaction.options.getSubcommandGroup(false);
   const sub = interaction.options.getSubcommand();
-
-  if (group === 'zone') {
-    const id = interaction.options.getString('id');
-    if (sub === 'delete') return { cmdName: 'mob', args: ['zone', 'delete', id] };
-    const kv = {
-      name: interaction.options.getString('name'),
-      minlv: interaction.options.getInteger('minlv'),
-      desc: interaction.options.getString('desc'),
-    };
-    const kvStr = kvString(kv);
-    return {
-      cmdName: 'mob',
-      args: ['zone', sub, id],
-      _rawContent: `%mob zone ${sub} ${id} ${kvStr}`,
-    };
-  }
 
   // Monster
   if (sub === 'delete') return { cmdName: 'mob', args: ['delete', interaction.options.getString('id')] };
@@ -208,6 +193,24 @@ function routeMobadm(interaction) {
     cmdName: 'mob',
     args: [sub, id],
     _rawContent: `%mob ${sub} ${id} ${kvStr}`,
+  };
+}
+
+// /mobzone — Zone management (tách khỏi /mobadm vì Discord không cho mix sub + group)
+function routeMobzone(interaction) {
+  const sub = interaction.options.getSubcommand();
+  const id = interaction.options.getString('id');
+  if (sub === 'delete') return { cmdName: 'mob', args: ['zone', 'delete', id] };
+  const kv = {
+    name: interaction.options.getString('name'),
+    minlv: interaction.options.getInteger('minlv'),
+    desc: interaction.options.getString('desc'),
+  };
+  const kvStr = kvString(kv);
+  return {
+    cmdName: 'mob',
+    args: ['zone', sub, id],
+    _rawContent: `%mob zone ${sub} ${id} ${kvStr}`,
   };
 }
 
@@ -518,9 +521,12 @@ function routeSlashadm(interaction) {
 // ============================================================
 const ROUTES = {
   adm: routeAdm,
+  admclass: routeAdmclass,
+  admchannel: routeAdmchannel,
   shopadm: routeShopadm,
   itemadm: routeItemadm,
   mobadm: routeMobadm,
+  mobzone: routeMobzone,
   questadm: routeQuestadm,
   achadm: routeAchadm,
   petadm: routePetadm,
@@ -541,11 +547,16 @@ function isAdminInteraction(interaction) {
 }
 
 async function handle(interaction, client) {
+  console.log(`[admin slash] IN: /${interaction.commandName} by ${interaction.user?.username} (${interaction.user?.id})`);
   const router = ROUTES[interaction.commandName];
-  if (!router) return null; // Không phải admin slash
+  if (!router) {
+    console.log(`[admin slash] NO ROUTER for /${interaction.commandName}`);
+    return null;
+  }
 
-  // Check quyền admin trước khi làm gì
-  if (!isAdminInteraction(interaction)) {
+  const isAdm = isAdminInteraction(interaction);
+  console.log(`[admin slash] isAdmin=${isAdm} | ADMIN_IDS=${process.env.ADMIN_IDS} | ownerId=${interaction.guild?.ownerId} | userId=${interaction.user?.id}`);
+  if (!isAdm) {
     return interaction.reply({ content: '🚫 Bạn không có quyền dùng lệnh admin.', ephemeral: true });
   }
 
