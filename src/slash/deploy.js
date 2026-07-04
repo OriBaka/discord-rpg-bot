@@ -62,8 +62,27 @@ async function deploySlashCommands(client) {
   }
 
   if (guildId) {
-    // === SKIP clear guild — tránh rate limit ===
-    // (Deploy PUT sẽ tự thay thế list cũ bằng list mới, không cần clear trước)
+    // === Check nếu slash hiện tại đã khớp → skip để tránh rate limit ===
+    try {
+      const existing = await withTimeout(
+        rest.get(Routes.applicationGuildCommands(clientId, guildId)),
+        15_000,
+        'GET existing commands'
+      );
+      const existingNames = new Set((existing || []).map(c => c.name));
+      const newNames = new Set(cmds.map(c => c.name));
+      const same = existingNames.size === newNames.size && [...newNames].every(n => existingNames.has(n));
+      if (same) {
+        log(`✅ [slash] Slash đã sync (${existing.length} commands). Skip deploy để tránh rate limit.`);
+        log(`   Nếu muốn force redeploy: gõ %sla redeploy trong Discord.`);
+        log(`🔵 [slash deploy] DONE (skipped)`);
+        return;
+      }
+      log(`🔄 [slash] Slash khác (existing=${existing.length}, new=${cmds.length}) → deploy...`);
+    } catch (err) {
+      log(`⚠️ [slash] GET existing failed, proceed with deploy: ${err.message}`);
+    }
+
     log(`🚀 [slash] Deploying ${cmds.length} commands to guild ${guildId} (batch PUT, timeout 45s)...`);
     try {
       const result = await withTimeout(
