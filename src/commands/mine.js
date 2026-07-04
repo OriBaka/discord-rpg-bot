@@ -4,8 +4,30 @@ const { getItem } = require('../game/items');
 const jobs = require('../game/jobs');
 const gz = require('../game/gather_zones');
 const { tierInfo } = require('../game/tiers');
+const settings = require('../game/settings');
 
 const JOB = 'mining';
+
+// Resolve cooldown: override cd_mining_<zone> > cd_mining > zone.cooldown_ms
+function resolveMineCd(zone) {
+  const override = settings.getCdOverride('mining', zone.id) ?? settings.getCdOverride('mining');
+  return override ?? zone.cooldown_ms;
+}
+
+// Check tool: player phải có ít nhất 1 pickaxe trong inventory
+function hasTool(userId, weaponType) {
+  const db = require('../db/database');
+  return db.prepare(`
+    SELECT i.id, i.tier FROM inventory inv
+    JOIN items i ON i.id = inv.item_id
+    WHERE inv.user_id=? AND i.weapon_type=? AND inv.qty > 0
+  `).all(userId, weaponType);
+}
+
+// Tier bonus: pickaxe cao hơn = qty +% khi drop
+function tierBonusMult(tier) {
+  return { common: 1.0, rare: 1.15, epic: 1.3, legendary: 1.5 }[tier] || 1.0;
+}
 
 function formatTime(ms) {
   const s = Math.ceil(ms / 1000);
@@ -62,8 +84,21 @@ module.exports = {
       return msg.reply(`🔒 Khu vực **${zone.name}** yêu cầu Mining Lv.${zone.min_job_level} (bạn Lv.${job.level}).`);
     }
 
+    // Check tool: cần pickaxe
+    const picks = hasTool(msg.author.id, 'pickaxe');
+    if (picks.length === 0) {
+      return msg.reply(`⛏️ Bạn cần **Pickaxe** để đào! Mua ở shop (\`${process.env.PREFIX || '%'}shop\`).`);
+    }
+    // Chọn pickaxe tier cao nhất
+    const bestPick = picks.sort((a, b) => {
+      const order = { legendary: 4, epic: 3, rare: 2, common: 1 };
+      return (order[b.tier] || 0) - (order[a.tier] || 0);
+    })[0];
+    const mult = tierBonusMult(bestPick.tier);
+
     // Check cooldown
-    const remain = jobs.getCooldownRemaining(msg.author.id, JOB, zone.cooldown_ms);
+    const cdMs = resolveMineCd(zone);
+    const remain = jobs.getCooldownRemaining(msg.author.id, JOB, cdMs);
     if (remain > 0) {
       return msg.reply(`⏳ Còn **${formatTime(remain)}** nữa mới đào tiếp được.`);
     }
@@ -71,6 +106,10 @@ module.exports = {
     // Set cooldown & roll drops
     jobs.setCooldown(msg.author.id, JOB);
     const drops = gz.rollDrops(zoneId);
+    // Apply tool bonus qty
+    for (const d of drops) {
+      d.qty = Math.max(1, Math.round(d.qty * mult));
+    }
 
     // Apply drops
     let dropText = '';
@@ -98,4 +137,4 @@ module.exports = {
       .setFooter({ text: `+${zone.base_xp} Mining XP • Total Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     return msg.reply({ embeds: [embed] });
   },
-}; 
+};
