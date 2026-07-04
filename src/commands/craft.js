@@ -7,12 +7,86 @@ const recipes = require('../game/recipes');
 const jobs = require('../game/jobs');
 const { tierInfo } = require('../game/tiers');
 const { getRestTokens, parseKV } = require('../game/argparse');
+const paginator = require('../game/paginator');
 
 function isAdmin(msg) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim());
   return adminIds.includes(msg.author.id)
       || (msg.guild && msg.guild.ownerId === msg.author.id)
       || (msg.member && msg.member.permissions?.has('Administrator'));
+}
+
+// Classify recipe theo loại output → filter category
+function classifyRecipe(recipe) {
+  const out = getItem(recipe.output_id);
+  if (!out) return 'other';
+  if (out.type === 'consumable') return 'consumable';
+  if (out.type === 'material') return 'material';
+  if (out.type === 'weapon') {
+    const wt = out.weapon_type || '';
+    if (wt === 'pickaxe' || wt === 'fishing_rod') return 'tool';
+    return 'weapon';
+  }
+  if (out.type === 'armor') return 'armor';
+  if (out.type === 'accessory') return 'accessory';
+  return 'other';
+}
+
+// Filter options cho craft (loại đa dạng)
+const CRAFT_FILTERS = [
+  { key: 'all',        label: 'All',        emoji: '📜' },
+  { key: 'material',   label: 'Ingot',      emoji: '📦' },
+  { key: 'weapon',     label: 'Weapon',     emoji: '⚔️' },
+  { key: 'armor',      label: 'Armor',      emoji: '🛡️' },
+  { key: 'tool',       label: 'Tool',       emoji: '⛏️' },
+];
+
+// Filter options cho cook (chỉ có consumable, không cần filter → 1 nhóm All)
+const COOK_FILTERS = [
+  { key: 'all', label: 'All', emoji: '🍽️' },
+];
+
+function formatRecipeLine(msg, r, jobLevel) {
+  const out = getItem(r.output_id);
+  const inputs = recipes.parseInputs(r);
+  const inputStr = inputs.map(i => {
+    const it = getItem(i.item_id);
+    return `${i.qty}× ${it?.name || i.item_id}`;
+  }).join(', ');
+  const locked = jobLevel < r.min_job_level ? ' 🔒' : '';
+  const have = inputs.every(i => hasItem(msg.author.id, i.item_id, i.qty)) ? ' ✨' : '';
+  const t = tierInfo(out?.tier || 'common');
+  return `\`${r.id}\` **${r.name}** (Lv.${r.min_job_level}+)${locked}${have}\n   📋 ${inputStr}\n   → ${t.emoji} ${out?.name || r.output_id} ×${r.output_qty} (+${r.xp_gain} XP)`;
+}
+
+// Build & send page (dùng cho lần đầu + button click)
+function renderRecipesPage({ msg, userId, type, filter, page, jobLevel, replyFn }) {
+  const jobType = type === 'craft' ? 'crafting' : 'cooking';
+  const icon = type === 'craft' ? '⚒️' : '👨‍🍳';
+  const color = type === 'craft' ? 0xE67E22 : 0xF1C40F;
+  const filterOpts = type === 'craft' ? CRAFT_FILTERS : COOK_FILTERS;
+
+  const all = recipes.getRecipesByType(type);
+  const filtered = filter === 'all' ? all : all.filter(r => classifyRecipe(r) === filter);
+  // Sort by min_job_level asc
+  filtered.sort((a, b) => a.min_job_level - b.min_job_level || a.id.localeCompare(b.id));
+
+  const prefix = process.env.PREFIX || '!';
+  const filterLabel = filterOpts.find(f => f.key === filter)?.label || 'All';
+  const { embed, components } = paginator.build({
+    domain: type, // 'craft' or 'cook'
+    userId,
+    items: filtered,
+    filter,
+    filterOptions: filterOpts,
+    page,
+    title: `${icon} ${type === 'craft' ? 'Crafting' : 'Cooking'} Recipes — ${filterLabel} — Lv.${jobLevel}`,
+    color,
+    formatItem: (r) => formatRecipeLine(msg, r, jobLevel),
+    footer: `${prefix}${type} <recipe_id> để làm • ✨ đủ NL, 🔒 thiếu lv`,
+  });
+
+  return replyFn({ embeds: [embed], components });
 }
 
 // Handler chính, type = 'craft' | 'cook'
@@ -36,29 +110,16 @@ async function handleCommand(msg, args, type) {
     return handleAdmin(msg, args.slice(1), prefix, type);
   }
 
-  // ===== list / recipes =====
+  // ===== list / recipes (paginated) =====
   if (sub === 'list' || sub === 'recipes' || !sub) {
-    const all = recipes.getRecipesByType(type);
-    if (all.length === 0) return msg.reply(`💡 Chưa có recipe ${type} nào.`);
-
-    const lines = all.map(r => {
-      const out = getItem(r.output_id);
-      const inputs = recipes.parseInputs(r);
-      const inputStr = inputs.map(i => {
-        const it = getItem(i.item_id);
-        return `${i.qty}× ${it?.name || i.item_id}`;
-      }).join(', ');
-      const locked = job.level < r.min_job_level ? ' 🔒' : '';
-      const have = inputs.every(i => hasItem(msg.author.id, i.item_id, i.qty)) ? ' ✨' : '';
-      return `\`${r.id}\` **${r.name}** (Lv.${r.min_job_level}+)${locked}${have}\n   📋 ${inputStr}\n   → ${out?.name || r.output_id} ×${r.output_qty} (+${r.xp_gain} XP)`;
+    // Có thể pass filter qua arg: %craft list weapon
+    const filterArg = (args[1] || 'all').toLowerCase();
+    const filterOpts = type === 'craft' ? CRAFT_FILTERS : COOK_FILTERS;
+    const filter = filterOpts.find(f => f.key === filterArg) ? filterArg : 'all';
+    return renderRecipesPage({
+      msg, userId: msg.author.id, type, filter, page: 0, jobLevel: job.level,
+      replyFn: (opts) => msg.reply(opts),
     });
-    const text = lines.join('\n\n');
-
-    const embed = new EmbedBuilder().setColor(color)
-      .setTitle(`${icon} ${type === 'craft' ? 'Crafting' : 'Cooking'} Recipes — Lv.${job.level}`)
-      .setDescription(text.slice(0, 4000))
-      .setFooter({ text: `${prefix}${type} <recipe_id> để ${verbDo.toLowerCase()} • ✨ = đủ nguyên liệu` });
-    return msg.reply({ embeds: [embed] });
   }
 
   // ===== execute recipe =====
@@ -196,4 +257,7 @@ module.exports.cook = {
   aliases: ['nau'],
   description: 'Nấu ăn từ recipe. !cook list, !cook <id>',
   async execute(msg, args) { return handleCommand(msg, args, 'cook'); },
-}; 
+};
+
+// Export helper cho button handler (page navigation)
+module.exports.renderRecipesPage = renderRecipesPage;
