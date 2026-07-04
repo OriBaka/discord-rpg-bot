@@ -11,7 +11,9 @@ const achievements = require('../game/achievements');
 const channels = require('../game/channels');
 const pets = require('../game/pets');
 
-const COOLDOWN_MS = 30 * 1000;
+const DEFAULT_COOLDOWN_MS = 30 * 1000;
+const settings = require('../game/settings');
+function getCooldown() { return settings.getCdOverride('hunt') ?? DEFAULT_COOLDOWN_MS; }
 
 module.exports = {
   name: 'hunt',
@@ -43,7 +45,7 @@ module.exports = {
       return msg.reply(`💀 Bạn đang gục! Dùng \`${prefix}heal\` hoặc \`${prefix}daily\` để hồi.`);
     }
     const now = Date.now();
-    const remain = COOLDOWN_MS - (now - p.last_hunt);
+    const remain = getCooldown() - (now - p.last_hunt);
     if (remain > 0) {
       return msg.reply(`⏳ Còn **${Math.ceil(remain/1000)}s** nữa mới được đi săn tiếp.`);
     }
