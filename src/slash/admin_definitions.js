@@ -134,7 +134,16 @@ const definitions = [
         .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
       .addSubcommand(s => s.setName('stats').setDescription('Thống kê server'))
       .addSubcommand(s => s.setName('announce').setDescription('Gửi thông báo (vào kênh notify hoặc kênh hiện tại)')
-        .addStringOption(o => o.setName('text').setDescription('Nội dung').setRequired(true))),
+        .addStringOption(o => o.setName('text').setDescription('Nội dung').setRequired(true)))
+      .addSubcommand(s => s.setName('cdlist').setDescription('Xem cooldown overrides'))
+      .addSubcommand(s => s.setName('cdset').setDescription('Set cooldown override (ms)')
+        .addStringOption(o => o.setName('action').setDescription('hunt/heal/mining/fishing/mining_<zone>/...').setRequired(true))
+        .addIntegerOption(o => o.setName('ms').setDescription('Milliseconds').setRequired(true).setMinValue(0)))
+      .addSubcommand(s => s.setName('cdreset').setDescription('Reset 1 cooldown về default')
+        .addStringOption(o => o.setName('action').setDescription('action key').setRequired(true)))
+      .addSubcommand(s => s.setName('cdresetall').setDescription('Reset toàn bộ cooldown overrides'))
+      .addSubcommand(s => s.setName('shopreset').setDescription('⚠️ WIPE shop & reseed với gear/tool mốc 1-50')
+        .addBooleanOption(o => o.setName('confirm').setDescription('Xác nhận').setRequired(true))),
     handler: 'adm',
   },
 
