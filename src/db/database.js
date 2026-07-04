@@ -147,6 +147,10 @@ migrateLootbox();
 const { migrate: migrateRedeem } = require('../game/redeem');
 migrateRedeem();
 
+// Settings (cooldown overrides, etc)
+const { migrate: migrateSettings } = require('../game/settings');
+migrateSettings();
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
