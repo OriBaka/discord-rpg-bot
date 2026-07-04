@@ -72,7 +72,7 @@ for (const file of cmdFiles) {
 console.log(`✅ Đã load ${new Set(client.commands.values()).size} lệnh.`);
 
 // ===== Events =====
-client.once('clientReady', async () => {
+client.once('ready', async () => {
   console.log(`🤖 Bot online với tên ${client.user.tag}`);
   client.user.setActivity(`${PREFIX}help | /me | RPG cày cuốc`);
 
