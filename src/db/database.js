@@ -143,6 +143,10 @@ migrateImages();
 const { migrate: migrateLootbox } = require('../game/lootbox');
 migrateLootbox();
 
+// Redeem code system
+const { migrate: migrateRedeem } = require('../game/redeem');
+migrateRedeem();
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
