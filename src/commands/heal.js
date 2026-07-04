@@ -1,7 +1,9 @@
 const db = require('../db/database');
 const { getPlayer, updatePlayer } = require('../game/player');
 
-const HEAL_CD_MS = 10 * 60 * 1000; // 10 phút
+const DEFAULT_HEAL_CD_MS = 10 * 60 * 1000; // 10 phút
+const settings = require('../game/settings');
+function getHealCd() { return settings.getCdOverride('heal') ?? DEFAULT_HEAL_CD_MS; }
 
 // Đảm bảo cột last_heal tồn tại (migrate nhẹ)
 try {
@@ -31,7 +33,7 @@ module.exports = {
     // Check cooldown
     const now = Date.now();
     const lastHeal = p.last_heal || 0;
-    const remain = HEAL_CD_MS - (now - lastHeal);
+    const remain = getHealCd() - (now - lastHeal);
     if (remain > 0) {
       return msg.reply(
         `⏳ Quán trọ đang đông khách! Còn **${formatRemain(remain)}** nữa mới được nghỉ tiếp.\n` +
