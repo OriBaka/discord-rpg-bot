@@ -184,6 +184,89 @@ module.exports = {
       return msg.reply(`🔓 Đã mở khoá class **${CLASSES[cid].name}**.`);
     }
 
+    // ===== Shop reset (không cần target) =====
+    if (sub === 'shopreset' || sub === 'resetshop') {
+      const confirm = args[1];
+      if (confirm !== 'confirm') {
+        return msg.reply(
+          `⚠️ Lệnh này sẽ **XOÁ TOÀN BỘ shop hiện tại** và seed lại với:\n` +
+          `• 5 potions (small → elixir)\n` +
+          `• 6 pickaxes (LV1/10/20/30/40/50)\n` +
+          `• 6 fishing rods (LV1/10/20/30/40/50)\n` +
+          `• 18 weapons (6 mốc × 3 class: melee/magic/ranged)\n` +
+          `• 6 armor chest (LV1/10/20/30/40/50)\n\n` +
+          `**Items cũ vẫn còn trong DB** (player đang có vẫn dùng được).\n\n` +
+          `Gõ \`${prefix}admin shopreset confirm\` để xác nhận.`
+        );
+      }
+      const { reseedShop } = require('../game/shop_reseed');
+      const r = reseedShop();
+      return msg.reply(
+        `✅ Shop đã reseed!\n` +
+        `• +${r.itemsAdded} items mới\n` +
+        `• Shop có ${r.shopAdded} entries\n\n` +
+        `Kiểm tra bằng \`${prefix}shop\`.`
+      );
+    }
+
+    // ===== Cooldown override (không cần target) =====
+    if (sub === 'cd' || sub === 'cooldown') {
+      const settings = require('../game/settings');
+      const action = args[1];
+
+      if (!action || action === 'list') {
+        const all = settings.all().filter(r => r.key.startsWith('cd_'));
+        if (all.length === 0) {
+          return msg.reply(
+            `⚙️ **Cooldown overrides:** (dùng default)\n\n` +
+            `**Default:**\n• hunt: 30s\n• heal: 10m\n• mining/fishing: theo zone\n\n` +
+            `**Cú pháp:**\n` +
+            `\`${prefix}admin cd set <action> <ms>\` — set override\n` +
+            `\`${prefix}admin cd reset <action>\` — bỏ override\n` +
+            `\`${prefix}admin cd resetall\` — bỏ hết\n\n` +
+            `**Ví dụ:**\n` +
+            `\`${prefix}admin cd set hunt 10000\` (10s)\n` +
+            `\`${prefix}admin cd set heal 60000\` (1 phút)\n` +
+            `\`${prefix}admin cd set mining 5000\` (5s cho mọi mining zone)\n` +
+            `\`${prefix}admin cd set mining_iron_mine 3000\` (3s cho zone iron_mine)`
+          );
+        }
+        const lines = all.map(r => {
+          const ms = parseInt(r.value);
+          const sec = ms / 1000;
+          const label = sec < 60 ? `${sec}s` : `${(sec/60).toFixed(1)}m`;
+          return `\`${r.key}\` = ${ms}ms (${label})`;
+        });
+        return msg.reply({ embeds: [new EmbedBuilder().setColor(0xEB459E)
+          .setTitle('⚙️ Cooldown overrides')
+          .setDescription(lines.join('\n'))
+          .setFooter({ text: `${prefix}admin cd help để xem cú pháp` })] });
+      }
+
+      if (action === 'set') {
+        const key = args[2];
+        const ms = parseInt(args[3]);
+        if (!key || !ms || ms < 0) return msg.reply(`❌ Cú pháp: \`${prefix}admin cd set <action> <ms>\`\nVD: \`${prefix}admin cd set hunt 10000\``);
+        settings.set('cd_' + key, ms, msg.author.id);
+        const sec = ms / 1000;
+        return msg.reply(`✅ Đã set cooldown \`${key}\` = **${ms}ms** (${sec < 60 ? sec + 's' : (sec/60).toFixed(1) + 'm'}).`);
+      }
+
+      if (action === 'reset') {
+        const key = args[2];
+        if (!key) return msg.reply(`❌ Cú pháp: \`${prefix}admin cd reset <action>\``);
+        const ok = settings.remove('cd_' + key);
+        return msg.reply(ok ? `✅ Đã reset \`cd_${key}\` về default.` : `❌ Không có override cho \`${key}\`.`);
+      }
+
+      if (action === 'resetall') {
+        const n = settings.clearAllCooldowns();
+        return msg.reply(`✅ Đã reset ${n} cooldown overrides về default.`);
+      }
+
+      return msg.reply(`❌ Sub không hợp lệ. Dùng: list / set / reset / resetall`);
+    }
+
     // ===== Các lệnh cần target =====
     const target = resolveTarget(msg, args[1]);
     if (!target) {
