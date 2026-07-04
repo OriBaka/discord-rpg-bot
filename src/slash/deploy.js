@@ -21,7 +21,14 @@ async function deploySlashCommands(client) {
 
   try {
     if (guildId) {
-      // Mode GUILD: deploy tới guild + XÓA global (tránh duplicate)
+      // Mode GUILD: CLEAR guild trước để xoá command rác từ deploy cũ, sau đó deploy fresh
+      console.log(`🧹 [slash] Clearing guild ${guildId} trước khi deploy (xoá rác cũ)...`);
+      try {
+        await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] });
+      } catch (err) {
+        console.error('[slash deploy] Failed to clear guild:', err.message);
+      }
+
       console.log(`🚀 [slash] Deploying ${cmds.length} commands to guild ${guildId}...`);
       await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: cmds });
       console.log(`✅ [slash] Deployed to guild!`);
@@ -38,7 +45,7 @@ async function deploySlashCommands(client) {
         console.error('[slash deploy] Failed to clear global:', err.message);
       }
     } else {
-      // Mode GLOBAL: deploy global
+      // Mode GLOBAL: deploy global (Discord tự xoá command cũ không có trong body)
       console.log(`🚀 [slash] Deploying ${cmds.length} commands GLOBALLY (may take up to 1 hour)...`);
       await rest.put(Routes.applicationCommands(clientId), { body: cmds });
       console.log(`✅ [slash] Deployed globally!`);
