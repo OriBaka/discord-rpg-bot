@@ -134,32 +134,48 @@ const definitions = [
         .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
       .addSubcommand(s => s.setName('stats').setDescription('Thống kê server'))
       .addSubcommand(s => s.setName('announce').setDescription('Gửi thông báo (vào kênh notify hoặc kênh hiện tại)')
-        .addStringOption(o => o.setName('text').setDescription('Nội dung').setRequired(true)))
-      // === Class management ===
-      .addSubcommandGroup(g => g.setName('class').setDescription('Quản lý class')
-        .addSubcommand(s => s.setName('lock').setDescription('Khoá class toàn server')
-          .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES))
-          .addStringOption(o => o.setName('reason').setDescription('Lý do').setRequired(false)))
-        .addSubcommand(s => s.setName('unlock').setDescription('Mở khoá class')
-          .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES)))
-        .addSubcommand(s => s.setName('give').setDescription('Unlock class cho user')
-          .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
-          .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES)))
-        .addSubcommand(s => s.setName('take').setDescription('Lock class của user')
-          .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
-          .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES)))
-        .addSubcommand(s => s.setName('set').setDescription('Đổi class chính của user')
-          .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
-          .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES))))
-      // === Channel notify ===
-      .addSubcommandGroup(g => g.setName('channel').setDescription('Quản lý channel notify')
-        .addSubcommand(s => s.setName('set').setDescription('Set channel notify')
-          .addStringOption(o => o.setName('type').setDescription('Loại notify').setRequired(true).addChoices(...CHANNEL_TYPE_CHOICES))
-          .addChannelOption(o => o.setName('channel').setDescription('Kênh (mặc định = channel hiện tại)').setRequired(false)))
-        .addSubcommand(s => s.setName('unset').setDescription('Bỏ channel notify')
-          .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true).addChoices(...CHANNEL_TYPE_CHOICES)))
-        .addSubcommand(s => s.setName('list').setDescription('Xem các channel đã set'))),
+        .addStringOption(o => o.setName('text').setDescription('Nội dung').setRequired(true))),
     handler: 'adm',
+  },
+
+  // ============================================================
+  // /admclass — Class management (tách khỏi /adm vì Discord không cho mix sub + group)
+  // ============================================================
+  {
+    data: new SlashCommandBuilder()
+      .setName('admclass')
+      .setDescription('Admin: quản lý class (lock/unlock/give/take/set)')
+      .addSubcommand(s => s.setName('lock').setDescription('Khoá class toàn server')
+        .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES))
+        .addStringOption(o => o.setName('reason').setDescription('Lý do').setRequired(false)))
+      .addSubcommand(s => s.setName('unlock').setDescription('Mở khoá class')
+        .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES)))
+      .addSubcommand(s => s.setName('give').setDescription('Unlock class cho user')
+        .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
+        .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES)))
+      .addSubcommand(s => s.setName('take').setDescription('Lock class của user')
+        .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
+        .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES)))
+      .addSubcommand(s => s.setName('set').setDescription('Đổi class chính của user')
+        .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
+        .addStringOption(o => o.setName('class').setDescription('Class').setRequired(true).addChoices(...CLASS_CHOICES))),
+    handler: 'admclass',
+  },
+
+  // ============================================================
+  // /admchannel — Channel notify (tách khỏi /adm)
+  // ============================================================
+  {
+    data: new SlashCommandBuilder()
+      .setName('admchannel')
+      .setDescription('Admin: quản lý channel notify')
+      .addSubcommand(s => s.setName('set').setDescription('Set channel notify')
+        .addStringOption(o => o.setName('type').setDescription('Loại notify').setRequired(true).addChoices(...CHANNEL_TYPE_CHOICES))
+        .addChannelOption(o => o.setName('channel').setDescription('Kênh (mặc định = channel hiện tại)').setRequired(false)))
+      .addSubcommand(s => s.setName('unset').setDescription('Bỏ channel notify')
+        .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true).addChoices(...CHANNEL_TYPE_CHOICES)))
+      .addSubcommand(s => s.setName('list').setDescription('Xem các channel đã set')),
+    handler: 'admchannel',
   },
 
   // ============================================================
@@ -256,21 +272,30 @@ const definitions = [
         .addIntegerOption(o => o.setName('qty').setDescription('Số lượng').setRequired(false).setMinValue(1)))
       .addSubcommand(s => s.setName('undrop').setDescription('Xoá drop')
         .addStringOption(o => o.setName('mob').setDescription('Monster ID').setRequired(true).setAutocomplete(true))
-        .addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true).setAutocomplete(true)))
-      .addSubcommandGroup(g => g.setName('zone').setDescription('Quản lý zone quái')
-        .addSubcommand(s => s.setName('create').setDescription('Tạo zone mới')
-          .addStringOption(o => o.setName('id').setDescription('ID').setRequired(true))
-          .addStringOption(o => o.setName('name').setDescription('Tên').setRequired(true))
-          .addIntegerOption(o => o.setName('minlv').setDescription('Level yêu cầu').setRequired(false).setMinValue(1))
-          .addStringOption(o => o.setName('desc').setDescription('Mô tả').setRequired(false)))
-        .addSubcommand(s => s.setName('edit').setDescription('Sửa zone')
-          .addStringOption(o => o.setName('id').setDescription('Zone ID').setRequired(true).setAutocomplete(true))
-          .addStringOption(o => o.setName('name').setDescription('Tên').setRequired(false))
-          .addIntegerOption(o => o.setName('minlv').setDescription('Level').setRequired(false).setMinValue(1))
-          .addStringOption(o => o.setName('desc').setDescription('Mô tả').setRequired(false)))
-        .addSubcommand(s => s.setName('delete').setDescription('Xoá zone')
-          .addStringOption(o => o.setName('id').setDescription('Zone ID').setRequired(true).setAutocomplete(true)))),
+        .addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true).setAutocomplete(true))),
     handler: 'mobadm',
+  },
+
+  // ============================================================
+  // /mobzone — Zone management (tách khỏi /mobadm)
+  // ============================================================
+  {
+    data: new SlashCommandBuilder()
+      .setName('mobzone')
+      .setDescription('Admin: quản lý zone quái')
+      .addSubcommand(s => s.setName('create').setDescription('Tạo zone mới')
+        .addStringOption(o => o.setName('id').setDescription('ID').setRequired(true))
+        .addStringOption(o => o.setName('name').setDescription('Tên').setRequired(true))
+        .addIntegerOption(o => o.setName('minlv').setDescription('Level yêu cầu').setRequired(false).setMinValue(1))
+        .addStringOption(o => o.setName('desc').setDescription('Mô tả').setRequired(false)))
+      .addSubcommand(s => s.setName('edit').setDescription('Sửa zone')
+        .addStringOption(o => o.setName('id').setDescription('Zone ID').setRequired(true).setAutocomplete(true))
+        .addStringOption(o => o.setName('name').setDescription('Tên').setRequired(false))
+        .addIntegerOption(o => o.setName('minlv').setDescription('Level').setRequired(false).setMinValue(1))
+        .addStringOption(o => o.setName('desc').setDescription('Mô tả').setRequired(false)))
+      .addSubcommand(s => s.setName('delete').setDescription('Xoá zone')
+        .addStringOption(o => o.setName('id').setDescription('Zone ID').setRequired(true).setAutocomplete(true))),
+    handler: 'mobzone',
   },
 
   // ============================================================
