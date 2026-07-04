@@ -184,6 +184,31 @@ module.exports = {
       return msg.reply(`🔓 Đã mở khoá class **${CLASSES[cid].name}**.`);
     }
 
+    // ===== High-tier seed (T60-T100 gear + recipes + drops) =====
+    if (sub === 'hightierseed' || sub === 'htseed') {
+      const confirm = args[1];
+      if (confirm !== 'confirm') {
+        return msg.reply(
+          `⚠️ Lệnh này sẽ seed **items + recipes tier 60-100** vào DB:\n` +
+          `• 4 materials mới (diamond_ingot, void_essence, void_ingot, dragon_scale)\n` +
+          `• 27 gear items (15 weapons + 5 armor + 4 pickaxes + 4 rods, tier 60-100)\n` +
+          `• 34 recipes craft mới\n` +
+          `• 2 drops mới: void_essence (Void Pool 8%), dragon_scale (Dragon Mine 15%)\n\n` +
+          `Dùng \`INSERT OR IGNORE\` — an toàn, không đè existing.\n\n` +
+          `Gõ \`${prefix}admin hightierseed confirm\` để xác nhận.`
+        );
+      }
+      const { seedHighTier } = require('../game/high_tier_seed');
+      const r = seedHighTier();
+      return msg.reply(
+        `✅ Seed T60-T100 xong!\n` +
+        `• +${r.itemsAdded} items mới\n` +
+        `• +${r.recipesAdded} recipes mới\n` +
+        `• +${r.dropsAdded} gather drops mới\n\n` +
+        `Player check bằng \`${prefix}craft\` để xem list recipes.`
+      );
+    }
+
     // ===== Shop reset (không cần target) =====
     if (sub === 'shopreset' || sub === 'resetshop') {
       const confirm = args[1];
