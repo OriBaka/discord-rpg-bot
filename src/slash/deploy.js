@@ -37,7 +37,11 @@ async function deploySlashCommands(client) {
   const totalSize = JSON.stringify(cmds).length;
   log(`🔵 [slash deploy] Total payload size: ${totalSize} bytes (${(totalSize/1024).toFixed(1)} KB)`);
 
-  const rest = new REST({ version: '10' }).setToken(token);
+  const rest = new REST({
+    version: '10',
+    timeout: 30_000,      // 30s per request (default 15s có thể ngắn quá khi rate limited)
+    retries: 1,           // Chỉ retry 1 lần (default 3 có thể làm log im lặng lâu)
+  }).setToken(token);
   const guildId = process.env.SLASH_GUILD_ID;
 
   function logDeployError(err, phase) {
@@ -49,31 +53,41 @@ async function deploySlashCommands(client) {
     }
   }
 
-  if (guildId) {
-    // === Clear guild trước ===
-    log(`🧹 [slash] Clearing guild ${guildId}...`);
-    try {
-      await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: [] });
-      log(`✅ [slash] Cleared guild.`);
-    } catch (err) {
-      logDeployError(err, 'Clear guild');
-    }
+  // Wrap Promise với timeout để không hang vô hạn
+  function withTimeout(promise, ms, label) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error(`Timeout after ${ms}ms: ${label}`)), ms)),
+    ]);
+  }
 
-    // === Deploy batch ===
-    log(`🚀 [slash] Deploying ${cmds.length} commands to guild ${guildId} (batch PUT)...`);
+  if (guildId) {
+    // === SKIP clear guild — tránh rate limit ===
+    // (Deploy PUT sẽ tự thay thế list cũ bằng list mới, không cần clear trước)
+    log(`🚀 [slash] Deploying ${cmds.length} commands to guild ${guildId} (batch PUT, timeout 45s)...`);
     try {
-      const result = await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: cmds });
+      const result = await withTimeout(
+        rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: cmds }),
+        45_000,
+        'PUT guild commands'
+      );
       const count = Array.isArray(result) ? result.length : '?';
       log(`✅ [slash] BATCH DEPLOYED! Discord returned ${count} commands.`);
+      if (Array.isArray(result) && result.length > 0) {
+        log(`   First 5 names: ${result.slice(0, 5).map(c => '/' + c.name).join(', ')}`);
+      }
     } catch (err) {
       logDeployError(err, 'Batch deploy');
 
-      // === Retry từng command ===
-      log(`🔎 [slash] Batch fail → Retry từng command để tìm lỗi...`);
+      log(`🔎 [slash] Batch fail → Retry từng command (timeout 10s each)...`);
       let ok = 0, fail = 0;
       for (const c of cmds) {
         try {
-          await rest.post(Routes.applicationGuildCommands(clientId, guildId), { body: c });
+          await withTimeout(
+            rest.post(Routes.applicationGuildCommands(clientId, guildId), { body: c }),
+            10_000,
+            `POST /${c.name}`
+          );
           log(`  ✓ /${c.name}`);
           ok++;
         } catch (e2) {
@@ -85,12 +99,20 @@ async function deploySlashCommands(client) {
       log(`🔎 [slash] Retry done: ${ok} OK, ${fail} FAIL`);
     }
 
-    // === Clear global (nếu có rác) ===
+    // Clear global (nếu có rác)
     try {
-      const globalCmds = await rest.get(Routes.applicationCommands(clientId));
+      const globalCmds = await withTimeout(
+        rest.get(Routes.applicationCommands(clientId)),
+        15_000,
+        'GET global commands'
+      );
       if (Array.isArray(globalCmds) && globalCmds.length > 0) {
         log(`🧹 [slash] Phát hiện ${globalCmds.length} global commands cũ → xoá...`);
-        await rest.put(Routes.applicationCommands(clientId), { body: [] });
+        await withTimeout(
+          rest.put(Routes.applicationCommands(clientId), { body: [] }),
+          15_000,
+          'PUT clear global'
+        );
         log(`✅ [slash] Đã xoá global commands.`);
       }
     } catch (err) {
@@ -99,7 +121,11 @@ async function deploySlashCommands(client) {
   } else {
     log(`🚀 [slash] Deploying ${cmds.length} commands GLOBALLY (may take up to 1 hour)...`);
     try {
-      await rest.put(Routes.applicationCommands(clientId), { body: cmds });
+      await withTimeout(
+        rest.put(Routes.applicationCommands(clientId), { body: cmds }),
+        45_000,
+        'PUT global commands'
+      );
       log(`✅ [slash] Deployed globally!`);
     } catch (err) {
       logDeployError(err, 'Deploy global');
