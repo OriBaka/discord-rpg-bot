@@ -155,6 +155,10 @@ migrateSettings();
 const { migrate: migrateLevelReq } = require('../game/level_req');
 migrateLevelReq();
 
+// Turn-based battle system
+const { migrate: migrateBattle } = require('../game/battle');
+migrateBattle();
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
