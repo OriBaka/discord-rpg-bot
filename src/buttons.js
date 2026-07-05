@@ -213,6 +213,7 @@ async function handle(interaction) {
           filter: decoded.filter,
           page: decoded.page,
           playerGold: p?.gold || 0,
+          playerLevel: p?.level || 1,
           replyFn: (opts) => interaction.update(opts),
         });
       }
