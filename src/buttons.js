@@ -234,6 +234,60 @@ async function handle(interaction) {
     return interaction.deferUpdate().catch(() => {});
   }
 
+  // ============================================================
+  // AGAIN BUTTON: again:<cmd>:<userId>:<argsEncoded>
+  // ============================================================
+  if (domain === 'again') {
+    try {
+      const again = require('./game/again_button');
+      const decoded = again.decodeCustomId(customId);
+      if (!decoded) {
+        return interaction.reply({ content: '❌ Invalid again id.', ephemeral: true });
+      }
+      if (interaction.user.id !== decoded.userId) {
+        return interaction.reply({ content: '❌ Chỉ người gọi lệnh mới nhấn được. Gõ lệnh riêng của bạn.', ephemeral: true });
+      }
+
+      const cmd = interaction.client.commands.get(decoded.cmd);
+      if (!cmd) {
+        return interaction.reply({ content: `❌ Command \`${decoded.cmd}\` không tìm thấy.`, ephemeral: true });
+      }
+
+      // Defer để bot chạy command mới (nó sẽ msg.reply với embed + button riêng)
+      await interaction.deferUpdate().catch(() => {});
+
+      // Build fake msg giả từ interaction
+      const fakeMsg = {
+        author: interaction.user,
+        member: interaction.member,
+        guild: interaction.guild,
+        channel: interaction.channel,
+        client: interaction.client,
+        mentions: { users: { first: () => null }, channels: { first: () => null } },
+        reply: (opts) => {
+          // Send message mới trong channel (không reply-tag để đỡ noise)
+          const payload = typeof opts === 'string' ? { content: opts } : opts;
+          return interaction.channel.send(payload);
+        },
+      };
+
+      await cmd.execute(fakeMsg, decoded.args);
+
+      // Xóa row Again ở message cũ để tránh spam / conflict
+      try {
+        await interaction.message.edit({ components: [] });
+      } catch { /* ignore */ }
+    } catch (err) {
+      console.error('[again handler]', err);
+      const msg = `⚠️ Again error: \`${err.message}\``;
+      if (interaction.replied || interaction.deferred) {
+        return interaction.followUp({ content: msg, ephemeral: true }).catch(() => {});
+      }
+      return interaction.reply({ content: msg, ephemeral: true }).catch(() => {});
+    }
+    return;
+  }
+
   // Unknown
   return interaction.reply({ content: '❌ Action không xác định: ' + customId, ephemeral: true });
 }
