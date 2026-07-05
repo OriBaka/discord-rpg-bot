@@ -5,22 +5,24 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const PER_PAGE = 8;
 
 // Stateless: encode toàn bộ state vào customId
-// Format: page:<domain>:<userId>:<filter>:<page>
-// VD: page:craft:123456789:weapon:0
-// Filter=all → hiện tất cả. Filter khác = filter key
+// Format: page:<kind>:<domain>:<userId>:<filter>:<page>
+//   kind = 'f' (filter click, page=0) hoặc 'n' (nav click, giữ filter)
+// VD: page:n:craft:123:all:1 (next page)
+//     page:f:craft:123:weapon:0 (switch filter)
 
-function encodeCustomId(domain, userId, filter, page) {
-  return `page:${domain}:${userId}:${filter}:${page}`;
+function encodeCustomId(domain, userId, filter, page, kind = 'n') {
+  return `page:${kind}:${domain}:${userId}:${filter}:${page}`;
 }
 
 function decodeCustomId(customId) {
   const parts = customId.split(':');
   if (parts[0] !== 'page') return null;
   return {
-    domain: parts[1],
-    userId: parts[2],
-    filter: parts[3],
-    page: parseInt(parts[4]) || 0,
+    kind: parts[1],
+    domain: parts[2],
+    userId: parts[3],
+    filter: parts[4],
+    page: parseInt(parts[5]) || 0,
   };
 }
 
@@ -64,7 +66,7 @@ function build({ domain, userId, items, filter, filterOptions, page, title, colo
       const isCurrent = opt.key === filter;
       filterRow.addComponents(
         new ButtonBuilder()
-          .setCustomId(encodeCustomId(domain, userId, opt.key, 0))
+          .setCustomId(encodeCustomId(domain, userId, opt.key, 0, 'f'))
           .setLabel(opt.label)
           .setEmoji(opt.emoji || '📁')
           .setStyle(isCurrent ? ButtonStyle.Primary : ButtonStyle.Secondary)
@@ -78,7 +80,7 @@ function build({ domain, userId, items, filter, filterOptions, page, title, colo
   if (maxPage > 0) {
     const navRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(encodeCustomId(domain, userId, filter, page - 1))
+        .setCustomId(encodeCustomId(domain, userId, filter, page - 1, 'n'))
         .setEmoji('◀️')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(page <= 0),
@@ -88,7 +90,7 @@ function build({ domain, userId, items, filter, filterOptions, page, title, colo
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(true),
       new ButtonBuilder()
-        .setCustomId(encodeCustomId(domain, userId, filter, page + 1))
+        .setCustomId(encodeCustomId(domain, userId, filter, page + 1, 'n'))
         .setEmoji('▶️')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(page >= maxPage),
