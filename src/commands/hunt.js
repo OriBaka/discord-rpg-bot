@@ -170,6 +170,7 @@ module.exports = {
       });
     }
 
-    return msg.reply({ embeds: [embed] });
+    const { buildAgainRow } = require('../game/again_button');
+    return msg.reply({ embeds: [embed], components: [buildAgainRow('hunt', msg.author.id, args)] });
   },
 };
