@@ -2,9 +2,73 @@
 const { EmbedBuilder } = require('discord.js');
 const pvp = require('./game/pvp');
 const trade = require('./game/trade');
-const { getPlayer, updatePlayer } = require('./game/player');
+const { getPlayer, updatePlayer, addItem, addXpAndLevel } = require('./game/player');
 const duelCmd = require('./commands/duel');
 const tradeCmd = require('./commands/trade');
+
+// Finalize battle: apply loot, XP, update player HP
+async function finalizeBattle(interaction, battleRow, log) {
+  const db = require('./db/database');
+  const player = getPlayer(battleRow.user_a);
+  const winner = battleRow.winner;
+
+  const summary = [];
+  summary.push(...(log || []));
+  summary.push('---');
+
+  // Update player HP to remaining
+  const finalHp = Math.max(0, battleRow.hp_a);
+  updatePlayer(battleRow.user_a, { hp: finalHp });
+
+  if (winner === 'a') {
+    // WIN — apply loot
+    if (battleRow.mode === 'pve') {
+      const mob = db.prepare('SELECT * FROM monsters WHERE id=?').get(battleRow.monster_id);
+      const eliteMult = battleRow.is_elite === 2 ? 2 : (battleRow.is_elite === 1 ? 1.5 : 1);
+      const goldRange = [mob.gold_min, mob.gold_max];
+      const gold = Math.floor((Math.random() * (goldRange[1] - goldRange[0] + 1) + goldRange[0]) * eliteMult);
+      updatePlayer(battleRow.user_a, { gold: player.gold + gold, hp: finalHp });
+      const xpGained = Math.floor(mob.xp * eliteMult);
+      const xpRes = addXpAndLevel(battleRow.user_a, xpGained);
+
+      summary.push(`🏆 **VICTORY!**`);
+      summary.push(`💰 +${gold} gold • ✨ +${xpGained} XP`);
+      if (xpRes.levelsGained && xpRes.levelsGained.length > 0) {
+        summary.push(`🎉 **LEVEL UP!** Đạt LV${xpRes.level}`);
+      }
+
+      // Drop items
+      const drops = db.prepare('SELECT * FROM monster_drops WHERE monster_id=?').all(battleRow.monster_id);
+      const drops2 = [];
+      for (const d of drops) {
+        if (Math.random() < d.chance) {
+          const qty = d.qty || 1;
+          addItem(battleRow.user_a, d.item_id, qty);
+          const it = db.prepare('SELECT name FROM items WHERE id=?').get(d.item_id);
+          drops2.push(`📦 +${qty}× ${it?.name || d.item_id}`);
+        }
+      }
+      if (drops2.length > 0) summary.push(drops2.join('\n'));
+    } else {
+      summary.push(`🏆 **VICTORY!** Bạn thắng duel!`);
+    }
+  } else if (winner === 'b') {
+    summary.push(`💀 **DEFEATED!** Bạn thua...`);
+    // HP đã = 0 rồi
+  } else if (winner === 'flee_a') {
+    summary.push(`🏃 Bạn đã chạy thoát.`);
+  } else {
+    summary.push(`⚔️ Battle kết thúc.`);
+  }
+
+  const finalEmbed = new EmbedBuilder()
+    .setColor(winner === 'a' ? 0x2ECC71 : (winner === 'b' ? 0xE74C3C : 0x95A5A6))
+    .setTitle(winner === 'a' ? '🏆 Victory' : (winner === 'b' ? '💀 Defeat' : '⚔️ Battle End'))
+    .setDescription(summary.join('\n').slice(0, 4000))
+    .setFooter({ text: `Battle #${battleRow.id} • HP còn: ${finalHp}` });
+
+  return interaction.update({ embeds: [finalEmbed], components: [] });
+}
 
 async function handle(interaction) {
   const customId = interaction.customId;
@@ -232,6 +296,82 @@ async function handle(interaction) {
   // Info button (disabled label giữa nav — chỉ để display)
   if (customId.startsWith('page_info')) {
     return interaction.deferUpdate().catch(() => {});
+  }
+
+  // ============================================================
+  // BATTLE BUTTONS: bt:act:<battleId>:<skillId>
+  // ============================================================
+  if (domain === 'bt' && action === 'act') {
+    try {
+      const battleModule = require('./game/battle');
+      const battleCmd = require('./commands/battle');
+      const db = require('./db/database');
+      const battleId = parseInt(rest[0]);
+      const skillId = rest[1];
+
+      const battleRow = battleModule.getBattle(battleId);
+      if (!battleRow) return interaction.reply({ content: '❌ Battle không tồn tại.', ephemeral: true });
+      if (battleRow.status !== 'active') return interaction.reply({ content: '❌ Battle đã kết thúc.', ephemeral: true });
+      if (battleRow.user_a !== interaction.user.id && battleRow.user_b !== interaction.user.id) {
+        return interaction.reply({ content: '❌ Không phải trận của bạn.', ephemeral: true });
+      }
+      // Check turn của user
+      const isSideA = battleRow.user_a === interaction.user.id;
+      if (isSideA && battleRow.turn !== 'a') return interaction.reply({ content: '⏳ Chưa đến turn của bạn.', ephemeral: true });
+      if (!isSideA && battleRow.turn !== 'b') return interaction.reply({ content: '⏳ Chưa đến turn của bạn.', ephemeral: true });
+
+      // Chặn boss actions
+      if (['roar', 'rage'].includes(skillId)) {
+        return interaction.reply({ content: '❌ Skill này chỉ boss dùng được.', ephemeral: true });
+      }
+
+      // Check class có skill này không (loại tránh melee dùng fireball chẳng hạn)
+      const skills = require('./game/skills');
+      const skill = skills.getSkill(skillId);
+      if (!skill) return interaction.reply({ content: '❌ Skill không tồn tại.', ephemeral: true });
+      const player = require('./game/player').getPlayer(interaction.user.id);
+      if (skill.class && skill.class !== (player.primary_class || 'melee')) {
+        return interaction.reply({ content: `❌ Skill này dành cho class ${skill.class}, bạn là ${player.primary_class || 'chưa chọn'}.`, ephemeral: true });
+      }
+
+      // Process action
+      const result = battleModule.processAction(battleRow, isSideA ? 'a' : 'b', skillId);
+      if (result.error) {
+        return interaction.reply({ content: `❌ ${result.error}`, ephemeral: true });
+      }
+
+      // Reload battle after action
+      let updated = battleModule.getBattle(battleId);
+
+      // Kiểm tra battle end
+      if (updated.status === 'ended') {
+        return await finalizeBattle(interaction, updated, result.log);
+      }
+
+      // Nếu PvE: bot đi mob turn ngay
+      if (updated.mode === 'pve') {
+        const mobAction = battleModule.pickMobAction(updated);
+        const mobResult = battleModule.processAction(updated, 'b', mobAction);
+        updated = battleModule.getBattle(battleId);
+        if (updated.status === 'ended') {
+          return await finalizeBattle(interaction, updated, [...result.log, '---', ...mobResult.log]);
+        }
+      }
+
+      // Update embed
+      const mob = db.prepare('SELECT name FROM monsters WHERE id=?').get(updated.monster_id);
+      const player2 = require('./game/player').getPlayer(updated.user_a);
+      const embed = battleCmd.buildBattleEmbed(updated, player2.name, mob?.name || 'Mob');
+      const rows = battleCmd.buildActionButtons(battleId, player2.primary_class || 'melee');
+      return await interaction.update({ embeds: [embed], components: rows });
+    } catch (err) {
+      console.error('[battle button]', err);
+      const msg = `⚠️ Battle error: \`${err.message}\``;
+      if (interaction.replied || interaction.deferred) {
+        return interaction.followUp({ content: msg, ephemeral: true }).catch(() => {});
+      }
+      return interaction.reply({ content: msg, ephemeral: true }).catch(() => {});
+    }
   }
 
   // ============================================================
