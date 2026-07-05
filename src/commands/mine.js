@@ -18,7 +18,7 @@ function resolveMineCd(zone) {
 function hasTool(userId, weaponType) {
   const db = require('../db/database');
   return db.prepare(`
-    SELECT i.id, i.tier FROM inventory inv
+    SELECT i.id, i.name, i.tier, i.min_level FROM inventory inv
     JOIN items i ON i.id = inv.item_id
     WHERE inv.user_id=? AND i.weapon_type=? AND inv.qty > 0
   `).all(userId, weaponType);
@@ -89,8 +89,15 @@ module.exports = {
     if (picks.length === 0) {
       return msg.reply(`⛏️ Bạn cần **Pickaxe** để đào! Mua ở shop (\`${process.env.PREFIX || '%'}shop\`).`);
     }
-    // Chọn pickaxe tier cao nhất
-    const bestPick = picks.sort((a, b) => {
+    // Chỉ dùng pickaxe mà player đủ LV
+    const usable = picks.filter(pk => (pk.min_level || 0) <= p.level);
+    if (usable.length === 0) {
+      // Có pickaxe nhưng thiếu lv → báo pickaxe thấp nhất cần
+      const lowest = picks.sort((a, b) => (a.min_level || 0) - (b.min_level || 0))[0];
+      return msg.reply(`🔒 Pickaxe của bạn (**${lowest.name}**) cần LV **${lowest.min_level}** để dùng (bạn LV ${p.level}). Mua pickaxe thấp hơn ở shop.`);
+    }
+    // Chọn pickaxe tier cao nhất trong số usable
+    const bestPick = usable.sort((a, b) => {
       const order = { legendary: 4, epic: 3, rare: 2, common: 1 };
       return (order[b.tier] || 0) - (order[a.tier] || 0);
     })[0];
