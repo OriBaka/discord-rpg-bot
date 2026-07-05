@@ -175,58 +175,66 @@ async function handle(interaction) {
   // PAGINATION BUTTONS: page:<domain>:<userId>:<filter>:<page>
   // ============================================================
   if (domain === 'page') {
-    const paginator = require('./game/paginator');
-    const decoded = paginator.decodeCustomId(customId);
-    if (!decoded) {
-      return interaction.reply({ content: '❌ Invalid page id.', ephemeral: true });
-    }
-    // Check user (chỉ người gọi mới nhấn được)
-    if (interaction.user.id !== decoded.userId) {
-      return interaction.reply({ content: '❌ Chỉ người gọi lệnh mới điều khiển được. Gõ lệnh riêng của bạn để dùng.', ephemeral: true });
-    }
+    try {
+      const paginator = require('./game/paginator');
+      const decoded = paginator.decodeCustomId(customId);
+      if (!decoded) {
+        return interaction.reply({ content: '❌ Invalid page id: ' + customId, ephemeral: true });
+      }
+      // Check user (chỉ người gọi mới nhấn được)
+      if (interaction.user.id !== decoded.userId) {
+        return interaction.reply({ content: '❌ Chỉ người gọi lệnh mới điều khiển được. Gõ lệnh riêng của bạn để dùng.', ephemeral: true });
+      }
 
-    // Route theo domain
-    if (decoded.domain === 'craft' || decoded.domain === 'cook') {
-      const craftCmd = require('./commands/craft');
-      const jobs = require('./game/jobs');
-      const jobType = decoded.domain === 'craft' ? 'crafting' : 'cooking';
-      const job = jobs.getJob(decoded.userId, jobType);
-      // Build fake msg object cho helper
-      const fakeMsg = { author: { id: decoded.userId }, reply: () => {} };
-      return craftCmd.renderRecipesPage({
-        msg: fakeMsg,
-        userId: decoded.userId,
-        type: decoded.domain,
-        filter: decoded.filter,
-        page: decoded.page,
-        jobLevel: job.level,
-        replyFn: (opts) => interaction.update(opts),
-      });
-    }
+      // Route theo domain
+      if (decoded.domain === 'craft' || decoded.domain === 'cook') {
+        const craftCmd = require('./commands/craft');
+        const jobs = require('./game/jobs');
+        const jobType = decoded.domain === 'craft' ? 'crafting' : 'cooking';
+        const job = jobs.getJob(decoded.userId, jobType);
+        const fakeMsg = { author: { id: decoded.userId }, reply: () => {} };
+        return await craftCmd.renderRecipesPage({
+          msg: fakeMsg,
+          userId: decoded.userId,
+          type: decoded.domain,
+          filter: decoded.filter,
+          page: decoded.page,
+          jobLevel: job.level,
+          replyFn: (opts) => interaction.update(opts),
+        });
+      }
 
-    if (decoded.domain === 'shop') {
-      const shopCmd = require('./commands/shop');
-      const p = getPlayer(decoded.userId);
-      return shopCmd.renderShopPage({
-        msg: { author: { id: decoded.userId } },
-        userId: decoded.userId,
-        filter: decoded.filter,
-        page: decoded.page,
-        playerGold: p?.gold || 0,
-        replyFn: (opts) => interaction.update(opts),
-      });
-    }
+      if (decoded.domain === 'shop') {
+        const shopCmd = require('./commands/shop');
+        const p = getPlayer(decoded.userId);
+        return await shopCmd.renderShopPage({
+          msg: { author: { id: decoded.userId } },
+          userId: decoded.userId,
+          filter: decoded.filter,
+          page: decoded.page,
+          playerGold: p?.gold || 0,
+          replyFn: (opts) => interaction.update(opts),
+        });
+      }
 
-    return interaction.reply({ content: '❌ Unknown page domain: ' + decoded.domain, ephemeral: true });
+      return interaction.reply({ content: '❌ Unknown page domain: ' + decoded.domain, ephemeral: true });
+    } catch (err) {
+      console.error('[page handler] ERROR:', err);
+      const errMsg = `⚠️ Page error: \`${err.message}\`\nCustomId: \`${customId}\``;
+      if (interaction.replied || interaction.deferred) {
+        return interaction.followUp({ content: errMsg, ephemeral: true }).catch(() => {});
+      }
+      return interaction.reply({ content: errMsg, ephemeral: true }).catch(() => {});
+    }
   }
 
-  // Info button (disabled, không action)
-  if (domain === 'page_info') {
-    return interaction.deferUpdate();
+  // Info button (disabled label giữa nav — chỉ để display)
+  if (customId.startsWith('page_info')) {
+    return interaction.deferUpdate().catch(() => {});
   }
 
   // Unknown
-  return interaction.reply({ content: '❌ Action không xác định.', ephemeral: true });
+  return interaction.reply({ content: '❌ Action không xác định: ' + customId, ephemeral: true });
 }
 
 module.exports = { handle };
