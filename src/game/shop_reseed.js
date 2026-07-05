@@ -78,12 +78,14 @@ const SHOP_ENTRIES = [
 
 function reseedShop() {
   const db = getDb();
+  const { inferMinLevel } = require('./level_req');
 
   // 1. Upsert items mới (INSERT OR IGNORE — giữ items cũ, chỉ thêm mới)
   const insertItem = db.prepare(`
     INSERT OR IGNORE INTO items (id, name, type, tier, atk, def, heal, price, sell, class_req, weapon_type, armor_slot, desc)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
+  const updMinLevel = db.prepare('UPDATE items SET min_level = ? WHERE id = ?');
   let itemsAdded = 0;
   for (const it of NEW_ITEMS) {
     const info = insertItem.run(
@@ -94,6 +96,11 @@ function reseedShop() {
       it.desc || ''
     );
     if (info.changes > 0) itemsAdded++;
+    // Set min_level bằng infer
+    try {
+      const lv = inferMinLevel(it);
+      updMinLevel.run(lv, it.id);
+    } catch (e) { /* migrate chưa chạy, ignore */ }
   }
 
   // 2. WIPE shop cũ
@@ -111,4 +118,3 @@ function reseedShop() {
 }
 
 module.exports = { reseedShop, NEW_ITEMS, SHOP_ENTRIES };
- 
