@@ -16,7 +16,7 @@ function resolveFishCd(zone) {
 function hasTool(userId, weaponType) {
   const db = require('../db/database');
   return db.prepare(`
-    SELECT i.id, i.tier FROM inventory inv
+    SELECT i.id, i.name, i.tier, i.min_level FROM inventory inv
     JOIN items i ON i.id = inv.item_id
     WHERE inv.user_id=? AND i.weapon_type=? AND inv.qty > 0
   `).all(userId, weaponType);
@@ -80,7 +80,12 @@ module.exports = {
     if (rods.length === 0) {
       return msg.reply(`🎣 Bạn cần **Fishing Rod** để câu! Mua ở shop (\`${process.env.PREFIX || '%'}shop\`).`);
     }
-    const bestRod = rods.sort((a, b) => {
+    const usable = rods.filter(rd => (rd.min_level || 0) <= p.level);
+    if (usable.length === 0) {
+      const lowest = rods.sort((a, b) => (a.min_level || 0) - (b.min_level || 0))[0];
+      return msg.reply(`🔒 Fishing Rod của bạn (**${lowest.name}**) cần LV **${lowest.min_level}** để dùng (bạn LV ${p.level}). Mua rod thấp hơn ở shop.`);
+    }
+    const bestRod = usable.sort((a, b) => {
       const order = { legendary: 4, epic: 3, rare: 2, common: 1 };
       return (order[b.tier] || 0) - (order[a.tier] || 0);
     })[0];
