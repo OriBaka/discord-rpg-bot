@@ -13,7 +13,7 @@ function isAdmin(msg) {
 }
 
 function getShopList() {
-  return db.prepare(`SELECT s.item_id, s.price, i.name, i.type, i.tier, i.class_req, i.weapon_type, i.armor_slot
+  return db.prepare(`SELECT s.item_id, s.price, i.name, i.type, i.tier, i.class_req, i.weapon_type, i.armor_slot, i.min_level
     FROM shop s JOIN items i ON i.id = s.item_id
     ORDER BY i.type, s.price`).all();
 }
@@ -38,14 +38,16 @@ function classifyShopItem(row) {
   return 'other';
 }
 
-function formatShopLine(row) {
+function formatShopLine(row, playerLevel) {
   const emoji = tierInfo(row.tier).emoji;
   const classTag = row.class_req ? ` [${row.class_req}]` : '';
-  return `${emoji} ${row.name}${classTag} — **${row.price}** 💰\n   \`${prefix()}buy ${row.item_id}\``;
+  const lv = row.min_level || 0;
+  const lvTag = lv > 0 ? (playerLevel != null && playerLevel < lv ? ` 🔒LV${lv}` : ` 📗LV${lv}`) : '';
+  return `${emoji} ${row.name}${classTag}${lvTag} — **${row.price}** 💰\n   \`${prefix()}buy ${row.item_id}\``;
 }
 function prefix() { return process.env.PREFIX || '!'; }
 
-function renderShopPage({ msg, userId, filter, page, replyFn, playerGold }) {
+function renderShopPage({ msg, userId, filter, page, replyFn, playerGold, playerLevel }) {
   const all = getShopList();
   const filtered = filter === 'all' ? all : all.filter(r => classifyShopItem(r) === filter);
   filtered.sort((a, b) => a.price - b.price);
@@ -59,8 +61,8 @@ function renderShopPage({ msg, userId, filter, page, replyFn, playerGold }) {
     page,
     title: `🏪 Cửa Hàng — ${filterLabel}`,
     color: 0xEB459E,
-    formatItem: (r) => formatShopLine(r),
-    footer: `Vàng: ${playerGold} 💰`,
+    formatItem: (r) => formatShopLine(r, playerLevel),
+    footer: `Vàng: ${playerGold} 💰${playerLevel != null ? ` • LV ${playerLevel}` : ''}`,
   });
   return replyFn({ embeds: [embed], components });
 }
@@ -121,7 +123,7 @@ module.exports = {
     const filterArg = (args[0] || 'all').toLowerCase();
     const filter = SHOP_FILTERS.find(f => f.key === filterArg) ? filterArg : 'all';
     return renderShopPage({
-      msg, userId: msg.author.id, filter, page: 0, playerGold: p.gold,
+      msg, userId: msg.author.id, filter, page: 0, playerGold: p.gold, playerLevel: p.level,
       replyFn: (opts) => msg.reply(opts),
     });
   },
