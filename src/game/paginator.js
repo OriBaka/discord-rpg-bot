@@ -83,7 +83,7 @@ function build({ domain, userId, items, filter, filterOptions, page, title, colo
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(page <= 0),
       new ButtonBuilder()
-        .setCustomId(`page_info:${page+1}/${maxPage+1}`)
+        .setCustomId(`page_info_${page+1}_${maxPage+1}`)
         .setLabel(`${page+1} / ${maxPage+1}`)
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(true),
@@ -100,4 +100,3 @@ function build({ domain, userId, items, filter, filterOptions, page, title, colo
 }
 
 module.exports = { build, decodeCustomId, encodeCustomId, PER_PAGE };
- 
