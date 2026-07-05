@@ -142,6 +142,7 @@ module.exports = {
       .setTitle(`⛏️ Đào tại ${zone.icon} ${zone.name}`)
       .setDescription(dropText + lvlText)
       .setFooter({ text: `+${zone.base_xp} Mining XP • Total Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
-    return msg.reply({ embeds: [embed] });
+    const { buildAgainRow } = require('../game/again_button');
+    return msg.reply({ embeds: [embed], components: [buildAgainRow('mine', msg.author.id, args)] });
   },
 };
