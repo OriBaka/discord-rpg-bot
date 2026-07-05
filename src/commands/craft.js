@@ -166,7 +166,8 @@ async function handleCommand(msg, args, type) {
     .setTitle(`${icon} ${verbDo}: ${recipe.name}`)
     .setDescription(text)
     .setFooter({ text: `Lv.${xpRes.level} (${xpRes.xp}/${xpRes.xpToNext} XP)` });
-  return msg.reply({ embeds: [embed] });
+  const { buildAgainRow } = require('../game/again_button');
+  return msg.reply({ embeds: [embed], components: [buildAgainRow(type, msg.author.id, [recipeId])] });
 }
 
 // ===== Admin =====
