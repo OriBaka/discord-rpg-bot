@@ -40,6 +40,13 @@ module.exports = {
       }
     }
 
+    // Check level requirement
+    const { canUse } = require('../game/level_req');
+    const lvCheck = canUse(p, it);
+    if (!lvCheck.ok) {
+      return msg.reply(`🔒 **${it.name}** yêu cầu LV **${lvCheck.req}** để trang bị (bạn LV ${lvCheck.current}).`);
+    }
+
     // Xác định slot
     const equipped = getEquipped(msg.author.id);
     let targetSlot = slotArg;
