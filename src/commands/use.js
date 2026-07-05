@@ -42,18 +42,21 @@ module.exports = {
         .setTitle(`🎁 Mở ${qty}× ${it.name}`)
         .setDescription(allSummary.length > 0 ? allSummary.join('\n') : '*(Không nhận được gì? Báo admin check loot_table)*');
       if (it.image_url) embed.setThumbnail(it.image_url);
-      return msg.reply({ embeds: [embed] });
+      const { buildAgainRow } = require('../game/again_button');
+      return msg.reply({ embeds: [embed], components: [buildAgainRow('use', msg.author.id, [id, String(qty)])] });
     }
 
     // ===== CONSUMABLE thường =====
     if (qty > 1) return msg.reply('💡 Bình máu/consumable chỉ dùng 1 cái mỗi lần.');
     removeItem(msg.author.id, id, 1);
+    const { buildAgainRow } = require('../game/again_button');
+    const againRow = buildAgainRow('use', msg.author.id, [id]);
     if (it.heal) {
       const newHp = Math.min(p.max_hp, p.hp + it.heal);
       const healed = newHp - p.hp;
       updatePlayer(msg.author.id, { hp: newHp });
-      return msg.reply(`🧪 Dùng **${it.name}**, hồi **${healed}** HP. (HP: ${newHp}/${p.max_hp})`);
+      return msg.reply({ content: `🧪 Dùng **${it.name}**, hồi **${healed}** HP. (HP: ${newHp}/${p.max_hp})`, components: [againRow] });
     }
-    return msg.reply(`✅ Đã dùng **${it.name}**.`);
+    return msg.reply({ content: `✅ Đã dùng **${it.name}**.`, components: [againRow] });
   },
 };
