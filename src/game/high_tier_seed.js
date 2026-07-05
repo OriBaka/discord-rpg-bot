@@ -113,6 +113,7 @@ const NEW_GATHER_DROPS = [
 
 function seedHighTier() {
   const db = getDb();
+  const { inferMinLevel } = require('./level_req');
   let itemsAdded = 0, recipesAdded = 0, dropsAdded = 0;
 
   // 1. Add materials + gear
@@ -120,6 +121,7 @@ function seedHighTier() {
     INSERT OR IGNORE INTO items (id, name, type, tier, atk, def, heal, price, sell, class_req, weapon_type, armor_slot, desc)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
+  const updMinLevel = db.prepare('UPDATE items SET min_level = ? WHERE id = ?');
   for (const it of [...NEW_MATERIALS, ...NEW_GEAR]) {
     const info = insItem.run(
       it.id, it.name, it.type, it.tier || 'common',
@@ -129,6 +131,10 @@ function seedHighTier() {
       it.desc || ''
     );
     if (info.changes > 0) itemsAdded++;
+    try {
+      const lv = inferMinLevel(it);
+      updMinLevel.run(lv, it.id);
+    } catch (e) { /* ignore */ }
   }
 
   // 2. Add recipes (INSERT OR IGNORE để không đè existing)
@@ -153,4 +159,3 @@ function seedHighTier() {
 }
 
 module.exports = { seedHighTier, NEW_MATERIALS, NEW_GEAR, NEW_RECIPES, NEW_GATHER_DROPS };
- 
