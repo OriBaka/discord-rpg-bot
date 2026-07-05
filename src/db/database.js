@@ -151,6 +151,10 @@ migrateRedeem();
 const { migrate: migrateSettings } = require('../game/settings');
 migrateSettings();
 
+// Level requirement (cột min_level cho items)
+const { migrate: migrateLevelReq } = require('../game/level_req');
+migrateLevelReq();
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
