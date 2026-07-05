@@ -123,6 +123,7 @@ module.exports = {
       .setTitle(`🎣 Câu tại ${zone.icon} ${zone.name}`)
       .setDescription(dropText + lvlText)
       .setFooter({ text: `+${zone.base_xp} Fishing XP • Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
-    return msg.reply({ embeds: [embed] });
+    const { buildAgainRow } = require('../game/again_button');
+    return msg.reply({ embeds: [embed], components: [buildAgainRow('fish', msg.author.id, args)] });
   },
 };
