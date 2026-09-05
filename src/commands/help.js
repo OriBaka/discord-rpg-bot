@@ -61,6 +61,12 @@ module.exports = {
           `\`${prefix}fish [zone]\` câu cá (fishing)\n` +
           `\`${prefix}craft list\` / \`${prefix}craft <recipe>\` chế tạo\n` +
           `\`${prefix}cook list\` / \`${prefix}cook <recipe>\` nấu ăn` },
+        { name: '🏰 Bang hội', value:
+          `\`${prefix}guild\` xem bang / hướng dẫn\n` +
+          `\`${prefix}guild create <tag> <tên>\` lập bang (Lv.5, 500 vàng)\n` +
+          `\`${prefix}guild invite @user\` mời thành viên\n` +
+          `\`${prefix}guild vault\` kho chung\n` +
+          `\`${prefix}guild top\` BXH bang • buff vàng/XP khi hunt` },
         { name: '⚔️ PvP & Trade', value:
           `\`${prefix}duel @user [gold]\` thách đấu\n` +
           `\`${prefix}duel accept/decline\` phản hồi\n` +

@@ -26,15 +26,28 @@ async function finalizeBattle(interaction, battleRow, log) {
       const mob = db.prepare('SELECT * FROM monsters WHERE id=?').get(battleRow.monster_id);
       const eliteMult = battleRow.is_elite === 2 ? 2 : (battleRow.is_elite === 1 ? 1.5 : 1);
       const goldRange = [mob.gold_min, mob.gold_max];
-      const gold = Math.floor((Math.random() * (goldRange[1] - goldRange[0] + 1) + goldRange[0]) * eliteMult);
+      const guilds = require('./game/guilds');
+      const guildBonus = guilds.getGuildBonus(battleRow.user_a);
+      const gold = Math.floor((Math.random() * (goldRange[1] - goldRange[0] + 1) + goldRange[0]) * eliteMult * (1 + (guildBonus.gold_pct || 0) / 100));
       updatePlayer(battleRow.user_a, { gold: player.gold + gold, hp: finalHp });
-      const xpGained = Math.floor(mob.xp * eliteMult);
+      const xpGained = Math.floor(mob.xp * eliteMult * (1 + (guildBonus.xp_pct || 0) / 100));
       const xpRes = addXpAndLevel(battleRow.user_a, xpGained);
 
       summary.push(`🏆 **VICTORY!**`);
       summary.push(`💰 +${gold} gold • ✨ +${xpGained} XP`);
+      if (guildBonus.gold_pct || guildBonus.xp_pct) {
+        summary.push(`🏰 Guild [${guildBonus.tag}]: +${guildBonus.gold_pct}% gold • +${guildBonus.xp_pct}% XP`);
+      }
       if (xpRes.levelsGained && xpRes.levelsGained.length > 0) {
         summary.push(`🎉 **LEVEL UP!** Đạt LV${xpRes.level}`);
+      }
+      if (guildBonus.guild_id) {
+        const gxp = Math.max(1, Math.floor(xpGained * 0.1));
+        const gUp = guilds.addGuildXp(guildBonus.guild_id, gxp, battleRow.user_a);
+        summary.push(`🏰 +${gxp} GXP`);
+        if (gUp.levelsGained && gUp.levelsGained.length > 0) {
+          summary.push(`🏰 **Guild lên Lv.${gUp.newLevel}!**`);
+        }
       }
 
       // Drop items
@@ -153,6 +166,43 @@ async function handle(interaction) {
         );
 
       await interaction.update({ embeds: [embed], components: [] });
+      return;
+    }
+  }
+
+  // ============================================================
+  // GUILD INVITE BUTTONS: guild:accept|decline:<guildId>:<userId>
+  // ============================================================
+  if (domain === 'guild') {
+    const guildId = parseInt(rest[0], 10);
+    const expectedUser = rest[1];
+    if (interaction.user.id !== expectedUser) {
+      return interaction.reply({ content: '❌ Chỉ người được mời mới bấm được.', ephemeral: true });
+    }
+    const guilds = require('./game/guilds');
+    const g = guilds.getGuild(guildId);
+    if (action === 'decline') {
+      const res = guilds.declineInvite(interaction.user.id, guildId);
+      if (!res.ok) return interaction.reply({ content: `❌ ${res.error}`, ephemeral: true });
+      await interaction.update({
+        content: `❌ <@${interaction.user.id}> đã từ chối lời mời bang \`[${g?.tag || '?'}]\`.`,
+        embeds: [],
+        components: [],
+      });
+      return;
+    }
+    if (action === 'accept') {
+      const res = guilds.acceptInvite(interaction.user.id, guildId);
+      if (!res.ok) return interaction.reply({ content: `❌ ${res.error}`, ephemeral: true });
+      try {
+        const achievements = require('./game/achievements');
+        achievements.checkAndGrant(interaction.user.id, { client: interaction.client, guildId: interaction.guildId });
+      } catch {}
+      await interaction.update({
+        content: `✅ <@${interaction.user.id}> đã gia nhập \`[${res.guild.tag}]\` **${res.guild.name}**!`,
+        embeds: [],
+        components: [],
+      });
       return;
     }
   }
