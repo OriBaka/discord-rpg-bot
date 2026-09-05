@@ -79,8 +79,13 @@ const definitions = [
     }},
   },
   {
-    data: new SlashCommandBuilder().setName('top').setDescription('Bảng xếp hạng theo level'),
-    handler: simpleHandler('top'),
+    data: new SlashCommandBuilder().setName('top').setDescription('Bảng xếp hạng')
+      .addStringOption(o => o.setName('type').setDescription('Loại BXH').setRequired(false)
+        .addChoices({ name: 'Level', value: 'level' }, { name: 'Bang hội', value: 'guild' })),
+    handler: { cmdName: 'top', extractArgs: (i) => {
+      const t = i.options.getString('type');
+      return t && t !== 'level' ? [t] : [];
+    }},
   },
 
   // ====== Combat ======
@@ -372,6 +377,79 @@ const definitions = [
       return [];
     }},
     autocomplete: 'item_owned_tradeable',
+  },
+
+  // ====== Guild ======
+  {
+    data: new SlashCommandBuilder().setName('guild').setDescription('Bang hội')
+      .addSubcommand(s => s.setName('info').setDescription('Xem bang của mình hoặc bang khác')
+        .addStringOption(o => o.setName('query').setDescription('Tag hoặc tên bang').setRequired(false).setAutocomplete(true)))
+      .addSubcommand(s => s.setName('create').setDescription('Lập bang (Lv.5, 500 vàng)')
+        .addStringOption(o => o.setName('tag').setDescription('Tag 2-5 ký tự').setRequired(true).setMinLength(2).setMaxLength(5))
+        .addStringOption(o => o.setName('name').setDescription('Tên bang').setRequired(true).setMinLength(3).setMaxLength(24)))
+      .addSubcommand(s => s.setName('invite').setDescription('Mời người chơi vào bang')
+        .addUserOption(o => o.setName('user').setDescription('Người chơi').setRequired(true)))
+      .addSubcommand(s => s.setName('accept').setDescription('Nhận lời mời')
+        .addStringOption(o => o.setName('tag').setDescription('Tag bang').setRequired(false).setAutocomplete(true)))
+      .addSubcommand(s => s.setName('decline').setDescription('Từ chối lời mời')
+        .addStringOption(o => o.setName('tag').setDescription('Tag bang').setRequired(false).setAutocomplete(true)))
+      .addSubcommand(s => s.setName('leave').setDescription('Rời bang'))
+      .addSubcommand(s => s.setName('kick').setDescription('Kick thành viên')
+        .addUserOption(o => o.setName('user').setDescription('Thành viên').setRequired(true)))
+      .addSubcommand(s => s.setName('promote').setDescription('Thăng officer')
+        .addUserOption(o => o.setName('user').setDescription('Thành viên').setRequired(true)))
+      .addSubcommand(s => s.setName('demote').setDescription('Giáng member')
+        .addUserOption(o => o.setName('user').setDescription('Officer').setRequired(true)))
+      .addSubcommand(s => s.setName('transfer').setDescription('Nhường bang chủ')
+        .addUserOption(o => o.setName('user').setDescription('Thành viên').setRequired(true)))
+      .addSubcommand(s => s.setName('disband').setDescription('Giải tán bang (cần xác nhận)')
+        .addBooleanOption(o => o.setName('confirm').setDescription('Xác nhận giải tán').setRequired(true)))
+      .addSubcommand(s => s.setName('members').setDescription('Danh sách thành viên'))
+      .addSubcommand(s => s.setName('top').setDescription('BXH bang hội'))
+      .addSubcommand(s => s.setName('motd').setDescription('Đặt thông báo bang')
+        .addStringOption(o => o.setName('text').setDescription('Nội dung').setRequired(true)))
+      .addSubcommand(s => s.setName('desc').setDescription('Đặt mô tả bang')
+        .addStringOption(o => o.setName('text').setDescription('Mô tả').setRequired(true)))
+      .addSubcommand(s => s.setName('vault').setDescription('Xem kho chung'))
+      .addSubcommand(s => s.setName('buff').setDescription('Xem buff hunt của bang'))
+      .addSubcommand(s => s.setName('deposit').setDescription('Gửi vàng/item vào kho')
+        .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true)
+          .addChoices({ name: 'Vàng', value: 'gold' }, { name: 'Item', value: 'item' }))
+        .addIntegerOption(o => o.setName('amount').setDescription('Số vàng hoặc số lượng').setRequired(true).setMinValue(1))
+        .addStringOption(o => o.setName('item').setDescription('Item ID (nếu gửi item)').setRequired(false).setAutocomplete(true)))
+      .addSubcommand(s => s.setName('withdraw').setDescription('Rút vàng/item khỏi kho (officer+)')
+        .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(true)
+          .addChoices({ name: 'Vàng', value: 'gold' }, { name: 'Item', value: 'item' }))
+        .addIntegerOption(o => o.setName('amount').setDescription('Số vàng hoặc số lượng').setRequired(true).setMinValue(1))
+        .addStringOption(o => o.setName('item').setDescription('Item ID (nếu rút item)').setRequired(false).setAutocomplete(true)))
+      .addSubcommand(s => s.setName('help').setDescription('Hướng dẫn bang hội')),
+    handler: { cmdName: 'guild', extractArgs: (i) => {
+      const sub = i.options.getSubcommand();
+      if (sub === 'info') {
+        const q = i.options.getString('query');
+        return q ? ['info', q] : [];
+      }
+      if (sub === 'create') return ['create', i.options.getString('tag'), i.options.getString('name')];
+      if (sub === 'invite') return ['invite', i.options.getUser('user')];
+      if (sub === 'accept' || sub === 'decline') {
+        const tag = i.options.getString('tag');
+        return tag ? [sub, tag] : [sub];
+      }
+      if (sub === 'kick' || sub === 'promote' || sub === 'demote' || sub === 'transfer') {
+        return [sub, i.options.getUser('user')];
+      }
+      if (sub === 'disband') return i.options.getBoolean('confirm') ? ['disband', 'confirm'] : ['disband'];
+      if (sub === 'motd' || sub === 'desc') return [sub, i.options.getString('text')];
+      if (sub === 'deposit' || sub === 'withdraw') {
+        const type = i.options.getString('type');
+        const amount = i.options.getInteger('amount');
+        const item = i.options.getString('item');
+        if (type === 'gold') return [sub, 'gold', amount];
+        return [sub, item || 'item', amount];
+      }
+      return [sub];
+    }},
+    autocomplete: 'guild_dynamic',
   },
 
   // ====== Redeem code ======

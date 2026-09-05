@@ -135,6 +135,9 @@ migratePvp();
 const { migrate: migrateTrade } = require('../game/trade');
 migrateTrade();
 
+const { migrate: migrateGuilds } = require('../game/guilds');
+migrateGuilds();
+
 // Image support cho items/monsters/zones/pets/achievements (chạy SAU các migrate trên)
 const { migrate: migrateImages } = require('../game/images');
 migrateImages();

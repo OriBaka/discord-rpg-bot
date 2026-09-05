@@ -161,6 +161,38 @@ const providers = {
     return [];
   },
 
+  // Guild — info/accept/deposit/withdraw
+  guild_dynamic: (i, input) => {
+    const sub = i.options.getSubcommand(false);
+    if (sub === 'info') {
+      const rows = db.prepare('SELECT tag, name, level FROM guilds ORDER BY level DESC LIMIT 50').all();
+      return filterChoices(rows.map(g => ({ name: `[${g.tag}] ${g.name} (Lv.${g.level})`, value: g.tag })), input);
+    }
+    if (sub === 'accept' || sub === 'decline') {
+      const rows = db.prepare(`
+        SELECT g.tag, g.name FROM guild_invites gi
+        JOIN guilds g ON g.id = gi.guild_id
+        WHERE gi.user_id = ?
+      `).all(i.user.id);
+      return filterChoices(rows.map(g => ({ name: `[${g.tag}] ${g.name}`, value: g.tag })), input);
+    }
+    if (sub === 'deposit') {
+      return providers.item_owned(i, input);
+    }
+    if (sub === 'withdraw') {
+      const m = db.prepare('SELECT guild_id FROM guild_members WHERE user_id = ?').get(i.user.id);
+      if (!m) return [];
+      const items = db.prepare(`
+        SELECT v.item_id, v.qty, i.name FROM guild_vault v
+        LEFT JOIN items i ON i.id = v.item_id
+        WHERE v.guild_id = ? AND v.qty > 0
+        ORDER BY i.name LIMIT 50
+      `).all(m.guild_id);
+      return filterChoices(items.map(it => ({ name: `${it.name || it.item_id} (×${it.qty})`, value: it.item_id })), input);
+    }
+    return [];
+  },
+
   // Info dynamic — chọn item/mob/zone tùy subcommand
   info_dynamic: (i, input) => {
     const sub = i.options.getSubcommand(false);

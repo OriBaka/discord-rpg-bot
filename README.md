@@ -12,6 +12,7 @@ Bot Discord RPG đơn giản, chơi bằng text. Có level, trang bị, túi đ�
 - 🏨 Quán trọ (heal bằng vàng)
 - 🎁 Điểm danh daily
 - 🏆 Bảng xếp hạng
+- 🏰 Bang hội (mời thành viên, kho chung, BXH, buff hunt)
 
 ## 📦 Cấu trúc
 
@@ -72,7 +73,8 @@ Vì bạn dùng điện thoại, gợi ý dễ nhất:
 | `!buy <id> [qty]` | Mua đồ |
 | `!sell <id> [qty]` | Bán đồ |
 | `!daily` | Điểm danh nhận vàng |
-| `!top` | Bảng xếp hạng |
+| `!top` | Bảng xếp hạng (`!top guild` BXH bang) |
+| `!guild` | Bang hội (tạo, mời, kho, buff) |
 | `!help` | Hướng dẫn |
 
 ## 🔧 Mở rộng

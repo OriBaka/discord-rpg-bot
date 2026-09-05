@@ -257,6 +257,26 @@ function checkAndGrant(userId, context = null) {
         pass = r && r.qty >= ach.target_qty;
         break;
       }
+      case 'guild_join': {
+        const gm = db.prepare('SELECT 1 FROM guild_members WHERE user_id = ?').get(userId);
+        pass = !!gm;
+        break;
+      }
+      case 'guild_create': {
+        const gm = db.prepare("SELECT 1 FROM guild_members WHERE user_id = ? AND role = 'leader'").get(userId);
+        pass = !!gm;
+        break;
+      }
+      case 'guild_level': {
+        const row = db.prepare(`SELECT g.level FROM guild_members gm JOIN guilds g ON g.id = gm.guild_id WHERE gm.user_id = ?`).get(userId);
+        pass = row && row.level >= ach.target_qty;
+        break;
+      }
+      case 'guild_members': {
+        const row = db.prepare(`SELECT COUNT(*) c FROM guild_members WHERE guild_id = (SELECT guild_id FROM guild_members WHERE user_id = ?)`).get(userId);
+        pass = row && row.c >= ach.target_qty;
+        break;
+      }
     }
     if (pass) {
       const a = grantAchievement(userId, ach.id);

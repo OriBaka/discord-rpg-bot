@@ -4,6 +4,7 @@ const { getItem } = require('../game/items');
 const { classInfo, getClassData } = require('../game/classes');
 const { SLOTS, SLOT_ORDER, getEquipped, getTotalBonus } = require('../game/slots');
 const pets = require('../game/pets');
+const guilds = require('../game/guilds');
 
 // Lấy emoji ngắn cho mỗi slot (chỉ icon, không có chữ)
 const SLOT_EMOJI = {
@@ -63,11 +64,18 @@ module.exports = {
     const totalSlots = SLOT_ORDER.length;
     const gearStr = gearParts.join(' • ');
 
+    const myGuild = guilds.getPlayerGuild(msg.author.id);
+    const titleName = myGuild ? `📜 [${myGuild.tag}] ${p.name}` : `📜 ${p.name}`;
+    const guildLine = myGuild
+      ? `🏰 \`[${myGuild.tag}]\` **${myGuild.name}** Lv.${myGuild.level}`
+      : null;
+
     const embed = new EmbedBuilder()
       .setColor(cls?.color || 0x5865F2)
-      .setTitle(`📜 ${p.name}`)
+      .setTitle(titleName)
       .setDescription(
-        `🎭 **${cls ? cls.name : 'Chưa chọn class'}** • Lv. **${p.level}** (${p.xp}/${need} XP)`
+        `🎭 **${cls ? cls.name : 'Chưa chọn class'}** • Lv. **${p.level}** (${p.xp}/${need} XP)` +
+        (guildLine ? `\n${guildLine}` : '')
       )
       .addFields(
         { name: '❤️ HP',    value: `${p.hp}/${p.max_hp}`, inline: true },
