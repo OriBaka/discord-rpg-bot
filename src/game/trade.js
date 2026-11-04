@@ -1,6 +1,14 @@
 // Trade system: 2 player thoả thuận, cả 2 ready mới execute
 const db = require('./../db/database');
-const { getPlayer, updatePlayer, addItem, removeItem } = require('./player');
+// ===== Lazy require cho player =====
+// Không require('./player') ở top-level: player.js → database.js → (migrate)
+// → trade.js → player.js (đang nạp dở) sẽ tạo circular dependency.
+// Xem giải thích chi tiết ở đầu src/game/guilds.js.
+function playerFns() { return require('./player'); }
+function getPlayer(id) { return playerFns().getPlayer(id); }
+function updatePlayer(id, fields) { return playerFns().updatePlayer(id, fields); }
+function addItem(id, itemId, qty, ctx) { return playerFns().addItem(id, itemId, qty, ctx); }
+function removeItem(id, itemId, qty) { return playerFns().removeItem(id, itemId, qty); }
 const { getItem } = require('./items');
 
 const TRADE_EXPIRE_MS = 5 * 60 * 1000; // 5 phút
