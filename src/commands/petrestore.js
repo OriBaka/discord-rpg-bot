@@ -33,6 +33,7 @@ const aliases = [];
 const description = 'Restore + fix pets bị lỗi (admin only)';
 
 async function execute(msg, args) {
+  const prefix = process.env.PREFIX || '!';
   if (!msg.member?.permissions?.has('ManageGuild')) {
     return msg.reply('❌ Cần quyền Manage Guild.');
   }
@@ -47,7 +48,7 @@ async function execute(msg, args) {
         `• 🐺 **Wolf Cub** \`pet_wolf_cub\` — XÓA hoàn toàn\n` +
         `• 🐉 **Dragonling** \`pet_dragonling\` — XÓA hoàn toàn (đã có Mini Dragon)\n` +
         `• 🐈‍⬛ **Void Cat** \`pet_void_cat\` — ẩn (hidden=1, giữ cho event)\n\n` +
-        `Gõ \`%petrestore fix3 confirm\` để xác nhận.`
+        `Gõ \`${prefix}petrestore fix3 confirm\` để xác nhận.`
       );
     }
 
@@ -71,7 +72,7 @@ async function execute(msg, args) {
     db.prepare(`UPDATE pets SET hidden=1 WHERE id='pet_void_cat'`).run();
     fixes.push('👻 Đã ẩn pet_void_cat (hidden=1)');
 
-    return msg.reply(`✅ Hoàn tất:\n${fixes.join('\n')}\n\nGõ \`%pet collection\` để kiểm tra.`);
+    return msg.reply(`✅ Hoàn tất:\n${fixes.join('\n')}\n\nGõ \`${prefix}pet collection\` để kiểm tra.`);
   }
 
   // ── %petrestore (preview) ──
@@ -83,11 +84,11 @@ async function execute(msg, args) {
     if (toRestorePets.length > 0) {
       lines.push(`🐾 Sẽ thêm lại **${toRestorePets.length}** pet bị thiếu:`);
       lines.push(...toRestorePets.map(p => `   • ${p[2]} **${p[1]}** \`${p[0]}\``));
-      lines.push('', `Gõ \`%petrestore confirm\` để xác nhận.`);
+      lines.push('', `Gõ \`${prefix}petrestore confirm\` để xác nhận.`);
     } else {
       lines.push('✅ Không có pet nào cần restore.');
     }
-    lines.push('', '💡 Để sửa 3 con lỗi còn lại: `%petrestore fix3`');
+    lines.push('', '💡 Để sửa 3 con lỗi còn lại: `' + prefix + 'petrestore fix3`');
     return msg.reply(lines.join('\n'));
   }
 
@@ -110,7 +111,7 @@ async function execute(msg, args) {
     .setDescription(
       `🐾 Đã thêm lại **${restoredPets}** pets\n` +
       `💀 Đã thêm lại **${restoredDrops}** drop entries\n\n` +
-      `Tiếp theo gõ \`%petrestore fix3\` để xóa 2 con thừa + ẩn void cat.`
+      `Tiếp theo gõ \`${prefix}petrestore fix3\` để xóa 2 con thừa + ẩn void cat.`
     );
   return msg.reply({ embeds: [embed] });
 }

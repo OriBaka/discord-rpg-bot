@@ -39,7 +39,7 @@ async function finalizeBattle(interaction, battleRow, log) {
         summary.push(`🏰 Guild [${guildBonus.tag}]: +${guildBonus.gold_pct}% gold • +${guildBonus.xp_pct}% XP`);
       }
       if (xpRes.levelsGained && xpRes.levelsGained.length > 0) {
-        summary.push(`🎉 **LEVEL UP!** Đạt LV${xpRes.level}`);
+        summary.push(`🎉 **LEVEL UP!** Đạt LV${xpRes.newLevel}`);
       }
       if (guildBonus.guild_id) {
         const gxp = Math.max(1, Math.floor(xpGained * 0.1));

@@ -299,6 +299,13 @@ function findSlotForItem(item, equipped) {
   return null;
 }
 
+// Đếm số lượng item_id đang được mặc (vd wooden_sword ở slot weapon = 1)
+// Dùng để chặn bán / chuyển kho / trade món đang mặc — tránh vừa giữ buff vừa mất đồ.
+function getEquippedCount(userId, itemId) {
+  const rows = db.prepare('SELECT item_id FROM equipped WHERE user_id = ?').all(userId);
+  return rows.filter(r => r.item_id === itemId).length;
+}
+
 // ===== Check item có hợp với slot không =====
 function isItemValidForSlot(item, slotId) {
   const slot = SLOTS[slotId];
@@ -313,6 +320,6 @@ module.exports = {
   SLOTS, SLOT_ORDER,
   migrate,
   getEquipped, setEquipped, clearEquipped,
-  getTotalBonus,
+  getTotalBonus, getEquippedCount,
   findSlotForItem, isItemValidForSlot,
 }; 
