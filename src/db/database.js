@@ -101,66 +101,137 @@ seedDefaults(db);
 module.exports = db;
 
 // ===== Migrations cho các feature mới (chạy sau khi seed) =====
+// Gọi migrate qua helper: nếu module mục tiêu đang nạp dở (circular require —
+// vd entry point là src/game/guilds.js: guilds → database → guilds), Node trả về
+// module rỗng và `migrate` là undefined → trước đây sẽ crash
+// "TypeError: migrateGuilds is not a function". Helper này bỏ qua êm trong trường
+// hợp đó; lần require lại sau (khi module đã nạp xong) sẽ chạy bình thường.
+function runMigrate(modPath, label) {
+  let mod;
+  try {
+    mod = require(modPath);
+  } catch (e) {
+    console.error(`[migrate] Không nạp được ${modPath}:`, e.message);
+    return;
+  }
+  // Kiểm tra qua property descriptor trước: module đang trong vòng require chỉ có
+  // vài key đã export, đọc thẳng `mod.migrate` sẽ kích hoạt cảnh báo
+  // "Accessing non-existent property 'migrate' of module exports inside
+  // circular dependency". hasOwnProperty thì không.
+  const hasMigrate = Object.prototype.hasOwnProperty.call(mod, 'migrate');
+  if (!hasMigrate || typeof mod.migrate !== 'function') {
+    // Module đang trong vòng require (vd entry point là src/game/guilds.js:
+    // guilds → database → guilds). Không chạy được ngay, nhưng KHÔNG được bỏ
+    // luôn — nếu bỏ thì các bảng của module đó không bao giờ được tạo.
+    // Đợi module nạp xong rồi chạy lại.
+    deferMigrate(modPath, label);
+    return;
+  }
+  mod.migrate();
+}
+
+// Đăng ký migrate chạy lại ngay khi module thoát khỏi vòng require.
+// Dùng setTimeout(0): chạy sau khi call stack nạp module hiện tại hoàn tất,
+// tức lúc module.exports đã có đủ, trước khi bot xử lý message đầu tiên.
+function deferMigrate(modPath, label) {
+  setTimeout(() => {
+    try {
+      const m = require(modPath);
+      if (typeof m.migrate === 'function') {
+        m.migrate();
+        console.log(`🔁 ${label}: chạy lại sau khi thoát vòng require`);
+      }
+    } catch (e) {
+      console.error(`[migrate] ${label} chạy lại thất bại:`, e.message);
+    }
+  }, 0);
+}
 // Lưu ý: require ở cuối để tránh vòng lặp require
-const { migrate: migrateClass } = require('../game/classes');
-migrateClass();
+// ===== Cột cơ bản phải có trước khi các feature migrate chạy =====
+// Nhiều migrate ở dưới (vd gather_zones.seedDefaults) INSERT vào `items` với các
+// cột do feature khác thêm bằng ALTER TABLE. Trước đây thứ tự phụ thuộc vào
+// đường nạp module: nếu `slots.migrate()` chưa chạy (vd entry point là
+// src/game/slots.js) thì seeder crash "table items has no column named
+// accessory_type". Đảm bảo cột tồn tại trước để thứ tự nạp không còn quan trọng.
+const BASE_COLUMNS = {
+  items: [
+    ['accessory_type', "TEXT NOT NULL DEFAULT ''"],
+    ['armor_slot',     "TEXT NOT NULL DEFAULT ''"],
+    ['armor_type',     "TEXT NOT NULL DEFAULT ''"],
+    ['weapon_type',    "TEXT NOT NULL DEFAULT ''"],
+    ['class_req',      "TEXT NOT NULL DEFAULT ''"],
+    ['soulbound',      'INTEGER NOT NULL DEFAULT 0'],
+    ['min_level',      'INTEGER NOT NULL DEFAULT 0'],
+  ],
+  players: [
+    ['primary_class', "TEXT NOT NULL DEFAULT ''"],
+    ['class_data',    "TEXT NOT NULL DEFAULT '{}'"],
+    ['active_pet',    "TEXT NOT NULL DEFAULT ''"],
+    ['last_heal',     'INTEGER NOT NULL DEFAULT 0'],
+  ],
+  monsters: [
+    ['elite_tier', 'INTEGER NOT NULL DEFAULT 0'],
+  ],
+};
 
-const { migrate: migrateSlots } = require('../game/slots');
-migrateSlots();
+function ensureBaseColumns() {
+  for (const [table, cols] of Object.entries(BASE_COLUMNS)) {
+    let existing;
+    try {
+      existing = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name));
+    } catch {
+      continue; // bảng chưa tồn tại — migrate riêng của nó sẽ tạo
+    }
+    for (const [name, def] of cols) {
+      if (existing.has(name)) continue;
+      db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${def}`);
+      console.log(`🔧 ensureBaseColumns: ${table}.${name}`);
+    }
+  }
+}
+ensureBaseColumns();
 
-const { migrate: migrateQuests } = require('../game/quests');
-migrateQuests();
+runMigrate('../game/classes', 'migrateClass');
 
-const { migrate: migrateAchievements } = require('../game/achievements');
-migrateAchievements();
+runMigrate('../game/slots', 'migrateSlots');
 
-const { migrate: migrateChannels } = require('../game/channels');
-migrateChannels();
+runMigrate('../game/quests', 'migrateQuests');
 
-const { migrate: migratePets } = require('../game/pets');
-migratePets();
+runMigrate('../game/achievements', 'migrateAchievements');
 
-const { migrate: migrateJobs } = require('../game/jobs');
-migrateJobs();
+runMigrate('../game/channels', 'migrateChannels');
 
-const { migrate: migrateGatherZones } = require('../game/gather_zones');
-migrateGatherZones();
+runMigrate('../game/pets', 'migratePets');
 
-const { migrate: migrateRecipes } = require('../game/recipes');
-migrateRecipes();
+runMigrate('../game/jobs', 'migrateJobs');
 
-const { migrate: migratePvp } = require('../game/pvp');
-migratePvp();
+runMigrate('../game/gather_zones', 'migrateGatherZones');
 
-const { migrate: migrateTrade } = require('../game/trade');
-migrateTrade();
+runMigrate('../game/recipes', 'migrateRecipes');
 
-const { migrate: migrateGuilds } = require('../game/guilds');
-migrateGuilds();
+runMigrate('../game/pvp', 'migratePvp');
+
+runMigrate('../game/trade', 'migrateTrade');
+
+runMigrate('../game/guilds', 'migrateGuilds');
 
 // Image support cho items/monsters/zones/pets/achievements (chạy SAU các migrate trên)
-const { migrate: migrateImages } = require('../game/images');
-migrateImages();
+runMigrate('../game/images', 'migrateImages');
 
 // Lootbox system
-const { migrate: migrateLootbox } = require('../game/lootbox');
-migrateLootbox();
+runMigrate('../game/lootbox', 'migrateLootbox');
 
 // Redeem code system
-const { migrate: migrateRedeem } = require('../game/redeem');
-migrateRedeem();
+runMigrate('../game/redeem', 'migrateRedeem');
 
 // Settings (cooldown overrides, etc)
-const { migrate: migrateSettings } = require('../game/settings');
-migrateSettings();
+runMigrate('../game/settings', 'migrateSettings');
 
 // Level requirement (cột min_level cho items)
-const { migrate: migrateLevelReq } = require('../game/level_req');
-migrateLevelReq();
+runMigrate('../game/level_req', 'migrateLevelReq');
 
 // Turn-based battle system
-const { migrate: migrateBattle } = require('../game/battle');
-migrateBattle();
+runMigrate('../game/battle', 'migrateBattle');
 
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');

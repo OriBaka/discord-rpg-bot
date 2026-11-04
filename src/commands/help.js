@@ -28,11 +28,14 @@ module.exports = {
           `\`${prefix}hunt list\` xem các khu vực\n` +
           `\`${prefix}hunt <zone>\` săn ở khu vực cụ thể\n` +
           `\`${prefix}hunt <mob_id>\` săn quái chỉ định\n` +
-          `\`${prefix}heal\` nghỉ quán trọ\n` +
-          `\`${prefix}use <id>\` dùng bình máu` },
+          `\`${prefix}battle list\` xem elite/boss\n` +
+          `\`${prefix}battle <mob_id>\` trận turn-based có skill\n` +
+          `\`${prefix}heal\` nghỉ quán trọ (cooldown 10 phút)\n` +
+          `\`${prefix}use <id>\` dùng bình máu / mở lootbox` },
         { name: '💼 Trang bị', value:
           `\`${prefix}equip <id> [slot]\` mặc đồ (auto chọn slot)\n` +
           `\`${prefix}unequip <slot|all>\` tháo trang bị\n` +
+          `\`${prefix}compare <id1> [id2]\` so sánh 2 món\n` +
           `Slots: weapon, offhand, head, chest, legs, feet, hands, ring1, ring2, necklace, special` },
         { name: '🏪 Chợ', value:
           `\`${prefix}shop\` xem cửa hàng\n` +
@@ -73,7 +76,9 @@ module.exports = {
           `\`${prefix}duel top\` BXH PvP\n` +
           `\`${prefix}trade @user\` mở phiên trao đổi\n` +
           `\`${prefix}trade help\` xem hướng dẫn chi tiết` },
-        { name: '🎁 Khác', value: `\`${prefix}daily\` điểm danh nhận vàng` },
+        { name: '🎁 Khác', value:
+          `\`${prefix}daily\` điểm danh nhận vàng\n` +
+          `\`${prefix}redeem <code>\` nhập code nhận thưởng` },
       );
 
     if (showAdmin) {
@@ -86,12 +91,15 @@ module.exports = {
           `\`${prefix}quest admin\` tạo/sửa quest\n` +
           `\`${prefix}ach admin\` tạo/sửa achievement\n` +
           `\`${prefix}pet admin\` tạo/sửa pet + drop\n` +
-          `\`${prefix}gz\` quản lý mining/fishing zones\n` +
+          `\`${prefix}gatherzone\` (hoặc \`${prefix}gz\`) quản lý zone mining/fishing\n` +
           `\`${prefix}craft admin\` / \`${prefix}cook admin\` tạo/sửa recipe\n` +
           `\`${prefix}shop add/remove/setprice\` chỉnh shop\n` +
           `\`${prefix}setimage <type> <id> <url>\` gán ảnh\n` +
           `\`${prefix}lootbox\` quản lý hộp quà event\n` +
-          `\`${prefix}sla\` quản lý slash commands`,
+          `\`${prefix}redeem admin\` tạo/quản lý code\n` +
+          `\`${prefix}slashadmin\` (hoặc \`${prefix}sla\`) quản lý slash commands\n` +
+          `\`${prefix}petrestore\` khôi phục pet bị thiếu (dùng 1 lần)\n` +
+          `\`${prefix}achdebug\` debug tiến độ thành tựu`,
       });
     }
 

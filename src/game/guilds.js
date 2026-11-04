@@ -1,7 +1,19 @@
 // Guild / bang hội: tạo bang, thành viên, kho chung, XP/buff khi hunt
 const db = require('../db/database');
-const { getPlayer, updatePlayer, addItem, removeItem } = require('./player');
 const { getItem } = require('./items');
+
+// ===== Lazy require cho player/items =====
+// Trước đây file này `require('./player')` ngay ở top-level, tạo vòng phụ thuộc:
+//   player.js → database.js → (migrate) → guilds.js → player.js (đang nạp dở)
+// → Node trả về module rỗng và in "Accessing non-existent property
+//   'getPlayer' of module exports inside circular dependency" (4 warning/lần).
+// Chuyển sang require bên trong hàm: đến lúc hàm chạy thì player.js đã nạp xong.
+// Toàn bộ các hàm này chỉ được gọi trong thân function nên không đổi hành vi.
+function playerFns() { return require('./player'); }
+function getPlayer(id) { return playerFns().getPlayer(id); }
+function updatePlayer(id, fields) { return playerFns().updatePlayer(id, fields); }
+function addItem(id, itemId, qty, ctx) { return playerFns().addItem(id, itemId, qty, ctx); }
+function removeItem(id, itemId, qty) { return playerFns().removeItem(id, itemId, qty); }
 
 const CREATE_MIN_LEVEL = 5;
 const CREATE_COST = 500;
