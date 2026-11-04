@@ -107,7 +107,20 @@ function addXpAndLevel(userId, xpGain) {
     lvlUps.push(level);
   }
 
-  updatePlayer(userId, { xp, level, max_hp, atk, def, hp: max_hp /* full hồi khi lên cấp */ });
+  // CHỈ hồi đầy HP khi thực sự lên cấp.
+  // Trước đây hàm này luôn set hp = max_hp → mỗi trận thắng đều full máu,
+  // khiến bình máu / quán trọ / cooldown heal thành vô nghĩa.
+  const fields = { xp, level, max_hp, atk, def };
+  let hp = p.hp;
+  if (lvlUps.length > 0) {
+    hp = max_hp;                 // lên cấp → hồi đầy
+    fields.hp = hp;
+  } else if (hp > max_hp) {
+    hp = max_hp;                 // clamp nếu max_hp bị giảm (đổi class, admin chỉnh...)
+    fields.hp = hp;
+  }
+
+  updatePlayer(userId, fields);
 
   // Auto-sync class_data nếu có primary_class
   if (p.primary_class && lvlUps.length > 0) {

@@ -426,9 +426,10 @@ function withdrawGold(userId, amount) {
   return { ok: true, amount, guild: getGuild(m.guild_id) };
 }
 
+// Uỷ quyền cho slots.js để chỉ có 1 nguồn logic duy nhất (tránh lệch guard
+// giữa bán shop và gửi kho bang).
 function equippedCount(userId, itemId) {
-  const rows = db.prepare('SELECT item_id FROM equipped WHERE user_id = ?').all(userId);
-  return rows.filter(r => r.item_id === itemId).length;
+  return require('./slots').getEquippedCount(userId, itemId);
 }
 
 function depositItem(userId, itemId, qty) {

@@ -37,7 +37,7 @@ function findEquippedComparable(userId, newItem) {
 module.exports = {
   name: 'compare',
   aliases: ['cmp', 'sosanh'],
-  description: 'So sánh 2 gear: %compare <item1> [item2]. Nếu chỉ 1 arg → so với item đang equip cùng slot.',
+  description: 'So sánh 2 gear: compare <item1> [item2]. Nếu chỉ 1 arg → so với item đang equip cùng slot.',
   async execute(msg, args) {
     const prefix = process.env.PREFIX || '!';
     const p = getPlayer(msg.author.id);

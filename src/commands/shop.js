@@ -170,6 +170,23 @@ module.exports.sell = {
     if (!id) return msg.reply(`❌ Cú pháp: \`${prefix}sell <id> [qty]\``);
     const it = getItem(id);
     if (!it) return msg.reply('❌ Sai ID vật phẩm.');
+
+    // Không cho bán món đang mặc: equip KHÔNG lấy item ra khỏi túi,
+    // nên nếu bán luôn thì vừa giữ buff vừa có vàng (lỗi dup trước đây).
+    const equippedQty = require('../game/slots').getEquippedCount(msg.author.id, id);
+    const ownedRow = db.prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?')
+      .get(msg.author.id, id);
+    const owned = ownedRow?.qty || 0;
+    const sellable = Math.max(0, owned - equippedQty);
+    if (equippedQty > 0 && qty > sellable) {
+      return msg.reply(
+        `🔒 **${it.name}** đang được trang bị — không bán được.\n` +
+        (sellable > 0
+          ? `Bạn có **${owned}**× (đang mặc ${equippedQty}) → chỉ bán được tối đa **${sellable}**.\n`
+          : `Bạn chỉ có ${owned}× và đang mặc hết.\n`) +
+        `💡 Tháo ra trước: \`${prefix}unequip\` rồi bán.`
+      );
+    }
     if (!hasItem(msg.author.id, id, qty)) return msg.reply('❌ Không đủ vật phẩm để bán.');
     const gain = (it.sell || Math.floor((it.price || 0) / 3)) * qty;
     removeItem(msg.author.id, id, qty);

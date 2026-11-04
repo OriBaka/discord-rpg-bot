@@ -102,8 +102,11 @@ function buildActionButtons(battleId, playerClass) {
 
 module.exports = {
   name: 'battle',
-  aliases: ['bt', 'fight'],
-  description: 'Turn-based combat: %battle <mob_id> hoặc %battle list',
+  // Không dùng 'fight' ở đây: 'fight' đã là alias của !hunt (lệnh săn phổ biến),
+  // trước đây 2 lệnh tranh nhau và thứ tự load theo alphabet khiến !fight
+  // lại mở trận turn-based.
+  aliases: ['bt', 'turnbattle'],
+  description: 'Turn-based combat (elite/boss): battle <mob_id> hoặc battle list',
   async execute(msg, args) {
     const prefix = process.env.PREFIX || '!';
     const p = getPlayer(msg.author.id);

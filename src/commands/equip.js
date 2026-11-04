@@ -23,6 +23,9 @@ module.exports = {
     if (!['weapon', 'offhand', 'armor', 'accessory'].includes(it.type)) {
       return msg.reply('❌ Vật phẩm này không thể trang bị (không phải vũ khí/giáp/phụ kiện).');
     }
+    // Lưu ý: equip KHÔNG trừ item khỏi túi (túi luôn là "tổng sở hữu").
+    // Vì vậy điều kiện duy nhất cần kiểm tra là còn item trong túi; việc mặc lại
+    // hoặc chuyển sang slot khác là hợp lệ và không tạo thêm item ảo.
     if (!hasItem(msg.author.id, id, 1)) return msg.reply('❌ Bạn không có vật phẩm này trong túi.');
 
     // Check class
@@ -78,7 +81,8 @@ module.exports = {
     let reply = `✅ Đã trang bị **${it.name}** vào ô **${slot.name}**!`;
     if (oldItemId && oldItemId !== id) {
       const oldIt = getItem(oldItemId);
-      reply += `\n💼 Đã tháo **${oldIt?.name || oldItemId}** vào túi.`;
+      // Trang bị không hề rời túi, nên đây là "thay ra", KHÔNG phải "bỏ vào túi".
+      reply += `\n💼 Đã thay ra **${oldIt?.name || oldItemId}** (vẫn nằm trong túi).`;
     }
     return msg.reply(reply);
   },

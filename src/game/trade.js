@@ -1,6 +1,6 @@
 // Trade system: 2 player thoả thuận, cả 2 ready mới execute
 const db = require('./../db/database');
-const { getPlayer, updatePlayer, addItem, removeItem, hasItem } = require('./player');
+const { getPlayer, updatePlayer, addItem, removeItem } = require('./player');
 const { getItem } = require('./items');
 
 const TRADE_EXPIRE_MS = 5 * 60 * 1000; // 5 phút
@@ -82,6 +82,7 @@ function validateOffer(userId, offer) {
   const p = getPlayer(userId);
   if (!p) return { ok: false, error: 'no_player' };
   if (offer.gold > p.gold) return { ok: false, error: `Không đủ vàng: cần ${offer.gold}, có ${p.gold}` };
+  const { getEquippedCount } = require('./slots');
   for (const [itemId, qty] of Object.entries(offer.items)) {
     const it = getItem(itemId);
     if (!it) return { ok: false, error: `Item ${itemId} không tồn tại.` };
@@ -89,10 +90,19 @@ function validateOffer(userId, offer) {
     if (it.soulbound) {
       return { ok: false, error: `🔒 **${it.name}** là soulbound — không thể trade!` };
     }
-    if (!hasItem(userId, itemId, qty)) {
-      const haveRow = db.prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(userId, itemId);
-      const have = haveRow?.qty || 0;
-      return { ok: false, error: `Không đủ ${it.name}: cần ${qty}, có ${have}` };
+    const haveRow = db.prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(userId, itemId);
+    const have = haveRow?.qty || 0;
+    // Item đang trang bị vẫn nằm trong túi, nên phải trừ ra —
+    // nếu không sẽ trade đi món đang mặc và giữ buff vĩnh viễn (đồ ảo).
+    const equipped = getEquippedCount(userId, itemId);
+    const free = have - equipped;
+    if (qty > free) {
+      return {
+        ok: false,
+        error: equipped > 0
+          ? `Không thể trade **${it.name}** đang trang bị: cần ${qty}, chỉ có ${Math.max(0, free)} rảnh (${equipped} đang mặc).`
+          : `Không đủ ${it.name}: cần ${qty}, có ${have}`,
+      };
     }
   }
   return { ok: true };
