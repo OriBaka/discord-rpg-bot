@@ -97,15 +97,30 @@ Railway sẽ tự:
 2. Tab **"Variables"** → **"+ New Variable"**
 3. Thêm các biến sau:
 
-| Tên biến | Giá trị |
-|---|---|
-| `DISCORD_TOKEN` | (dán token đã copy ở bước 1) |
-| `PREFIX` | `!` |
-| `DB_PATH` | `/data/rpg.db` |
+| Tên biến | Giá trị | Bắt buộc |
+|---|---|---|
+| `DISCORD_TOKEN` | (dán token đã copy ở bước 1) | ✅ |
+| `ADMIN_IDS` | User ID của bạn, vd `123456789012345678` | ⚠️ nên set |
+| `DB_PATH` | `/data/rpg.db` | ✅ nếu có volume |
+| `PREFIX` | `!` | không (mặc định `!`) |
+| `SLASH_GUILD_ID` | ID server của bạn | không |
 
 4. Bấm **"Add"** sau mỗi biến
 
-Railway sẽ tự deploy lại.
+**Về `ADMIN_IDS`** — đây là chỗ nhiều người bị kẹt:
+
+- Nếu **bỏ trống**: chỉ **chủ server** và người có quyền **Administrator** mới dùng
+  được lệnh admin. Nếu bạn tạo server thì vẫn OK.
+- Nhưng nếu bạn là admin thường (không có quyền Administrator), hoặc muốn test
+  trên server của người khác, thì **phải** điền user ID của mình.
+- Cách lấy: Discord → Settings → **Advanced** → bật **Developer Mode** →
+  chuột phải tên bạn → **Copy User ID**.
+- Nhiều người: ngăn cách bằng dấu phẩy → `111111111111111111,222222222222222222`
+
+**Về `SLASH_GUILD_ID`** — không set thì slash command deploy global, Discord có thể
+cache tới ~1 giờ mới hiện. Set ID server để thấy lệnh mới gần như ngay.
+
+Railway sẽ tự deploy lại sau khi thêm biến.
 
 ---
 
@@ -153,6 +168,14 @@ Mỗi khi bạn sửa code:
 ---
 
 ## 🐛 Khắc phục sự cố
+
+### Gõ lệnh admin báo "Chỉ admin"
+→ Chưa set `ADMIN_IDS`. Xem bước 4️⃣ ở trên. (Chủ server / người có quyền
+Administrator thì vẫn dùng được dù không set.)
+
+### Slash command không xuất hiện
+→ Deploy global cần Discord cache lại (có thể tới 1 giờ). Set `SLASH_GUILD_ID`
+để deploy theo server cho nhanh. Kiểm tra bằng `!slashadmin list`.
 
 ### Bot online nhưng không trả lời tin nhắn
 → Chưa bật **MESSAGE CONTENT INTENT** ở Discord Developer Portal (bước 1.5)
