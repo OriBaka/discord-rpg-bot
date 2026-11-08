@@ -27,38 +27,102 @@ const WEAPON_TYPES = {
   ranged: ['bow', 'crossbow', 'gun'],
 };
 
-/** Đồ tốt nhất ĐẠT ĐƯỢC ở level `lv` cho class `cls` (lọc class_req như !equip) */
-function bestGear(db, lv, cls = 'melee') {
-  const one = s => db.prepare(s).get() || {};
+/**
+ * Tập id trang bị THỰC SỰ kiếm được: có bán ở shop, drop từ quái, chế được,
+ * hoặc nằm trong lootbox. Trang bị không có nguồn nào thì người chơi KHÔNG
+ * bao giờ có → không được tính vào mô hình cân bằng.
+ *
+ * Bài học: trước đây mô hình lấy "MAX(atk) có trong DB", nên báo win-rate
+ * 70% trong khi thực tế Pháp Sư/Cung Thủ kẹt ở atk 26 từ Lv.25 đến Lv.45
+ * vì 12 vũ khí Lv.30–45 không có nguồn nào.
+ */
+function obtainableIds() {
+  const db = require('../src/db/database');
+  const ids = new Set();
+  const add = (sql, col) => {
+    try { for (const r of db.prepare(sql).all()) if (r[col]) ids.add(r[col]); } catch { /* bảng chưa có */ }
+  };
+  add('SELECT item_id FROM shop', 'item_id');
+  add('SELECT DISTINCT item_id FROM monster_drops', 'item_id');
+  add('SELECT output_id FROM recipes', 'output_id');
+  add('SELECT DISTINCT reward_id FROM loot_tables', 'reward_id');
+  add('SELECT DISTINCT reward_id FROM redeem_rewards', 'reward_id');
+  add('SELECT DISTINCT reward_item FROM achievements WHERE reward_item IS NOT NULL', 'reward_item');
+  add('SELECT DISTINCT item_id FROM gather_drops', 'item_id');
+  return ids;
+}
+
+/**
+ * Điều kiện SQL: item phải nằm trong danh sách kiếm được.
+ * Chỉ lấy id là TRANG BỊ, và so sánh bằng tham số thay vì nội suy — danh sách
+ * material (hơn trăm id) từng làm câu SQL dài và dễ sai.
+ */
+function obtainableSql(ids) {
+  if (!ids || ids.size === 0) return { clause: '', params: [] };
+  const gear = [...ids].filter(id => GEAR_IDS.has(id));
+  if (gear.length === 0) return { clause: '', params: [] };
+  return { clause: `AND id IN (${gear.map(() => '?').join(',')})`, params: gear };
+}
+
+// Tập id trang bị (nạp 1 lần) để lọc danh sách kiếm được.
+// Dùng cờ riêng: trước đây kiểm tra `size > 0` nên nếu lần gọi đầu DB chưa
+// có item, cờ không bao giờ được nạp lại → bộ lọc "chỉ đồ kiếm được" bị bỏ qua
+// và các test cân bằng lại đọc chỉ số của đồ không có nguồn.
+let GEAR_IDS = new Set();
+let GEAR_LOADED = false;
+function loadGearIds() {
+  if (GEAR_LOADED) return GEAR_IDS;
+  const db = require('../src/db/database');
+  GEAR_IDS = new Set(db.prepare(`SELECT id FROM items
+    WHERE type IN ('weapon','offhand','armor','accessory')`).all().map(r => r.id));
+  GEAR_LOADED = GEAR_IDS.size > 0;
+  return GEAR_IDS;
+}
+
+/**
+ * Đồ tốt nhất ĐẠT ĐƯỢC ở level `lv` cho class `cls` (lọc class_req như !equip).
+ *
+ * QUAN TRỌNG: phải chọn theo TỪNG MÓN (ORDER BY ... LIMIT 1) rồi mới cộng
+ * atk/def của chính món đó. Trước đây dùng MAX(atk) và MAX(def) riêng rẽ trên
+ * các query khác nhau, nên có thể lấy atk của món này ghép def của món kia →
+ * chỉ số ảo, có lúc vượt cả "mọi item trong DB".
+ */
+function bestGear(db, lv, cls = 'melee', onlyObtainable = true) {
+  loadGearIds();
+  const ob = onlyObtainable ? obtainableSql(obtainableIds()) : { clause: '', params: [] };
   const okClass = `AND (class_req IS NULL OR class_req='' OR class_req='${cls}')`;
   const wts = WEAPON_TYPES[cls].map(t => `'${t}'`).join(',');
+  const TIE = '(atk+def) DESC, atk DESC';
+  const best = (where, orderBy = 'atk DESC') =>
+    db.prepare(`SELECT atk, def FROM items WHERE ${where} AND min_level<=${lv} ${okClass} ${ob.clause}
+      ORDER BY ${orderBy} LIMIT 1`).get(...ob.params) || { atk: 0, def: 0 };
 
-  const w = one(`SELECT MAX(atk) a FROM items WHERE type='weapon' AND min_level<=${lv}
-      AND weapon_type IN (${wts}) ${okClass}`);
+  const w = best(`type='weapon' AND weapon_type IN (${wts})`);
 
+  // Giáp theo từng slot: mỗi slot lấy 1 món có def cao nhất
   let armorDef = 0;
   for (const slot of ['head', 'chest', 'legs', 'feet', 'hands']) {
-    armorDef += one(`SELECT MAX(def) d FROM items WHERE type='armor' AND armor_slot='${slot}'
-        AND min_level<=${lv} ${okClass}`).d || 0;
+    armorDef += best(`type='armor' AND armor_slot='${slot}'`, 'def DESC').def || 0;
   }
-  // Tay phụ: chỉ 1 món → lấy món cho tổng atk+def cao nhất
-  const off = one(`SELECT MAX(atk+def) s FROM items WHERE type='offhand' AND min_level<=${lv} ${okClass}`);
-  const offBest = off.s ? one(`SELECT atk, def FROM items WHERE type='offhand' AND min_level<=${lv} ${okClass}
-      ORDER BY (atk+def) DESC LIMIT 1`) : { atk: 0, def: 0 };
+  // Tay phụ: 1 món, ưu tiên tổng atk+def
+  const off = best(`type='offhand'`, TIE);
 
   // Phụ kiện: 2 nhẫn + 1 dây chuyền + 1 đặc biệt (đúng như slots.js)
-  const pickAcc = (type, n) => db.prepare(`SELECT atk, def FROM items WHERE type='accessory'
-      AND accessory_type=? AND min_level<=${lv}
-      AND (class_req IS NULL OR class_req='' OR class_req='${cls}')
-      ORDER BY (atk+def) DESC LIMIT ${n}`).all(type);
-  const acc = [...pickAcc('ring', 2), ...pickAcc('necklace', 1), ...pickAcc('special', 1)];
+  const acc = [];
+  for (const [type, n] of [['ring', 2], ['necklace', 1], ['special', 1]]) {
+    const rows = db.prepare(`SELECT atk, def FROM items WHERE type='accessory' AND accessory_type=?
+        AND min_level<=${lv} ${okClass} ${ob.clause}
+        ORDER BY ${TIE} LIMIT ${n}`).all(type, ...ob.params);
+    for (const r of rows) acc.push(r);
+  }
 
+  const sum = (arr, k) => arr.reduce((s, r) => s + (r[k] || 0), 0);
   return {
-    weaponAtk: w.a || 0,
-    armorDef: armorDef + (offBest.def || 0),
-    offAtk: offBest.atk || 0,
-    accAtk: acc.reduce((s, r) => s + (r.atk || 0), 0),
-    accDef: acc.reduce((s, r) => s + (r.def || 0), 0),
+    weaponAtk: w.atk || 0,
+    armorDef,
+    offAtk: off.atk || 0,
+    accAtk: sum(acc, 'atk'),
+    accDef: sum(acc, 'def'),
   };
 }
 
@@ -222,6 +286,6 @@ function measurePlayer(lv, clsId = 'melee', withGear = true) {
 
 module.exports = {
   measurePlayer, playerAt,
-  CLS, bestGear, avgDamage, winChance, winRate, zoneWinRate, erf, makeRng,
+  CLS, bestGear, obtainableIds, avgDamage, winChance, winRate, zoneWinRate, erf, makeRng,
   MAX_ROUNDS, MITIGATION_K, MITIGATION_CAP, CRIT_CHANCE, CRIT_MULT, MAX_HIT_PCT, mitigation,
 };
