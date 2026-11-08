@@ -189,6 +189,16 @@ module.exports = {
       }
 
       embed.setColor(0x57F287).addFields({ name: '🏆 Chiến thắng!', value: lootText });
+    } else if (result.timedOut) {
+      // Hết trần vòng mà chưa ai gục: không tính là thua, không mất gì.
+      // (Trước đây trường hợp này bị tính là thua và hiện "Bạn đã gục" sai sự thật.)
+      embed.setColor(0xFEE75C).addFields({
+        name: '⚖️ Bất phân thắng bại',
+        value:
+          `Bạn và ${monster.name} đánh nhau quá lâu (${result.rounds} lượt) nên phải rút lui.\n` +
+          `❤️ Bạn còn **${result.playerHpAfter}** HP • ${monster.name} còn **${result.monsterHpLeft}** HP\n` +
+          `💡 Cần thêm sát thương: nâng cấp vũ khí hoặc luyện thêm level.`,
+      });
     } else {
       embed.setColor(0xED4245).addFields({
         name: '💀 Thất bại!',

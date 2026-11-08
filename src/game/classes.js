@@ -10,7 +10,11 @@ const CLASSES = {
     name: '⚔️ Chiến Binh',
     desc: 'Cận chiến, ATK & DEF cao, HP nhiều',
     emoji: '⚔️',
-    base: { hp: 120, atk: 12, def: 8 },         // chỉ số gốc lv 1
+    // ATK gốc được nâng 12 → 15 để cân bằng sát thương với 2 class kia:
+    // trước đây Chiến Binh có ATK thấp nhất (12) lại thêm ATK vũ khí ngang
+    // Pháp Sư (18), nên luôn gây ít sát thương nhất → thua nhiều nhất dù HP
+    // cao nhất. Class giờ khác nhau ở HP/DEF, không phải ở sát thương.
+    base: { hp: 120, atk: 15, def: 8 },         // chỉ số gốc lv 1
     growth: { hp: 18, atk: 3, def: 3 },          // mỗi lv tăng
     weapon_types: ['sword', 'axe', 'mace'],      // loại vũ khí dùng được
     armor_types:  ['heavy', 'medium', 'light'],
@@ -21,7 +25,7 @@ const CLASSES = {
     name: '🔮 Pháp Sư',
     desc: 'Phép thuật, ATK rất cao, HP/DEF thấp',
     emoji: '🔮',
-    base: { hp: 80, atk: 18, def: 3 },
+    base: { hp: 80, atk: 17, def: 3 },
     growth: { hp: 10, atk: 5, def: 1 },
     weapon_types: ['staff', 'wand', 'orb'],
     armor_types:  ['robe', 'light'],
