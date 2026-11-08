@@ -246,6 +246,11 @@ runMigrate('../game/weapon_balance', 'migrateWeaponBalance');
 // Phải chạy SAU expansive_seed vì cần quái của các zone mới đã tồn tại.
 runMigrate('../game/balance_seed', 'migrateBalanceSeed');
 
+// Cấp nguồn kiếm cho trang bị: 76/124 món trước đây không có nguồn nào
+// (không shop / drop / recipe / lootbox) → không thể mạnh lên dù lên cấp.
+// Phải chạy SAU expansive_seed (dùng item Lv.30–45 của module đó).
+runMigrate('../game/item_sources', 'migrateItemSources');
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();

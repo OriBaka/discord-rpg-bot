@@ -155,3 +155,65 @@ test('mọi quái đều có drop và zone đều có quái', () => {
     WHERE m.elite_tier=0 AND NOT EXISTS (SELECT 1 FROM monster_drops d WHERE d.monster_id = m.id)`).all();
   assert.strictEqual(noDrop.length, 0, `quái không có drop: ${noDrop.map(r => r.id).join(', ')}`);
 });
+
+// ---------------------------------------------------------------------------
+// MỤC TIÊU A: mọi trang bị phải có NGUỒN KIẾM ĐƯỢC.
+// Lỗi thật đã xảy ra: 76/124 trang bị (12/29 vũ khí) không có nguồn nào —
+// không shop, không drop, không recipe, không lootbox. Người chơi Pháp Sư /
+// Cung Thủ kẹt atk 26 từ Lv.25 tới Lv.45 trong khi Chiến Binh lấy dragon_sword
+// atk 48. Test này chặn tái diễn: thêm item mà quên cấp nguồn là fail ngay.
+// ---------------------------------------------------------------------------
+test('mọi vũ khí đều kiếm được (shop / drop / chế / lootbox)', () => {
+  const obtainable = sim.obtainableIds();
+  const weapons = db.prepare("SELECT id FROM items WHERE type='weapon'").all();
+  const orphans = weapons.filter(w => !obtainable.has(w.id)).map(w => w.id);
+  assert.deepStrictEqual(orphans, [],
+    `vũ khí không có nguồn nào: ${orphans.join(', ')}`);
+});
+
+test('mọi trang bị đều kiếm được (không chỉ vũ khí)', () => {
+  const obtainable = sim.obtainableIds();
+  const gear = db.prepare(`SELECT id, type, min_level FROM items
+    WHERE type IN ('weapon','offhand','armor','accessory')`).all();
+  const orphans = gear.filter(g => !obtainable.has(g.id))
+    .sort((a, b) => a.min_level - b.min_level);
+  assert.deepStrictEqual(orphans.map(o => `${o.id}(Lv${o.min_level} ${o.type})`), [],
+    `trang bị không có nguồn: ${orphans.map(o => o.id).join(', ')}`);
+});
+
+// ---------------------------------------------------------------------------
+// MỤC TIÊU B: mô hình cân bằng phải dùng ĐỒ THỰC KIẾM ĐƯỢC.
+// Nếu ai đó thêm một món cực mạnh mà không cấp nguồn, win-rate "trên giấy"
+// sẽ đẹp nhưng người chơi thật không bao giờ đạt được → test dưới bắt lệch.
+// ---------------------------------------------------------------------------
+test('chỉ số đồ dùng trong mô hình cân bằng đều kiếm được', () => {
+  const obtainable = sim.obtainableIds();
+  for (const lv of [1, 12, 25, 30, 35, 40, 45]) {
+    for (const cls of CLASSES) {
+      const real = sim.bestGear(db, lv, cls, true);
+      const all = sim.bestGear(db, lv, cls, false);
+      const total = g => g.weaponAtk + g.accAtk + g.offAtk + g.armorDef + g.accDef;
+      assert.ok(total(real) > 0, `Lv${lv} ${cls}: không có đồ kiếm được nào`);
+      // Model "thực tế" không được vượt model "mọi đồ"
+      assert.ok(total(real) <= total(all),
+        `Lv${lv} ${cls}: đồ kiếm được (${total(real)}) > mọi đồ (${total(all)}) — lỗi lọc`);
+    }
+  }
+});
+
+test('win-rate với đồ thực kiếm được vẫn đạt Option A (65–75%)', () => {
+  // playerAt() đã đo bằng bestGear(..., onlyObtainable = true), nên test 1
+  // thực chất đang chạy trên đồ người chơi kiếm được. Test này chỉ chốt lại
+  // điều đó để không ai lặng lẽ bật lại chế độ "mọi item trong DB".
+  const zones = db.prepare('SELECT * FROM zones ORDER BY min_level').all();
+  const report = [];
+  let inRange = 0;
+  for (const z of zones) {
+    const per = zoneRates(z.id, z.min_level);
+    const med = median(per);
+    report.push(`${z.id}: ${per.map(v => v.toFixed(0)).join('/')} → ${med.toFixed(0)}%`);
+    if (med >= 65 && med <= 75) inRange++;
+  }
+  assert.ok(inRange >= zones.length - 1,
+    `chỉ ${inRange}/${zones.length} zone trong 65–75%:\n${report.join('\n')}`);
+});
