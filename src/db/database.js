@@ -233,6 +233,19 @@ runMigrate('../game/level_req', 'migrateLevelReq');
 // Turn-based battle system
 runMigrate('../game/battle', 'migrateBattle');
 
+// Nội dung mở rộng: zone mới + quái mới + vũ khí/giáp/phụ kiện/tiêu hao mới.
+// Chạy SAU level_req để các item mới được giữ đúng min_level khai báo
+// (inferMinLevel chỉ backfill khi min_level = 0).
+runMigrate('../game/expansive_seed', 'migrateExpansive');
+
+// Cân bằng vũ khí: lấp lỗ hổng tier + đưa ATK 3 class về cùng mốc.
+// Phải chạy SAU expansive_seed (dùng các id vũ khí mới của module đó).
+runMigrate('../game/weapon_balance', 'migrateWeaponBalance');
+
+// Cân bằng chỉ số quái (45 con, 9 zone) — chạy 1 lần, có guard trong meta.
+// Phải chạy SAU expansive_seed vì cần quái của các zone mới đã tồn tại.
+runMigrate('../game/balance_seed', 'migrateBalanceSeed');
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();

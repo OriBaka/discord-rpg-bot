@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { getPlayer, updatePlayer, removeItem, hasItem } = require('../game/player');
+const { getPlayer, updatePlayer, addItem, removeItem, hasItem } = require('../game/player');
 const { ITEMS } = require('../game/items');
 const lootbox = require('../game/lootbox');
 
@@ -51,8 +51,16 @@ module.exports = {
     removeItem(msg.author.id, id, 1);
     const { buildAgainRow } = require('../game/again_button');
     const againRow = buildAgainRow('use', msg.author.id, [id]);
-    if (it.heal) {
-      const newHp = Math.min(p.max_hp, p.hp + it.heal);
+    // Bình hồi theo % max HP (potion_percent / potion_full): đọc heal_pct.
+    // Kiểm tra TRƯỚC khi trừ bình để không mất bình khi HP đã đầy.
+    const healPct = Number(it.heal_pct) || 0;
+    const healAmount = it.heal || (healPct ? Math.round(p.max_hp * healPct / 100) : 0);
+    if (healAmount > 0) {
+      if (p.hp >= p.max_hp) {
+        addItem(msg.author.id, id, 1);   // trả lại bình, không mất
+        return msg.reply('💚 HP đã đầy rồi, để dành bình cho lần sau nhé!');
+      }
+      const newHp = Math.min(p.max_hp, p.hp + healAmount);
       const healed = newHp - p.hp;
       updatePlayer(msg.author.id, { hp: newHp });
       return msg.reply({ content: `🧪 Dùng **${it.name}**, hồi **${healed}** HP. (HP: ${newHp}/${p.max_hp})`, components: [againRow] });
