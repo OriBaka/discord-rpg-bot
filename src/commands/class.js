@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const db = require('../db/database');
-const { getPlayer, updatePlayer, removeItem } = require('../game/player');
+const { getPlayer, updatePlayer, removeItem, addItem } = require('../game/player');
 const {
   CLASSES, classInfo, getAllClasses,
   isClassDisabled, getDisabledReason,
@@ -113,6 +113,18 @@ module.exports = {
         WHERE user_id = ?`)
         .run(id, cd.hp, cd.max_hp, cd.atk, cd.def, msg.author.id);
 
+      // Tặng vũ khí khởi đầu của class.
+      // Trước đây người chơi mới hoàn toàn tay không, và Lv.1 tay không chỉ
+      // thắng ~1–4% ở forest → không thể tự kiếm vàng để mua vũ khí đầu tiên.
+      // Nay chọn class là có vũ khí, giống mọi game nhập vai.
+      const STARTER = { melee: 'wood_sword', magic: 'apprentice_wand', ranged: 'short_bow' };
+      const starterId = STARTER[id];
+      if (starterId) {
+        const has = db.prepare('SELECT 1 FROM inventory WHERE user_id=? AND item_id=?')
+          .get(msg.author.id, starterId);
+        if (!has) addItem(msg.author.id, starterId, 1);
+      }
+
       const c = classInfo(id);
       const embed = new EmbedBuilder()
         .setColor(c.color)
@@ -122,6 +134,7 @@ module.exports = {
           { name: '❤️ HP',  value: `${c.base.hp}`, inline: true },
           { name: '⚔️ ATK', value: `${c.base.atk}`, inline: true },
           { name: '🛡️ DEF', value: `${c.base.def}`, inline: true },
+          { name: '🗡️ Vũ khí khởi đầu', value: starterId ? `\`${starterId}\` (đã vào túi — nhớ \`${prefix}equip ${starterId}\`)` : '—' },
           { name: '💡 Tip', value: `Mỗi class có item riêng. Vào \`${prefix}shop\` xem đồ phù hợp.` },
         );
       return msg.reply({ embeds: [embed] });

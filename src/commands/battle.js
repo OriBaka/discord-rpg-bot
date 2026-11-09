@@ -114,6 +114,25 @@ module.exports = {
 
     const sub = (args[0] || '').toLowerCase();
 
+    // === Help ===
+    // Trước đây `!battle help` rơi xuống nhánh "start battle" và bị coi là mob
+    // id → báo "Mob help không tồn tại", rất khó hiểu cho người chơi.
+    if (sub === 'help' || sub === 'h' || sub === '-h' || sub === '?') {
+      const embed = new EmbedBuilder().setColor(0x5865F2)
+        .setTitle('⚔️ Turn-based Battle — hướng dẫn')
+        .setDescription(
+          `\`${prefix}battle list\` — xem elite & boss đang có\n` +
+          `\`${prefix}battle <mob_id>\` — vào trận đánh elite/boss\n` +
+          `\`${prefix}battle help\` — hướng dẫn này\n\n` +
+          `**Phân biệt:**\n` +
+          `• \`${prefix}hunt\` — đánh quái thường trong zone (nhanh, tự động)\n` +
+          `• \`${prefix}battle\` — trận đánh theo lượt với elite/boss (có kỹ năng, buff)\n\n` +
+          `**Trong trận:** dùng nút bấm để Đánh / Kỹ năng / Thủ / Trốn.`
+        )
+        .setFooter({ text: `${prefix}battle list để xem danh sách` });
+      return msg.reply({ embeds: [embed] });
+    }
+
     // === List elite/boss ===
     if (!sub || sub === 'list') {
       const mobs = db.prepare(`SELECT id, name, hp, atk, def, xp, elite_tier FROM monsters WHERE elite_tier >= 1 ORDER BY elite_tier, hp`).all();

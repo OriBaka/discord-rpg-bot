@@ -1,13 +1,33 @@
 // Skills system — 3 skills per class + basic actions
 // Sync data only, không cần migrate DB (định nghĩa cứng trong code)
 
+// ---------------------------------------------------------------------------
+// Giảm sát thương theo DEF — DÙNG CHUNG công thức với PvE (combat.js).
+//
+// Trước đây PvP dùng `atk - def` tuyến tính trong khi PvE đã chuyển sang
+// giảm thương theo tỉ lệ. Hệ quả: cùng một nhân vật, đánh quái và đánh người
+// cho ra hai cảm giác hoàn toàn khác nhau, và def cao ở PvP gần như miễn
+// nhiễm trong khi ở PvE thì không. Nay hai chế độ dùng cùng một luật.
+//
+// Công thức: giảm = min(0.75, def / (def + 240))
+//   def 240 → giảm 50%, def 720 → chạm trần 75%.
+// ---------------------------------------------------------------------------
+const MITIGATION_K = 240;
+const MITIGATION_CAP = 0.75;
+
+function mitigated(atk, def) {
+  const d = Math.max(0, def);
+  const reduction = Math.min(MITIGATION_CAP, d / (d + MITIGATION_K));
+  return Math.max(1, Math.round(Math.max(1, atk * (1 - reduction))));
+}
+
 const SKILLS = {
   // ========== MELEE ==========
   slash: {
     id: 'slash', name: '⚔️ Slash', class: 'melee', cd: 0,
     desc: '150% ATK damage. Không cooldown.',
     resolve: (attacker, target) => {
-      const dmg = Math.max(1, Math.floor(attacker.atk * 1.5) - target.def);
+      const dmg = mitigated(Math.floor(attacker.atk * 1.5), target.def);
       return { dmg, log: `⚔️ Slash gây **${dmg}** dmg` };
     },
   },
@@ -49,7 +69,7 @@ const SKILLS = {
     id: 'freeze', name: '❄️ Freeze', class: 'magic', cd: 4,
     desc: '100% ATK + đóng băng địch 1 turn (không đánh được).',
     resolve: (attacker, target) => {
-      const dmg = Math.max(1, attacker.atk - target.def);
+      const dmg = mitigated(attacker.atk, target.def);
       return { dmg, log: `❄️ Freeze **${dmg}** dmg + FROZEN`, applyBuff: { target: 'enemy', key: 'freeze', turns: 1 } };
     },
   },
@@ -59,7 +79,7 @@ const SKILLS = {
     id: 'aimed_shot', name: '🎯 Aimed Shot', class: 'ranged', cd: 2,
     desc: '200% ATK, crit 100% (dmg x2 sau khi tính def).',
     resolve: (attacker, target) => {
-      const base = Math.max(1, Math.floor(attacker.atk * 2.0) - target.def);
+      const base = mitigated(Math.floor(attacker.atk * 2.0), target.def);
       const dmg = base * 2; // guaranteed crit
       return { dmg, log: `🎯 Aimed Shot CRIT **${dmg}** dmg` };
     },
@@ -71,7 +91,8 @@ const SKILLS = {
       let total = 0;
       const hits = [];
       for (let i = 0; i < 3; i++) {
-        const d = Math.max(1, Math.floor(attacker.atk * 0.6) - Math.floor(target.def / 2));
+        // Volley: 3 đòn nhẹ, mỗi đòn tính giảm thương riêng (def đầy đủ)
+        const d = mitigated(Math.floor(attacker.atk * 0.6), target.def);
         total += d;
         hits.push(d);
       }
@@ -82,7 +103,7 @@ const SKILLS = {
     id: 'trap', name: '🪤 Trap', class: 'ranged', cd: 3,
     desc: '100% ATK + giảm DEF địch 50% trong 3 turn.',
     resolve: (attacker, target) => {
-      const dmg = Math.max(1, attacker.atk - target.def);
+      const dmg = mitigated(attacker.atk, target.def);
       return { dmg, log: `🪤 Trap **${dmg}** dmg + DEF -50%`, applyBuff: { target: 'enemy', key: 'def_down', turns: 3, value: 0.5 } };
     },
   },
@@ -93,7 +114,7 @@ const BASIC_ACTIONS = {
   attack: {
     id: 'attack', name: '⚔️ Attack', desc: '100% ATK basic.',
     resolve: (attacker, target) => {
-      const dmg = Math.max(1, attacker.atk - target.def);
+      const dmg = mitigated(attacker.atk, target.def);
       return { dmg, log: `⚔️ Attack **${dmg}** dmg` };
     },
   },
@@ -187,6 +208,6 @@ function reduceDmg(dmg, buffs) {
 module.exports = {
   SKILLS, BASIC_ACTIONS,
   getSkillsForClass, getAllActions, getSkill,
-  tickBuffs, canAct, effectiveDef, effectiveAtk, reduceDmg,
+  tickBuffs, canAct, effectiveDef, effectiveAtk, reduceDmg, mitigated,
 };
  
