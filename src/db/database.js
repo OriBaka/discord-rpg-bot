@@ -251,6 +251,10 @@ runMigrate('../game/balance_seed', 'migrateBalanceSeed');
 // Phải chạy SAU expansive_seed (dùng item Lv.30–45 của module đó).
 runMigrate('../game/item_sources', 'migrateItemSources');
 
+// Cân bằng kinh tế: giá shop neo vào "số kill cần để mua".
+// Phải chạy SAU item_sources (module đó mới là bên thêm phần lớn trang bị vào shop).
+runMigrate('../game/economy_seed', 'migrateEconomySeed');
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
