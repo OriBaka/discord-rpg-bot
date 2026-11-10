@@ -57,6 +57,7 @@ function monsterEmbed(m, prefix) {
 
   const embed = new EmbedBuilder()
     .setColor(0xED4245).setTitle(`👹 ${m.name}`)
+    .setDescription(m.desc ? `› *${m.desc}*` : '*(Chưa có mô tả)*')
     .addFields(
       { name: '🆔 ID', value: `\`${m.id}\``, inline: true },
       { name: '📍 Khu vực', value: zone?.name || m.zone_id, inline: true },

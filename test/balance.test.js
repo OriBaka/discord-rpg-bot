@@ -381,3 +381,44 @@ test('PvP dùng chung công thức giảm thương với PvE', () => {
       `lệch công thức tại atk=${atk} def=${def}: skills=${viaSkill} combat=${viaCombat}`);
   }
 });
+
+// ---------------------------------------------------------------------------
+// LORE: mọi thực thể người chơi nhìn thấy đều phải có mô tả bằng tiếng Việt.
+// Trước đây: bảng monsters KHÔNG có cột mô tả (45 con chỉ có chỉ số), và 62/176
+// mô tả item còn là tiếng Việt thô từ đời đầu ("Vảy rồng cổ", "Đơn giản") trong
+// khi tên đã English → trải nghiệm nửa Anh nửa Việt.
+// ---------------------------------------------------------------------------
+test('mọi quái đều có mô tả', () => {
+  const missing = db.prepare("SELECT id FROM monsters WHERE desc IS NULL OR trim(desc)=''").all();
+  assert.deepStrictEqual(missing.map(m => m.id), [], 'quái chưa có mô tả');
+});
+
+test('mọi zone đều có mô tả', () => {
+  const missing = db.prepare("SELECT id FROM zones WHERE desc IS NULL OR trim(desc)=''").all();
+  assert.deepStrictEqual(missing.map(z => z.id), [], 'zone chưa có mô tả');
+});
+
+test('mọi item đều có mô tả đủ dài', () => {
+  // Ngưỡng 25 ký tự để chặn kiểu mô tả cụt "Đơn giản" / "Cực mạnh" / "Tăng nhẹ ATK"
+  const short = db.prepare('SELECT id, desc, length(trim(desc)) n FROM items WHERE n < 25').all();
+  assert.deepStrictEqual(short.map(s => `${s.id}: "${s.desc}"`), [],
+    'item có mô tả quá ngắn (không phải lore)');
+});
+
+test('mô tả viết bằng tiếng Việt, không phải tiếng Anh thô', () => {
+  // Tên item/quái/zone là English (đã rename), nhưng MÔ TẢ phải là tiếng Việt
+  // để khớp với toàn bộ UI lệnh.
+  //
+  // Cách nhận biết: chữ Việt có dấu (à á ả ã ạ ă â đ ê ô ơ ư...). Không dùng
+  // danh sách từ khoá vì câu ngắn kiểu "Nanh sói còn dính máu khô" không chứa
+  // từ nối nào mà vẫn là tiếng Việt hoàn toàn — cách đó từng báo sai 9 món.
+  const VN_CHARS = /[àáảãạăằắẳẵặâầấẩẫậđèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵ]/i;
+  const rows = [
+    ...db.prepare('SELECT id, desc FROM items').all(),
+    ...db.prepare('SELECT id, desc FROM monsters').all(),
+    ...db.prepare('SELECT id, desc FROM zones').all(),
+  ];
+  const notVietnamese = rows.filter(r => r.desc && !VN_CHARS.test(r.desc));
+  assert.deepStrictEqual(notVietnamese.map(r => r.id), [],
+    `mô tả không phải tiếng Việt: ${notVietnamese.slice(0, 8).map(r => `${r.id}="${r.desc}"`).join(', ')}`);
+});

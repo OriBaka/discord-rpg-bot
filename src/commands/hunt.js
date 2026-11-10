@@ -85,9 +85,12 @@ module.exports = {
     const result = simulateBattle(p, monster);
     updatePlayer(msg.author.id, { hp: result.playerHpAfter, last_hunt: now });
 
+    // Lore của quái hiện ngay khi đụng độ — trước đây bảng monsters không có
+    // cột mô tả nên người chơi chỉ thấy một dòng chỉ số khô khan.
+    const mobLore = monster.desc ? `\n› *${monster.desc}*\n` : '';
     const embed = new EmbedBuilder()
       .setTitle(`⚔️ Đụng độ ${monster.name}!`)
-      .setDescription(`${zoneNote}\n\n` + result.log.slice(-6).join('\n'));
+      .setDescription(`${zoneNote}${mobLore}\n` + result.log.slice(-6).join('\n'));
     if (monster.image_url) embed.setThumbnail(monster.image_url);
 
     if (result.win) {
