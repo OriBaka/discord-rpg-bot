@@ -109,6 +109,10 @@ module.exports = {
         else                                groups.special.push(p);
       }
 
+      // Lore (cột desc) trước đây KHÔNG được hiển thị ở đâu cả → 13 mô tả là
+      // chữ chết. Nay hiện dưới dạng câu nghiêng, tách khỏi phần chỉ số.
+      const loreOf = (p) => (p.desc ? `\n    📖 *${p.desc}*` : '');
+
       const buffOf = (p) => {
         const b = [];
         if (p.atk_bonus) b.push(`+${p.atk_bonus} ATK`);
@@ -130,7 +134,7 @@ module.exports = {
           const mark = owned.has(p.id) ? '✅' : '❌';
           const src = directDropMap[p.id];
           const mobName = src ? db.prepare('SELECT name FROM monsters WHERE id=?').get(src.mob)?.name || src.mob : '?';
-          return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`\n    *${buffOf(p)}*\n    💀 Drop từ: ${mobName} (${(src.chance*100).toFixed(1)}%)`;
+          return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`${loreOf(p)}\n    *${buffOf(p)}*\n    💀 Drop từ: ${mobName} (${(src.chance*100).toFixed(1)}%)`;
         });
         embed.addFields({ name: '🎯 Direct Drop (săn quái)', value: lines.join('\n\n').slice(0, 1024) });
       }
@@ -145,7 +149,7 @@ module.exports = {
           // Tìm mob drop shard
           const shardSrc = db.prepare('SELECT monster_id, chance FROM pet_drops WHERE shard_id=?').get(p.shard_id);
           const mobName = shardSrc ? db.prepare('SELECT name FROM monsters WHERE id=?').get(shardSrc.monster_id)?.name : '?';
-          return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`\n    *${buffOf(p)}*\n    🧩 Cần **${p.shard_qty}× ${p.shard_id}** (bạn có ${haveShard})${ready}\n    💀 Shard drop từ: ${mobName}`;
+          return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`${loreOf(p)}\n    *${buffOf(p)}*\n    🧩 Cần **${p.shard_qty}× ${p.shard_id}** (bạn có ${haveShard})${ready}\n    💀 Shard drop từ: ${mobName}`;
         });
         embed.addFields({ name: '🧩 Shard Craft (ghép mảnh)', value: lines.join('\n\n').slice(0, 1024) });
       }
@@ -156,7 +160,7 @@ module.exports = {
           const t = tierInfo(p.tier);
           const mark = owned.has(p.id) ? '✅' : '❌';
           const tag = p.hidden ? ' 🕵️ *Hidden*' : ' 🎁 *Special/Event*';
-          return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`${tag}\n    *${buffOf(p)}*`;
+          return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`${tag}${loreOf(p)}\n    *${buffOf(p)}*`;
         });
         embed.addFields({ name: '✨ Special / Event', value: lines.join('\n\n').slice(0, 1024) });
       }
