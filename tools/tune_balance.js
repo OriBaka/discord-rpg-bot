@@ -100,6 +100,14 @@ function buildZone(zid, hitFrac = TARGET_HIT_FRAC, tierDelta = 0) {
   const nakedDef = N.reduce((s, p) => s + p.def, 0) / 3;
   // hitFrac là bội số của TRẦN: 1.0 = người không đồ vừa chạm trần,
   // 1.5 = quái mạnh gấp rưỡi mức đó (mọi class đều chạm trần thoải mái).
+  // LƯU Ý — điều KHÔNG hiệu quả (đã đo, đừng thử lại):
+  // Đặt ATK quái đủ lớn để CẢ 3 class cùng chạm trần sát thương nghe có lý
+  // (ai cũng chết sau 1/MAX_HIT_PCT đòn → khoảng cách HP/DEF biến mất), nhưng
+  // đo thực tế: vẫn lệch 9-25 điểm và KHÔNG đổi khi tăng ATK gấp 2.5 lần.
+  // Lý do: khi đã chạm trần, win-rate chỉ còn phụ thuộc SỐ ĐÒN ĐỂ GIẾT quái,
+  // mà đại lượng đó chênh tới 16-22% giữa các class (volcano: Chiến Binh 4.50
+  // đòn, Pháp Sư 3.70 đòn). Chênh lệch độ bền không phải thủ phạm — chênh
+  // lệch SÁT THƯƠNG mới là. Xem tools/CAN_BANG.md.
   const baseAtk = (avgMaxHp * MAX_HIT_PCT_USED * hitFrac) / (1 - mitigation(nakedDef));
   const atkRef = Math.max(1, baseAtk);
 
@@ -176,15 +184,21 @@ for (const zid of Object.keys(LAYOUT)) {
       z = buildZone(zid, hf, d);
       if (median(zonePer(z)) < zt) dlo = d; else dhi = d;
     }
-    const per = zonePer(z);
-    const sp = Math.max(...per) - Math.min(...per);
+    // Đo lại trên CHÍNH bảng quái vừa dựng (z.mobs), không dùng `per` cũ.
+    // Trước đây chỗ này dùng lại biến `per` từ vòng lặp bisect — nên mọi
+    // dòng báo cáo "giáp có tác dụng" đều hiển thị số của zone trước đó.
+    const zoneMobs = z.mobs;
+    const wt2 = zoneMobs.reduce((s, m) => s + m.weight, 0);
+    const per2 = CLASSES.map((c, i) => zoneMobs.reduce((s, m) =>
+      s + m.weight / wt2 * m.per[i], 0) * 100);
+    const sp = Math.max(...per2) - Math.min(...per2);
     // Ưu tiên TUYỆT ĐỐI việc không class nào bị đẩy ra rìa (0-1% hoặc 100%).
     // Một zone mà Chiến Binh 100% / Pháp Sư 1% có trung vị "đẹp" nhưng không
     // chơi được — đó chính là kiểu lỗi bộ test cũ không bắt được.
-    const extreme = per.filter(v => v < 15 || v > 85).length * 200 +
-                    per.filter(v => v < 5 || v > 95).length * 400;
-    const score = extreme + sp * 3 + Math.abs(median(per) - zt) * 2;
-    if (!best || score < best.score) best = { z, per, sp, score, hf };
+    const extreme = per2.filter(v => v < 15 || v > 85).length * 200 +
+                    per2.filter(v => v < 5 || v > 95).length * 400;
+    const score = extreme + sp * 3 + Math.abs(median(per2) - zt) * 2;
+    if (!best || score < best.score) best = { z, per: per2, sp, score, hf };
   }
   out[zid] = best.z;
   out[zid].per = best.per;
