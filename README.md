@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **42 lệnh** prefix + **47 slash command** (32 người chơi + 15 admin)
+- **43 lệnh** prefix + **48 slash command** (33 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -21,6 +21,7 @@ Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, 
 | 🛠️ Nghề & chế tạo | Mining, fishing, cooking, crafting + 21 recipe |
 | 🐾 Pet | 13 pet, drop trực tiếp hoặc ghép từ mảnh, cộng chỉ số khi đi theo |
 | 🏰 Bang hội | Tạo bang, mời thành viên, kho chung, buff vàng/XP/drop, BXH bang |
+| 🐲 Boss tuần (raid) | Cả server đánh chung một thanh máu, 5 lượt/tuần/người, chia thưởng theo hạng sát thương |
 | ⚔️ PvP & Trade | Duel có cược vàng + rating; trade item/vàng 2 chiều có bước xác nhận |
 | 📜 Quest & Thành tựu | Quest daily tự sinh, quest custom (admin), 25 thành tựu có điểm và title |
 | 🎁 Khác | Daily, lootbox, redeem code, ảnh cho item/quái/zone/pet |
@@ -38,7 +39,7 @@ discord-rpg-bot/
 │   │   ├── database.js       # SQLite + schema + chạy toàn bộ migrate
 │   │   ├── seed.js           # Seed item/zone/quái lần đầu
 │   │   └── rename_items.js   # One-shot đổi tên VN → EN
-│   ├── game/                 # 30 module logic dùng chung
+│   ├── game/                 # 44 module logic dùng chung (raid.js = boss tuần)
 │   │   ├── player.js         # Player, XP, inventory
 │   │   ├── combat.js         # Mô phỏng trận nhanh (hunt)
 │   │   ├── battle.js         # Turn-based engine (battle)
@@ -48,7 +49,7 @@ discord-rpg-bot/
 │   │   ├── pets.js / guilds.js / quests.js / achievements.js
 │   │   ├── pvp.js / trade.js / jobs.js / recipes.js
 │   │   └── gather_zones.js / lootbox.js / redeem.js / settings.js / images.js
-│   ├── commands/             # 39 file → 42 lệnh (nhiều lệnh/file)
+│   ├── commands/             # 40 file → 43 lệnh (nhiều lệnh/file)
 │   └── slash/
 │       ├── definitions.js    # 32 slash command người chơi
 │       ├── admin_definitions.js  # 15 slash command admin
@@ -150,6 +151,7 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 | `%duel @user [gold]` | PvP có cược, `%duel accept/decline/top` |
 | `%trade @user` | Mở phiên trade, `%trade add/remove/ready/confirm` |
 | `%pet` | Pet: `active`, `shards`, `combine`, `collection` |
+| `%raid` | Boss tuần: `danh` (đánh), `top` (BXH sát thương), `bang` (BXH bang), `thuong` (nhận thưởng) |
 | `%redeem <code>` | Nhập code nhận thưởng |
 
 ### Tra cứu & tiến trình
