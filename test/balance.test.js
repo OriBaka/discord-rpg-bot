@@ -512,7 +512,8 @@ test('nâng cấp: chi phí tăng dần và không "ngược" giữa đồ yếu
 
 test('nâng cấp: mọi nguyên liệu đều có nguồn kiếm được trong game', () => {
   const obtainable = sim.obtainableIds();
-  const missing = upgrade.MATERIAL_LADDER.filter(id => !obtainable.has(id));
+  const ids = upgrade.getConfig().ladder.map(m => m.item_id);
+  const missing = ids.filter(id => !obtainable.has(id));
   assert.deepStrictEqual(missing, [],
     `nguyên liệu nâng cấp không có nguồn: ${missing.join(', ')}`);
 });
@@ -559,4 +560,53 @@ test('nâng cấp: cấp gắn theo VŨ KHÍ, không theo slot (chống kế th�
   db.prepare('DELETE FROM equipped WHERE user_id=?').run(UID);
   db.prepare('DELETE FROM inventory WHERE user_id=?').run(UID);
   db.prepare('DELETE FROM players WHERE user_id=?').run(UID);
+});
+
+// ---------------------------------------------------------------------------
+// ADMIN CHỈNH CẤU HÌNH NÂNG CẤP
+// ---------------------------------------------------------------------------
+test('admin: cấu hình nâng cấp đọc/ghi được và có hiệu lực ngay', () => {
+  // Trước đây chi phí là hằng số trong code — đổi phải sửa file + restart.
+  // Test này chốt rằng đổi qua DB thì `getUpgradeCost` thấy NGAY.
+  const it = db.prepare("SELECT * FROM items WHERE id='steel_sword'").get();
+  const before = upgrade.getUpgradeCost(it, 3);   // mốc +4
+  const idx = before.ladder_index;
+
+  // Sửa đúng bậc mà vũ khí này dùng — unit test cho logic,
+  // không mô phỏng cách lệnh admin ghi (việc đó đã test riêng).
+  const cfg = upgrade.getConfig();
+  const rawQty = cfg.ladder[idx].qty;          // số lượng GỐC trong config
+  const mult = cfg.tier_mult[it.tier] || 1;    // rồi mới nhân phẩm chất
+  const ladder = cfg.ladder.map(e => ({ ...e }));
+  ladder[idx] = { ...ladder[idx], qty: rawQty + 7 };
+  upgrade.writeKey('ladder', ladder);
+
+  const after = upgrade.getUpgradeCost(it, 3);
+  assert.strictEqual(after.materials[0].qty, Math.round((rawQty + 7) * mult),
+    'đổi qty trong config phải phản ánh ngay vào chi phí');
+  assert.strictEqual(after.materials[0].item_id, before.materials[0].item_id,
+    'chỉ đổi số lượng, không đổi loại nguyên liệu');
+
+  upgrade.resetConfig();
+  const reset = upgrade.getUpgradeCost(it, 3);
+  assert.strictEqual(reset.materials[0].qty, before.materials[0].qty,
+    'reset phải đưa chi phí về mặc định');
+});
+
+test('admin: cấu hình hỏng không được làm nâng cấp nổ', () => {
+  // readKey() có try/catch: nếu DB chứa JSON rác (admin gõ sai, hoặc bản
+  // nâng cấp cũ để lại) thì phải quay về mặc định, KHÔNG được throw.
+  db.prepare("INSERT OR REPLACE INTO upgrade_config (key, value) VALUES ('ladder','{rac')").run();
+  const it = db.prepare("SELECT * FROM items WHERE id='iron_sword'").get();
+  const cfg = upgrade.getConfig();
+  assert.ok(Array.isArray(cfg.ladder) && cfg.ladder.length > 0,
+    'config hỏng phải quay về thang mặc định');
+  const cost = upgrade.getUpgradeCost(it, 0);
+  assert.ok(cost && cost.materials[0].qty >= 1, 'vẫn phải tính được chi phí');
+
+  // ladder rỗng cũng không được làm nổ
+  upgrade.writeKey('ladder', []);
+  assert.ok(upgrade.getUpgradeCost(it, 0), 'ladder rỗng phải fallback về mặc định');
+
+  upgrade.resetConfig();
 });

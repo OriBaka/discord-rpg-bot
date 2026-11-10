@@ -12,6 +12,14 @@ const { getItem } = require('../game/items');
 const { getEquipped } = require('../game/slots');
 const { tierInfo } = require('../game/tiers');
 const upgrade = require('../game/upgrade');
+const { getRestTokens, parseKV } = require('../game/argparse');
+
+function isAdmin(msg) {
+  const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim());
+  return adminIds.includes(msg.author.id)
+      || (msg.guild && msg.guild.ownerId === msg.author.id)
+      || (msg.member && msg.member.permissions?.has('Administrator'));
+}
 
 const COLORS = { common: 0x95A5A6, rare: 0x3498DB, epic: 0x9B59B6, legendary: 0xE67E22 };
 
@@ -86,15 +94,13 @@ function renderStatus(msg, p) {
   return msg.reply({ embeds: [embed] });
 }
 
-// ===== Bảng chi phí +1..+5 =====
-// Chi phí phụ thuộc 2 thứ: phẩm chất (nhân số lượng) và cấp vũ khí (bậc
-// nguyên liệu). Vì vậy bảng minh hoạ theo 4 mốc cấp độ đại diện, không liệt
-// kê 30 vũ khí.
+// ===== Bảng chi phí +1..+5 (đọc CẤU HÌNH SỐNG, không phải hằng số) =====
 function renderList(msg) {
+  const cfg = upgrade.getConfig();
   let desc = 'Nguyên liệu tăng dần theo cấp **và** theo độ mạnh vũ khí.\n';
   desc += 'Số lượng nhân theo phẩm chất: ';
   desc += ['common', 'rare', 'epic', 'legendary']
-    .map(t => `${tierInfo(t).emoji}×${upgrade.TIER_MULT[t]}`).join(' · ') + '\n\n';
+    .map(t => `${tierInfo(t).emoji}×${cfg.tier_mult[t]}`).join(' · ') + '\n\n';
 
   const samples = ['wood_sword', 'iron_sword', 'steel_sword', 'dragon_sword'];
   for (const id of samples) {
@@ -126,6 +132,130 @@ function renderList(msg) {
   return msg.reply({ embeds: [embed] });
 }
 
+// ===== ADMIN: chỉnh cấu hình nâng cấp =====
+//
+// Trước đây toàn bộ chi phí là hằng số trong `upgrade.js` — muốn đổi phải sửa
+// file + restart bot. Nay admin chỉnh trực tiếp, có hiệu lực NGAY cho cả bảng
+// chi phí lẫn lệnh nâng cấp (vì `getUpgradeCost` đọc config mỗi lần gọi).
+//
+// Cú pháp (theo đúng pattern của `!craft admin`):
+//   !upgrade admin                      → xem cấu hình hiện tại
+//   !upgrade admin set <bậc> <id> [qty=4]
+//   !upgrade admin tier <phẩm chất> <hệ số>
+//   !upgrade admin gold <bậc> <tổng vàng>
+//   !upgrade admin reset
+function renderAdminConfig() {
+  const cfg = upgrade.getConfig();
+  let desc = '**Thang nguyên liệu** — mốc +N của vũ khí bậc B dùng bậc `B+N-1`.\n';
+  desc += '`bậc` · `nguyên liệu` · `số lượng`\n';
+  cfg.ladder.forEach((e, i) => {
+    const it = getItem(e.item_id);
+    desc += `\`${i}\` · ${it?.name || e.item_id} (\`${e.item_id}\`) · **${e.qty}**\n`;
+  });
+
+  desc += '\n**Hệ số phẩm chất** (nhân số lượng)\n';
+  for (const t of ['common', 'rare', 'epic', 'legendary']) {
+    desc += `${tierInfo(t).emoji} ${t}: **×${cfg.tier_mult[t]}** (vàng ×${cfg.gold_tier[t] || 1})\n`;
+  }
+
+  desc += '\n**Vàng: tổng cho +1..+5 theo bậc**\n';
+  cfg.gold_band.forEach((g, i) => { desc += `bậc ${i}: **${fmt(g)}** vàng\n`; });
+
+  desc += '\n*Sửa: `!upgrade admin set <bậc> <item_id> [qty=4]` · `!upgrade admin tier <tier> <hệ số>` · `!upgrade admin gold <bậc> <vàng>` · `!upgrade admin reset`*';
+  return { embeds: [new EmbedBuilder().setColor(0xED4245)
+    .setTitle('🔧 Cấu hình nâng cấp (admin)')
+    .setDescription(desc)] };
+}
+
+function handleAdmin(msg, args, prefix) {
+  const sub = (args[0] || '').toLowerCase();
+
+  if (!sub || sub === 'help') return msg.reply(renderAdminConfig());
+
+  // ---- set <bậc> <item_id> [qty=] ----
+  if (sub === 'set') {
+    const idx = parseInt(args[1]);
+    if (isNaN(idx) || idx < 0) {
+      return msg.reply(`❌ Cú pháp: \`${prefix}upgrade admin set <bậc> <item_id> [qty=4]\``);
+    }
+    const itemId = args[2];
+    if (!itemId) {
+      return msg.reply(`❌ Thiếu item_id. VD: \`${prefix}upgrade admin set 5 gem_sapphire qty=2\``);
+    }
+    if (!getItem(itemId)) return msg.reply(`❌ Item \`${itemId}\` không tồn tại.`);
+
+    const cfg = upgrade.getConfig();
+    // Cho phép tạo bậc mới ở cuối thang (mở rộng ladder), nhưng không nhảy cóc
+    if (idx > cfg.ladder.length) {
+      return msg.reply(`❌ Bậc tối đa có thể thêm là \`${cfg.ladder.length}\` (hiện có ${cfg.ladder.length} bậc, 0..${cfg.ladder.length - 1}).`);
+    }
+
+    const kv = parseKV(args.slice(3));
+    const qty = kv.qty !== undefined ? parseInt(kv.qty) : (cfg.ladder[idx]?.qty ?? 1);
+    if (isNaN(qty) || qty < 1) return msg.reply('❌ `qty` phải là số nguyên ≥ 1.');
+
+    const ladder = cfg.ladder.map(e => ({ ...e }));
+    if (idx === ladder.length) ladder.push({ item_id: itemId, qty });
+    else ladder[idx] = { item_id: itemId, qty };
+
+    // Chặn nguyên liệu TRÙNG giữa 2 bậc: nếu trùng, 2 mốc liên tiếp của cùng
+    // một vũ khí sẽ đòi cùng một thứ (bậc B+N-1 và B+N trùng nhau) — trông
+    // như lỗi và làm mất cảm giác "cấp sau cần thứ hiếm hơn".
+    const dup = ladder.findIndex((e, i) => i !== idx && e.item_id === itemId);
+    if (dup >= 0) {
+      return msg.reply(
+        `❌ **${getItem(itemId)?.name || itemId}** đã là nguyên liệu của bậc **${dup}**.\n` +
+        `Mỗi bậc phải là một nguyên liệu khác nhau — đổi bậc ${dup} trước nếu muốn dùng món này.`
+      );
+    }
+
+    upgrade.writeKey('ladder', ladder);
+
+    const it = getItem(itemId);
+    return msg.reply(`✅ Bậc **${idx}** → **${it.name}** ×${qty}. Có hiệu lực ngay.`);
+  }
+
+  // ---- tier <phẩm chất> <hệ số> ----
+  if (sub === 'tier') {
+    const tier = (args[1] || '').toLowerCase();
+    if (!['common', 'rare', 'epic', 'legendary'].includes(tier)) {
+      return msg.reply('❌ Phẩm chất phải là: common, rare, epic, legendary.');
+    }
+    const mult = parseFloat(args[2]);
+    if (isNaN(mult) || mult <= 0) return msg.reply('❌ Hệ số phải là số > 0. VD: `!upgrade admin tier epic 2.5`');
+    if (mult > 20) return msg.reply('❌ Hệ số tối đa 20 — lớn hơn nữa là lỗi gõ.');
+
+    const cfg = upgrade.getConfig();
+    const tm = { ...cfg.tier_mult, [tier]: mult };
+    upgrade.writeKey('tier_mult', tm);
+    return msg.reply(`✅ Phẩm chất **${tier}** giờ nhân **×${mult}** nguyên liệu.`);
+  }
+
+  // ---- gold <bậc> <tổng vàng> ----
+  if (sub === 'gold') {
+    const idx = parseInt(args[1]);
+    const val = parseInt(args[2]);
+    if (isNaN(idx) || idx < 0 || idx > 3) return msg.reply('❌ Bậc vàng phải là 0..3.');
+    if (isNaN(val) || val < 0) return msg.reply('❌ Vàng phải là số ≥ 0.');
+    if (val > 1e7) return msg.reply('❌ Vàng tối đa 10.000.000 — lớn hơn nữa là lỗi gõ.');
+
+    const cfg = upgrade.getConfig();
+    const band = cfg.gold_band.slice();
+    while (band.length <= idx) band.push(band[band.length - 1] || 0);
+    band[idx] = val;
+    upgrade.writeKey('gold_band', band);
+    return msg.reply(`✅ Tổng vàng cho +1..+5 ở bậc **${idx}** = **${fmt(val)}**.`);
+  }
+
+  // ---- reset ----
+  if (sub === 'reset') {
+    upgrade.resetConfig();
+    return msg.reply('♻️ Đã đưa toàn bộ cấu hình nâng cấp về mặc định.');
+  }
+
+  return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}upgrade admin\` để xem cấu hình.`);
+}
+
 module.exports = {
   name: 'upgrade',
   aliases: ['nangcap', 'up', 'cuonghoa'],
@@ -135,6 +265,15 @@ module.exports = {
     if (!p) return msg.reply('❌ Gõ `!start` để tạo nhân vật trước.');
 
     const sub = (args[0] || '').toLowerCase();
+
+    // Admin: PHẢI check trước `list`, nếu không `!upgrade admin` sẽ rơi vào
+    // nhánh nâng cấp và báo "item `admin` không tồn tại".
+    if (sub === 'admin') {
+      if (!isAdmin(msg)) return msg.reply('🚫 Chỉ admin mới chỉnh được cấu hình nâng cấp.');
+      // handleAdmin tự trả về string hoặc { embeds }; KHÔNG bọc lại ở đây —
+      // bọc `embeds: [<string>]` sẽ gửi embed rỗng.
+      return handleAdmin(msg, args.slice(1), '!');
+    }
 
     if (!sub) return renderStatus(msg, p);
     if (sub === 'list' || sub === 'bang' || sub === 'help') return renderList(msg);

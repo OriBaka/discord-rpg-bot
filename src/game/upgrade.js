@@ -73,36 +73,71 @@ const BONUS_PER_LEVEL_PCT = 0.02;
 // đồ cấp thấp thành cái bẫy. Vì vậy bậc nguyên liệu bắt đầu dời theo độ mạnh
 // vũ khí: vũ khí Lv.1 dùng nguyên liệu Lv.1, vũ khí Lv.40 dùng nguyên liệu Lv.40.
 // ---------------------------------------------------------------------------
-const MATERIAL_LADDER = [
-  'stone',         // 0 — mine stone_quarry / hunt Moss Golem
-  'copper_ore',    // 1 — mine stone_quarry
-  'iron_ore',      // 2 — mine iron_mine
-  'gold_ore',      // 3 — mine gold_vein
-  'gem_ruby',      // 4 — mine gold_vein, hunt Ember Phoenix
-  'gem_sapphire',  // 5 — mine mithril_cave, hunt Obsidian Golem
-  'diamond',       // 6 — mine dragon_mine, hunt Star Devourer
-  'dragon_scale',  // 7 — hunt Young/Ancient/Void Dragon
+// ---------------------------------------------------------------------------
+// CẤU HÌNH — giờ lấy từ DB, không hardcode
+//
+// Trước đây các bảng dưới là hằng số trong code: muốn đổi "mốc +5 cần 3 Dragon
+// Scale" thì phải sửa file + restart bot. Nay chúng nằm ở bảng
+// `upgrade_config`, admin chỉnh bằng `!upgrade admin` và có hiệu lực NGAY.
+//
+// Các hằng dưới đây là GIÁ TRỊ MẶC ĐỊNH: được seed vào DB lần đầu, và cũng
+// là thứ được dùng nếu bảng trống/hỏng (không bao giờ để nâng cấp trả về rỗng).
+// ---------------------------------------------------------------------------
+
+// NGUYÊN LIỆU — thang 8 bậc, xếp theo độ hiếm tăng dần.
+//
+// Mốc nâng cấp N của một vũ khí dùng `LADDER[bậc + N - 1]`, trong đó
+// `bậc = floor((min_level - 1) / 10)` chặn ở 0..3. Vũ khí cấp càng cao thì
+// nguyên liệu càng dịch lên bậc hiếm hơn.
+//
+// VÌ SAO PHẢI DỊCH BẬC (lỗi thật đã bị loại):
+//   Nếu mọi vũ khí dùng chung một thang thì `wood_sword` (Lv.1, atk 5) +5 đòi
+//   `dragon_scale` — nguyên liệu CHỈ rơi từ rồng Lv.20+. Người chơi Lv.5
+//   không bao giờ nâng cấp được, dù nâng cấp đó chỉ cho +1 ATK. Đúng loại lỗi
+//   "nội dung có nhưng không ai chạm tới" như vụ công cụ farm.
+const DEFAULT_LADDER = [
+  { item_id: 'stone',        qty: 4 },  // bậc 0 — mine stone_quarry, hunt Moss Golem
+  { item_id: 'copper_ore',   qty: 3 },  // bậc 1 — mine stone_quarry
+  { item_id: 'iron_ore',     qty: 3 },  // bậc 2 — mine iron_mine
+  { item_id: 'gold_ore',     qty: 2 },  // bậc 3 — mine gold_vein
+  { item_id: 'gem_ruby',     qty: 2 },  // bậc 4 — mine gold_vein, hunt Ember Phoenix
+  { item_id: 'gem_sapphire', qty: 2 },  // bậc 5 — mine mithril_cave, hunt Obsidian Golem
+  { item_id: 'diamond',      qty: 1 },  // bậc 6 — mine dragon_mine, hunt Star Devourer
+  { item_id: 'dragon_scale', qty: 1 },  // bậc 7 — hunt Young/Ancient/Void Dragon
 ];
 
-// Số lượng giảm dần khi nguyên liệu hiếm lên: 4 → 3 → 3 → 2 → 1
-const BASE_QTY = [4, 3, 3, 2, 1];
-
-// Trục 2 — phẩm chất: nhân số lượng + vàng
-const TIER_MULT = {
+// PHẨM CHẤT — nhân SỐ LƯỢNG nguyên liệu
+const DEFAULT_TIER_MULT = {
   common: 1.0,
   rare: 1.5,
   epic: 2.0,
   legendary: 3.0,
 };
 
-// Trục 3 — bậc nguyên liệu khởi điểm theo cấp độ vũ khí.
-// min_level 1–10 → bậc 0 · 11–20 → 1 · 21–30 → 2 · 31+ → 3
-function ladderStart(minLevel) {
-  return Math.max(0, Math.min(3, Math.floor(((minLevel || 1) - 1) / 10)));
-}
+// VÀNG — neo theo "số kill cần bỏ ra", không theo giá trị tuyệt đối.
+//
+// gold_band[bậc] = TỔNG vàng để đi hết +1..+5 ở bậc đó (với phẩm chất common).
+// Chia cho 5 cấp theo trọng số 1:2:3:4:5 nên cấp sau đắt hơn cấp trước.
+//
+// Neo theo gold/kill đo được của zone tương ứng, nhân thêm gold_tier:
+//     wooden  (bậc 0, common)    2.000 vàng  ≈ 33 kill @ forest   (60/kill)
+//     iron    (bậc 1, rare)      8.050 vàng  ≈ 37 kill @ desert   (218/kill)
+//     steel   (bậc 2, epic)     26.000 vàng  ≈ 40 kill @ volcano  (649/kill)
+//     dragon  (bậc 3, legendary) 67.200 vàng ≈ 49 kill @ astral   (1380/kill)
+// Tức là nâng hết một vũ khí tốn 33–49 kill ở đúng tầm level của nó — không
+// phạt người chơi cấp thấp bằng một con số khổng lồ, và cũng không cho đồ
+// endgame nâng cấp rẻ như đồ đầu game.
+const DEFAULT_GOLD_BAND = [2000, 7000, 20000, 42000];
 
-// Vàng: cũng theo bậc, để nâng cấp đồ cấp thấp không tốn 37 kill
-const GOLD_BASE_BY_BAND = [150, 350, 700, 1500];
+// gold_tier = hệ số vàng theo phẩm chất. Nhẹ hơn tier_mult vì phẩm chất đã
+// được phản ánh ở nguyên liệu (thang bậc) rồi — nhân mạnh ở đây sẽ tính phí
+// hai lần cho cùng một thứ.
+const DEFAULT_GOLD_TIER = {
+  common: 1.0,
+  rare: 1.15,
+  epic: 1.3,
+  legendary: 1.6,
+};
 
 // ---------------------------------------------------------------------------
 // Schema
@@ -115,6 +150,71 @@ function migrate() {
     PRIMARY KEY (user_id, item_id),
     FOREIGN KEY (user_id) REFERENCES players(user_id) ON DELETE CASCADE
   )`);
+
+  // Cấu hình nâng cấp chỉnh được bằng lệnh admin.
+  // Lưu dạng key/value JSON: đổi sang bảng quan hệ sẽ thành 3 bảng nữa cho
+  // một thứ chỉ có ~15 con số — không đáng.
+  db.exec(`CREATE TABLE IF NOT EXISTS upgrade_config (
+    key   TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  )`);
+
+  // Seed lần đầu (idempotent — chỉ ghi key chưa có)
+  const seedIfMissing = (key, value) => {
+    db.prepare('INSERT OR IGNORE INTO upgrade_config (key, value) VALUES (?, ?)')
+      .run(key, JSON.stringify(value));
+  };
+  seedIfMissing('ladder', DEFAULT_LADDER);
+  seedIfMissing('tier_mult', DEFAULT_TIER_MULT);
+  seedIfMissing('gold_band', DEFAULT_GOLD_BAND);
+  seedIfMissing('gold_tier', DEFAULT_GOLD_TIER);
+}
+
+// ---------------------------------------------------------------------------
+// Đọc cấu hình — LUÔN quay về mặc định nếu DB trống/hỏng
+// ---------------------------------------------------------------------------
+function readKey(key, fallback) {
+  try {
+    const row = db.prepare('SELECT value FROM upgrade_config WHERE key=?').get(key);
+    if (!row) return fallback;
+    const v = JSON.parse(row.value);
+    if (v === null || v === undefined) return fallback;
+    return v;
+  } catch {
+    return fallback;
+  }
+}
+
+function writeKey(key, value) {
+  db.prepare(`INSERT INTO upgrade_config (key, value) VALUES (?, ?)
+    ON CONFLICT(key) DO UPDATE SET value = excluded.value`)
+    .run(key, JSON.stringify(value));
+}
+
+/** Cấu hình hiện hành (đọc mỗi lần gọi — 4 query, không đáng để cache) */
+function getConfig() {
+  const lad = readKey('ladder', DEFAULT_LADDER);
+  const ladder = (Array.isArray(lad) && lad.length ? lad : DEFAULT_LADDER)
+    .filter(e => e && typeof e === 'object' && e.item_id);
+  return {
+    ladder: ladder.length ? ladder : DEFAULT_LADDER,
+    tier_mult: readKey('tier_mult', DEFAULT_TIER_MULT) || DEFAULT_TIER_MULT,
+    gold_band: readKey('gold_band', DEFAULT_GOLD_BAND) || DEFAULT_GOLD_BAND,
+    gold_tier: readKey('gold_tier', DEFAULT_GOLD_TIER) || DEFAULT_GOLD_TIER,
+  };
+}
+
+/** Đưa toàn bộ cấu hình về mặc định (dùng cho !upgrade admin reset) */
+function resetConfig() {
+  writeKey('ladder', DEFAULT_LADDER);
+  writeKey('tier_mult', DEFAULT_TIER_MULT);
+  writeKey('gold_band', DEFAULT_GOLD_BAND);
+  writeKey('gold_tier', DEFAULT_GOLD_TIER);
+}
+
+/** Trục 3 — bậc nguyên liệu theo cấp độ vũ khí */
+function ladderBand(minLevel) {
+  return Math.max(0, Math.min(3, Math.floor(((minLevel || 1) - 1) / 10)));
 }
 
 // ---------------------------------------------------------------------------
@@ -167,19 +267,28 @@ function getUpgradeCost(item, currentLevel) {
   const next = currentLevel + 1;
   if (next > MAX_LEVEL) return null;
 
-  const mult = TIER_MULT[item.tier] || 1.0;
-  const band = ladderStart(item.min_level);
-  const matIdx = Math.min(MATERIAL_LADDER.length - 1, band + (next - 1));
-  const itemId = MATERIAL_LADDER[matIdx];
-  const qty = Math.max(1, Math.round(BASE_QTY[next - 1] * mult));
-  const gold = Math.round(GOLD_BASE_BY_BAND[band] * next * mult);
+  const cfg = getConfig();
+  const mult = cfg.tier_mult[item.tier] || 1.0;
+  const band = ladderBand(item.min_level);
+
+  // Mốc N của vũ khí bậc B dùng LADDER[B + N - 1]; chặn 2 đầu để không bao
+  // giờ trả về undefined nếu admin rút ngắn thang.
+  const idx = Math.max(0, Math.min(cfg.ladder.length - 1, band + next - 1));
+  const entry = cfg.ladder[idx];
+  const qty = Math.max(1, Math.round(entry.qty * mult));
+
+  // Vàng: tổng của bậc chia theo trọng số 1:2:3:4:5 (tổng trọng số = 15)
+  const bandTotal = cfg.gold_band[Math.min(band, cfg.gold_band.length - 1)] || 0;
+  const goldTier = cfg.gold_tier[item.tier] || 1.0;
+  const gold = Math.round(bandTotal * goldTier * next / 15);
 
   return {
     next_level: next,
     gold,
-    materials: [{ item_id: itemId, qty }],
+    materials: [{ item_id: entry.item_id, qty }],
     tier_mult: mult,
     band,
+    ladder_index: idx,
   };
 }
 
@@ -207,11 +316,15 @@ module.exports = {
   migrate,
   MAX_LEVEL,
   BONUS_PER_LEVEL_PCT,
-  TIER_MULT,
-  MATERIAL_LADDER,
-  BASE_QTY,
-  GOLD_BASE_BY_BAND,
-  ladderStart,
+  // mặc định (dùng cho reset và làm fallback)
+  DEFAULT_LADDER,
+  DEFAULT_TIER_MULT,
+  DEFAULT_GOLD_BAND,
+  DEFAULT_GOLD_TIER,
+  // cấu hình sống
+  getConfig, resetConfig,
+  readKey, writeKey,
+  ladderBand,
   getLevel,
   getLevels,
   setLevel,
