@@ -112,6 +112,7 @@ module.exports = {
           xp: parseInt(kv.xp) || 10,
           gold_min: goldMin, gold_max: goldMax,
           weight: parseInt(kv.weight) || 10,
+          desc: kv.desc || '',
         });
         return msg.reply(`✅ Đã tạo quái **${mob.name}** (\`${mob.id}\`). Xem: \`${prefix}info mob ${mob.id}\``);
       } catch (err) {

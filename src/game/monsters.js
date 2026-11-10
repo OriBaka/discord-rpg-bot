@@ -54,10 +54,10 @@ function pickMonsterForLevel(level) {
 }
 
 // === CRUD cho admin ===
-function createMonster({ id, name, zone_id, hp, atk, def, xp, gold_min, gold_max, weight = 10 }) {
-  db.prepare(`INSERT INTO monsters (id, name, zone_id, hp, atk, def, xp, gold_min, gold_max, weight)
-    VALUES (?,?,?,?,?,?,?,?,?,?)`)
-    .run(id, name, zone_id, hp, atk, def, xp, gold_min, gold_max, weight);
+function createMonster({ id, name, zone_id, hp, atk, def, xp, gold_min, gold_max, weight = 10, desc = '' }) {
+  db.prepare(`INSERT INTO monsters (id, name, zone_id, hp, atk, def, xp, gold_min, gold_max, weight, desc)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`)
+    .run(id, name, zone_id, hp, atk, def, xp, gold_min, gold_max, weight, desc);
   return getMonster(id);
 }
 

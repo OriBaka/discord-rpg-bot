@@ -255,6 +255,12 @@ runMigrate('../game/item_sources', 'migrateItemSources');
 // Phải chạy SAU item_sources (module đó mới là bên thêm phần lớn trang bị vào shop).
 runMigrate('../game/economy_seed', 'migrateEconomySeed');
 
+// Lore: mô tả tiếng Việt cho zone / quái / trang bị.
+// Chạy sau mọi module nội dung để items/zones/monsters đã tồn tại đầy đủ.
+// (rename_items ở dưới chỉ đổi cột `name`, không đụng `desc`, nên thứ tự
+//  với nó không quan trọng — nhưng lore viết theo tên English nên vẫn khớp.)
+runMigrate('../game/lore_seed', 'migrateLoreSeed');
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
