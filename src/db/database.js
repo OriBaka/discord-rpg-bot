@@ -261,6 +261,11 @@ runMigrate('../game/economy_seed', 'migrateEconomySeed');
 //  với nó không quan trọng — nhưng lore viết theo tên English nên vẫn khớp.)
 runMigrate('../game/lore_seed', 'migrateLoreSeed');
 
+// Lore bề mặt: thành tựu / khu khai thác / thú nuôi.
+// Chạy sau lore_seed để giữ đúng thứ tự nội dung: zone-quái-item trước,
+// rồi tới các bảng phụ.
+runMigrate('../game/lore_surface_seed', 'migrateLoreSurfaceSeed');
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();

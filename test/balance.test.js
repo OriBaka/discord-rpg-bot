@@ -393,6 +393,21 @@ test('mọi quái đều có mô tả', () => {
   assert.deepStrictEqual(missing.map(m => m.id), [], 'quái chưa có mô tả');
 });
 
+test('mọi thành tựu đều có mô tả', () => {
+  const missing = db.prepare("SELECT id FROM achievements WHERE desc IS NULL OR trim(desc)=''").all();
+  assert.deepStrictEqual(missing.map(a => a.id), [], 'thành tựu chưa có mô tả');
+});
+
+test('mọi khu khai thác đều có mô tả', () => {
+  const missing = db.prepare("SELECT id FROM gather_zones WHERE desc IS NULL OR trim(desc)=''").all();
+  assert.deepStrictEqual(missing.map(g => g.id), [], 'khu khai thác chưa có mô tả');
+});
+
+test('mọi thú nuôi đều có mô tả', () => {
+  const missing = db.prepare("SELECT id FROM pets WHERE desc IS NULL OR trim(desc)=''").all();
+  assert.deepStrictEqual(missing.map(p => p.id), [], 'thú nuôi chưa có mô tả');
+});
+
 test('mọi zone đều có mô tả', () => {
   const missing = db.prepare("SELECT id FROM zones WHERE desc IS NULL OR trim(desc)=''").all();
   assert.deepStrictEqual(missing.map(z => z.id), [], 'zone chưa có mô tả');
@@ -417,6 +432,9 @@ test('mô tả viết bằng tiếng Việt, không phải tiếng Anh thô', ()
     ...db.prepare('SELECT id, desc FROM items').all(),
     ...db.prepare('SELECT id, desc FROM monsters').all(),
     ...db.prepare('SELECT id, desc FROM zones').all(),
+    ...db.prepare('SELECT id, desc FROM achievements').all(),
+    ...db.prepare('SELECT id, desc FROM gather_zones').all(),
+    ...db.prepare('SELECT id, desc FROM pets').all(),
   ];
   const notVietnamese = rows.filter(r => r.desc && !VN_CHARS.test(r.desc));
   assert.deepStrictEqual(notVietnamese.map(r => r.id), [],
