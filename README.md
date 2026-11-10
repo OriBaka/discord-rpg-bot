@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **41 lệnh** prefix + **44 slash command** (29 người chơi + 15 admin)
+- **41 lệnh** prefix + **47 slash command** (32 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -50,7 +50,7 @@ discord-rpg-bot/
 │   │   └── gather_zones.js / lootbox.js / redeem.js / settings.js / images.js
 │   ├── commands/             # 38 file → 41 lệnh (nhiều lệnh/file)
 │   └── slash/
-│       ├── definitions.js    # 29 slash command người chơi
+│       ├── definitions.js    # 32 slash command người chơi
 │       ├── admin_definitions.js  # 15 slash command admin
 │       ├── adapter.js        # Chuyển interaction → gọi lệnh prefix
 │       └── deploy.js         # Đăng ký slash với Discord

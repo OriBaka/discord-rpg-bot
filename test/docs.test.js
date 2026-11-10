@@ -104,3 +104,76 @@ test('hướng dẫn deploy có ADMIN_IDS và DB_PATH', () => {
   assert.match(guide, /ADMIN_IDS/);
   assert.match(guide, /DB_PATH/);
 });
+
+// ---------------------------------------------------------------------------
+// SLASH COMMAND — chống hồi quy
+//
+// Bối cảnh: không có test nào kiểm tra slash, nên khi thêm `upgrade` tôi suýt
+// thêm 5 slash TRÙNG TÊN (start, ach, class, duel, job) vì script khảo sát
+// đọc `def.data.name` — trường này KHÔNG tồn tại, tên thật nằm sau
+// `def.data.toJSON().name`. Trùng tên sẽ làm Discord từ chối cả payload deploy,
+// tức là MẤT TẤT CẢ slash command, không chỉ cái bị trùng.
+// ---------------------------------------------------------------------------
+const slashDefs = () => {
+  const { definitions } = require('../src/slash/definitions');
+  const { definitions: adminDefs } = require('../src/slash/admin_definitions');
+  return { defs: definitions, adminDefs };
+};
+
+test('slash: không có tên trùng lặp (Discord từ chối cả payload nếu trùng)', () => {
+  const { defs, adminDefs } = slashDefs();
+  const names = [...defs, ...adminDefs].map(d => d.data.toJSON().name);
+  const seen = new Set();
+  const dups = new Set();
+  for (const n of names) {
+    if (seen.has(n)) dups.add(n);
+    seen.add(n);
+  }
+  assert.deepStrictEqual([...dups], [], `slash bị trùng tên: ${[...dups].join(', ')}`);
+});
+
+test('slash: mọi tên và mô tả hợp lệ theo luật Discord', () => {
+  const { defs, adminDefs } = slashDefs();
+  const bad = [];
+  const NAME_RE = /^[-_\p{L}\p{N}]{1,32}$/u;
+  for (const d of [...defs, ...adminDefs]) {
+    const j = d.data.toJSON();
+    if (!NAME_RE.test(j.name)) bad.push(`tên không hợp lệ: "${j.name}"`);
+    // Discord: mô tả 1..100 ký tự
+    if (!j.description || j.description.length > 100) bad.push(`${j.name}: mô tả ${j.description?.length ?? 0} ký tự`);
+    // Slash admin đi qua admin_handler.js (route theo tên command), không dùng
+    // { cmdName } như slash người chơi — nên chỉ kiểm tra nhánh người chơi.
+    if (defs.includes(d) && (!d.handler || !d.handler.cmdName)) {
+      bad.push(`${j.name}: thiếu handler.cmdName`);
+    }
+  }
+  assert.deepStrictEqual(bad, [], bad.join('; '));
+});
+
+test('slash: handler trỏ tới lệnh prefix có thật', () => {
+  // Nếu trỏ sai, bấm slash sẽ ra "Internal: command không tìm thấy".
+  const { defs } = slashDefs();
+  const bad = [];
+  for (const d of defs) {
+    const name = d.data.toJSON().name;
+    const target = d.handler.cmdName;
+    if (!cmds.has(target)) bad.push(`${name} → ${target}`);
+  }
+  assert.deepStrictEqual(bad, [], `slash trỏ tới lệnh không tồn tại: ${bad.join(', ')}`);
+});
+
+test('slash: lệnh người chơi quan trọng đều có slash', () => {
+  // Danh sách này là các lệnh người chơi dùng thường xuyên. Nếu ai thêm lệnh
+  // mới mà quên slash, test này nhắc. (Các lệnh admin có file slash riêng.)
+  const { defs } = slashDefs();
+  const have = new Set(defs.map(d => d.data.toJSON().name));
+  const must = [
+    'start', 'me', 'inv', 'hunt', 'mine', 'fish', 'cook', 'craft',
+    'equip', 'unequip', 'gear', 'compare', 'upgrade',
+    'shop', 'buy', 'sell', 'use', 'heal',
+    'job', 'class', 'ach', 'quest', 'pet', 'guild', 'duel', 'trade',
+    'battle', 'top', 'daily', 'redeem', 'info', 'help',
+  ];
+  const missing = must.filter(n => !have.has(n));
+  assert.deepStrictEqual(missing, [], `lệnh chưa có slash: ${missing.join(', ')}`);
+});
