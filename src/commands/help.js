@@ -72,7 +72,15 @@ module.exports = {
           `\`${prefix}guild create <tag> <tên>\` lập bang (Lv.5, 500 vàng)\n` +
           `\`${prefix}guild invite @user\` mời thành viên\n` +
           `\`${prefix}guild vault\` kho chung\n` +
-          `\`${prefix}guild top\` BXH bang • buff vàng/XP khi hunt` },
+          `\`${prefix}guild top\` BXH bang • buff vàng/XP khi hunt\n` +
+          `*Thành viên đánh boss tuần sẽ cộng XP cho bang → bang lên cấp nhanh hơn*` },
+        { name: '🐲 Boss tuần (raid)', value:
+          `\`${prefix}raid\` xem máu boss tuần + lượt đánh còn lại\n` +
+          `\`${prefix}raid danh\` đánh boss (5 lượt/tuần, chia sát thương)\n` +
+          `\`${prefix}raid top\` BXH sát thương cá nhân\n` +
+          `\`${prefix}raid bang\` BXH sát thương theo bang hội\n` +
+          `\`${prefix}raid thuong\` nhận thưởng tuần trước\n` +
+          `*Cả server đánh chung một thanh máu — hạ boss mới có thưởng đầy đủ*` },
         { name: '⚔️ PvP & Trade', value:
           `\`${prefix}duel @user [gold]\` thách đấu\n` +
           `\`${prefix}duel accept/decline\` phản hồi\n` +

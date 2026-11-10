@@ -287,6 +287,10 @@ runMigrate('../game/upgrade', 'migrateUpgrade');
 // Phải chạy SAU ensureBaseColumns (players phải tồn tại).
 runMigrate('../game/daily', 'migrateDaily');
 
+// Raid boss tuần: bảng raid_bosses / raid_attacks / raid_rewards.
+// Phải chạy SAU guilds (dùng guild_id) và SAU players (bảng xếp hạng join).
+runMigrate('../game/raid', 'migrateRaid');
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();

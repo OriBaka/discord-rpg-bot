@@ -520,6 +520,24 @@ const definitions = [
     autocomplete: 'battle_mob',
   },
 
+  // ====== Raid (boss tuần, đánh chung) ======
+  {
+    data: new SlashCommandBuilder().setName('raid').setDescription('Boss tuần đánh chung cả server')
+      .addSubcommand(sc => sc.setName('xem').setDescription('Xem máu boss và lượt đánh còn lại'))
+      .addSubcommand(sc => sc.setName('danh').setDescription('Đánh boss (dùng 1 lượt trong 5 lượt/tuần)'))
+      .addSubcommand(sc => sc.setName('top').setDescription('BXH sát thương cá nhân'))
+      .addSubcommand(sc => sc.setName('bang').setDescription('BXH sát thương theo bang hội'))
+      .addSubcommand(sc => sc.setName('thuong').setDescription('Nhận thưởng tuần trước')),
+    handler: {
+      cmdName: 'raid',
+      extractArgs: (i) => {
+        const sub = i.options.getSubcommand(true);
+        const MAP = { xem: [], danh: ['danh'], top: ['top'], bang: ['bang'], thuong: ['thuong'] };
+        return MAP[sub] || [];
+      },
+    },
+  },
+
   // ====== Help ======
   {
     data: new SlashCommandBuilder().setName('help').setDescription('Hướng dẫn các lệnh'),

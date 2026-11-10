@@ -83,6 +83,31 @@ client.once('ready', async () => {
   } catch (err) {
     console.error('[slash deploy on ready]', err);
   }
+
+  // ===== Raid boss tuần: tự chốt thưởng =====
+  //
+  // Không thể chờ ai đó gõ lệnh mới trao thưởng: nếu cả server nghỉ vài ngày
+  // thì tuần cũ sẽ treo mãi ở trạng thái "chưa settle" và người chơi không
+  // nhận được gì. Vì vậy chạy nền mỗi giờ.
+  //
+  // An toàn khi chạy nhiều lần: settleRewards có PRIMARY KEY (raid_id,
+  // user_id) nên không nhân đôi thưởng, và `settled` flag chặn cả tuần.
+  const settleRaid = () => {
+    try {
+      const raid = require('./game/raid');
+      const results = raid.settleExpired();
+      if (results.length) {
+        console.log(`🐲 Raid: chốt thưởng ${results.length} tuần đã kết thúc`);
+        for (const r of results) {
+          if (r.ok) console.log(`   ${r.week}: ${r.granted.length} người được thưởng (hạ boss: ${r.defeated})`);
+        }
+      }
+    } catch (err) {
+      console.error('[raid settle]', err.message);
+    }
+  };
+  settleRaid();                        // chạy ngay khi khởi động
+  setInterval(settleRaid, 60 * 60 * 1000);   // rồi mỗi giờ
 });
 
 client.on('messageCreate', async (msg) => {
