@@ -108,7 +108,7 @@ module.exports = {
   aliases: ['bt', 'turnbattle'],
   description: 'Turn-based combat (elite/boss): battle <mob_id> hoặc battle list',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` trước.`);
 

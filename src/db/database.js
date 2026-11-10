@@ -283,6 +283,10 @@ runMigrate('../game/farm_recipes_seed', 'migrateFarmRecipes');
 // Chạy SAU slots (bảng equipped phải tồn tại vì có khoá ngoại tới players).
 runMigrate('../game/upgrade', 'migrateUpgrade');
 
+// Điểm danh hàng ngày: thêm players.daily_streak / daily_total / daily_best.
+// Phải chạy SAU ensureBaseColumns (players phải tồn tại).
+runMigrate('../game/daily', 'migrateDaily');
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();

@@ -20,7 +20,7 @@ const { Client, GatewayIntentBits, Collection, Partials } = require('discord.js'
 process.stdout.write('🚀 [BOOT] Đã require discord.js\n');
 
 const TOKEN  = process.env.DISCORD_TOKEN;
-const PREFIX = process.env.PREFIX || '!';
+const PREFIX = require('./game/prefix').getPrefix();
 
 if (!TOKEN) {
   console.error('❌ Thiếu DISCORD_TOKEN trong env!');

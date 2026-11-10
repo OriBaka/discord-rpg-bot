@@ -36,7 +36,7 @@ module.exports = {
   aliases: ['pvp', 'dau'],
   description: 'PvP đấu với người chơi khác. !duel @user [gold]',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
 

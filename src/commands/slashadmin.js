@@ -16,7 +16,7 @@ module.exports = {
   async execute(msg, args) {
     if (!isAdmin(msg)) return msg.reply('🚫 Chỉ admin.');
 
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const sub = (args[0] || '').toLowerCase();
 
     if (!sub || sub === 'help') {

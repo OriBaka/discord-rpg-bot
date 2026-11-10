@@ -15,7 +15,7 @@ module.exports = {
   aliases: ['it'],
   description: 'Quản lý item (admin): create, edit, delete',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const sub = (args[0] || '').toLowerCase();
 
     if (!sub || sub === 'help') {

@@ -7,7 +7,7 @@ module.exports = {
   aliases: ['begin', 'taotk'],
   description: 'Tạo nhân vật mới',
   async execute(msg) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const existing = getPlayer(msg.author.id);
     if (existing) {
       return msg.reply(`⚠️ Bạn đã có nhân vật **${existing.name}** rồi! Dùng \`${prefix}me\` để xem.`);

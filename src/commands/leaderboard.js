@@ -34,7 +34,7 @@ module.exports = {
     const embed = new EmbedBuilder()
       .setColor(0xF1C40F).setTitle('🏆 Bảng Xếp Hạng')
       .setDescription(lines.join('\n'))
-      .setFooter({ text: `${process.env.PREFIX || '!'}top guild — BXH bang hội` });
+      .setFooter({ text: `${require('../game/prefix').getPrefix()}top guild — BXH bang hội` });
     return msg.reply({ embeds: [embed] });
   },
 }; 

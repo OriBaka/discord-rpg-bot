@@ -90,7 +90,7 @@ module.exports = {
   aliases: ['xem', 'i'],
   description: 'Xem thông tin item/quái/zone: !info item <id>, !info mob <id>, !info zone <id>',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const sub = (args[0] || '').toLowerCase();
 
     // Help

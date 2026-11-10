@@ -28,7 +28,7 @@ module.exports = {
   aliases: ['rd', 'code'],
   description: 'Nhập code nhận thưởng (Player) hoặc quản lý code (Admin)',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const sub = (args[0] || '').toLowerCase();
 
     // === Admin subs ===

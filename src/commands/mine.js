@@ -41,7 +41,7 @@ module.exports = {
   aliases: ['mining', 'dao'],
   description: 'Đào mỏ. !mine, !mine list, !mine <zone>',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
 
@@ -88,7 +88,7 @@ module.exports = {
     // Check tool: cần pickaxe
     const picks = hasTool(msg.author.id, 'pickaxe');
     if (picks.length === 0) {
-      return msg.reply(`⛏️ Bạn cần **Pickaxe** để đào! Mua ở shop (\`${process.env.PREFIX || '%'}shop\`).`);
+      return msg.reply(`⛏️ Bạn cần **Pickaxe** để đào! Mua ở shop (\`${require('../game/prefix').getPrefix()}shop\`).`);
     }
     // Chỉ dùng pickaxe mà player đủ LV
     const usable = picks.filter(pk => (pk.min_level || 0) <= p.level);

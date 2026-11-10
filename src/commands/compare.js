@@ -39,7 +39,7 @@ module.exports = {
   aliases: ['cmp', 'sosanh'],
   description: 'So sánh 2 gear: compare <item1> [item2]. Nếu chỉ 1 arg → so với item đang equip cùng slot.',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` trước.`);
 

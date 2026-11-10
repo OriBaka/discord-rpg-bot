@@ -19,7 +19,7 @@ module.exports = {
   aliases: ['equip2', 'trang_bi', 'tb'],
   description: 'Xem trang bị đang mặc: !gear [@user]',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const target = resolveTarget(msg, args[0]);
     const p = getPlayer(target.id);
     if (!p) {

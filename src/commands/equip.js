@@ -8,7 +8,7 @@ module.exports = {
   aliases: ['trangbi', 'mac'],
   description: 'Trang bị: !equip <id> [slot]. Vd: !equip silver_ring ring2',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
     const id = args[0];

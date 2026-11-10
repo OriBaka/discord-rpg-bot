@@ -38,7 +38,7 @@ module.exports = {
   aliases: ['fishing', 'cau'],
   description: 'Câu cá. !fish, !fish list, !fish <zone>',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
 
@@ -79,7 +79,7 @@ module.exports = {
     // Check tool: cần fishing rod
     const rods = hasTool(msg.author.id, 'fishing_rod');
     if (rods.length === 0) {
-      return msg.reply(`🎣 Bạn cần **Fishing Rod** để câu! Mua ở shop (\`${process.env.PREFIX || '%'}shop\`).`);
+      return msg.reply(`🎣 Bạn cần **Fishing Rod** để câu! Mua ở shop (\`${require('../game/prefix').getPrefix()}shop\`).`);
     }
     const usable = rods.filter(rd => (rd.min_level || 0) <= p.level);
     if (usable.length === 0) {

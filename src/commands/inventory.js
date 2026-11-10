@@ -74,7 +74,7 @@ module.exports = {
   aliases: ['bag', 'inventory', 'tui', 'tuido'],
   description: 'Xem túi đồ. Có filter: !inv weapon | armor | head | ring | mat ...',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước nhé!`);
 

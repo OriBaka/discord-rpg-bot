@@ -24,7 +24,7 @@ module.exports = {
   aliases: ['rest', 'quantro'],
   description: 'Vào quán trọ hồi đầy HP (tốn vàng theo level + cooldown 10 phút)',
   async execute(msg) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
 

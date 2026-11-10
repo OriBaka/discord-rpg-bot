@@ -45,7 +45,7 @@ function formatShopLine(row, playerLevel) {
   const lvTag = lv > 0 ? (playerLevel != null && playerLevel < lv ? ` 🔒LV${lv}` : ` 📗LV${lv}`) : '';
   return `${emoji} ${row.name}${classTag}${lvTag} — **${row.price}** 💰\n   \`${prefix()}buy ${row.item_id}\``;
 }
-function prefix() { return process.env.PREFIX || '!'; }
+function prefix() { return require('../game/prefix').getPrefix(); }
 
 function renderShopPage({ msg, userId, filter, page, replyFn, playerGold, playerLevel }) {
   const all = getShopList();
@@ -72,7 +72,7 @@ module.exports = {
   aliases: ['store', 'cuahang'],
   description: 'Cửa hàng. !shop, admin: !shop add/remove/setprice',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const sub = (args[0] || '').toLowerCase();
     const p = getPlayer(msg.author.id);
 
@@ -138,7 +138,7 @@ module.exports.buy = {
   aliases: ['mua'],
   description: 'Mua vật phẩm: !buy <id> [qty]',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
     const id = args[0]; const qty = Math.max(1, parseInt(args[1]) || 1);
@@ -163,7 +163,7 @@ module.exports.sell = {
   aliases: ['ban'],
   description: 'Bán vật phẩm: !sell <id> [qty]',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
     const id = args[0]; const qty = Math.max(1, parseInt(args[1]) || 1);
