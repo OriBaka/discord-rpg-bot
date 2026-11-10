@@ -157,7 +157,9 @@ function grantReward(userId, player, day, opts = {}) {
   // nên phải truyền userId chứ không phải object player.
   const { updatePlayer, addItem, addXpAndLevel } = playerMod();
   const lvl = addXpAndLevel(userId, xp);
-  if (lvl && lvl.levelsGained && lvl.levelsGained.length) granted.levelUp = lvl.level;
+  // addXpAndLevel trả { newLevel, levelsGained, ... } — KHÔNG có .level.
+  // Dùng sai tên field khiến thông báo "lên cấp" không bao giờ hiện.
+  if (lvl && lvl.levelsGained && lvl.levelsGained.length) granted.levelUp = lvl.newLevel;
   updatePlayer(userId, { gold: (player.gold || 0) + gold });
 
   // Hồi máu vào ngày lẻ — nhịp nghỉ giữa các ngày, không dồn hết vào 1 ngày
