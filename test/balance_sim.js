@@ -11,13 +11,14 @@ const CLS = {
   ranged: { base: { hp: 100, atk: 15, def: 5 }, growth: { hp: 14, atk: 4, def: 2 } },
 };
 
-// Hằng số phải khớp src/game/combat.js
+// Hằng số đọc từ src/game/mitigation.js — nguồn DUY NHẤT, không chép lại.
+// (Trước đây chép tay 3 nơi; sửa một chỗ là test đo công thức khác game.)
 const MAX_ROUNDS = 100;
-const MITIGATION_K = 240;
-const MITIGATION_CAP = 0.75;
+const MITIGATION_K = require('../src/game/mitigation').MITIGATION_K;
+const MITIGATION_CAP = require('../src/game/mitigation').MITIGATION_CAP;
 const CRIT_CHANCE = 0.15;
 const CRIT_MULT = 1.6;
-const MAX_HIT_PCT = 0.30;
+const MAX_HIT_PCT = require('../src/game/mitigation').MAX_HIT_PCT;
 const RAND_MEAN = 0.5;      // rand(-2,3) có trung bình 0.5
 const RAND_SD = Math.sqrt((4 * 4 + 4 + 1) / 12); // ~1.71
 
@@ -152,9 +153,7 @@ function playerAt(a, b, c, d) {
 }
 
 /** Giảm sát thương theo DEF (khớp damageAfterDef của combat.js) */
-function mitigation(def) {
-  return Math.min(MITIGATION_CAP, Math.max(0, def) / (Math.max(0, def) + MITIGATION_K));
-}
+const { mitigation } = require('../src/game/mitigation');
 
 /** Sát thương trung bình 1 đòn, đã tính crit kỳ vọng — dùng cho báo cáo */
 function avgDamage(atk, def, receiverMaxHp = Infinity) {

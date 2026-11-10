@@ -109,12 +109,30 @@ function addXpAndLevel(userId, xpGain) {
   let max_hp = p.max_hp, atk = p.atk, def = p.def;
   const lvlUps = [];
 
+  // TỐC ĐỘ TĂNG CẤP PHẢI THEO CLASS.
+  //
+  // Trước đây hàm này cộng cứng +15 HP / +3 ATK / +2 DEF cho MỌI class, hoàn
+  // toàn bỏ qua `growth` trong classes.js. Hệ quả: `statsAtLevel()` (dùng bởi
+  // %class, mô hình cân bằng và công cụ tune) và chỉ số THẬT của người chơi
+  // khác nhau ngay từ Lv.2 — và khác càng lúc càng xa. Mọi lần tinh chỉnh
+  // growth trước đây đều không có tác dụng gì vì lý do này.
+  //
+  // Nay đọc growth của class đang dùng; không có class thì giữ mức chung cũ.
+  let g = { hp: 15, atk: 3, def: 2 };
+  if (p.primary_class) {
+    try {
+      const { CLASSES } = require('./classes');
+      const cls = CLASSES[p.primary_class];
+      if (cls && cls.growth) g = cls.growth;
+    } catch { /* classes.js lỗi thì dùng mức chung */ }
+  }
+
   while (xp >= xpToNext(level)) {
     xp -= xpToNext(level);
     level += 1;
-    max_hp += 15;
-    atk    += 3;
-    def    += 2;
+    max_hp += g.hp;
+    atk    += g.atk;
+    def    += g.def;
     lvlUps.push(level);
   }
 

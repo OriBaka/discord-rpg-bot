@@ -9,15 +9,13 @@
 // cho ra hai cảm giác hoàn toàn khác nhau, và def cao ở PvP gần như miễn
 // nhiễm trong khi ở PvE thì không. Nay hai chế độ dùng cùng một luật.
 //
-// Công thức: giảm = min(0.75, def / (def + 240))
-//   def 240 → giảm 50%, def 720 → chạm trần 75%.
+// Công thức: giảm = min(0.75, def / (def + K)) — xem mitigation.js.
+// Hằng số K dùng chung với combat.js, không chép lại ở đây.
 // ---------------------------------------------------------------------------
-const MITIGATION_K = 240;
-const MITIGATION_CAP = 0.75;
+const { MITIGATION_K, MITIGATION_CAP, mitigation: _mitigation } = require('./mitigation');
 
 function mitigated(atk, def) {
-  const d = Math.max(0, def);
-  const reduction = Math.min(MITIGATION_CAP, d / (d + MITIGATION_K));
+  const reduction = _mitigation(def);
   return Math.max(1, Math.round(Math.max(1, atk * (1 - reduction))));
 }
 

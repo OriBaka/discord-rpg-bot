@@ -14,8 +14,19 @@ const CLASSES = {
     // trước đây Chiến Binh có ATK thấp nhất (12) lại thêm ATK vũ khí ngang
     // Pháp Sư (18), nên luôn gây ít sát thương nhất → thua nhiều nhất dù HP
     // cao nhất. Class giờ khác nhau ở HP/DEF, không phải ở sát thương.
+    // ATK growth nâng 3 → 5 để không trở thành class yếu nhất.
+    //
+    // Bối cảnh: vì DEF nhân vào công thức giảm thương, Chiến Binh vừa có HP
+    // cao nhất vừa có DEF cao nhất — độ bền Lv.30 gấp 1.8 lần Pháp Sư. Khi
+    // bảng quái được cân để mọi class đều chạm trần sát thương (điều kiện
+    // duy nhất để một bảng quái chung cân được 3 class), ai CŨNG chết sau
+    // đúng 6.7 đòn — nên ai gây ít sát thương nhất sẽ thua nhiều nhất.
+    // Đo được với growth cũ (atk+3): Lv.30 Chiến Binh gây 149/đòn còn Pháp Sư
+    // 201 → Chiến Binh chỉ thắng 49% trong khi Pháp Sư 70%.
+    //
+    // Nay atk+5, def+2: sát thương theo kịp 2 class kia, đổi lại bớt trâu.
     base: { hp: 120, atk: 15, def: 8 },         // chỉ số gốc lv 1
-    growth: { hp: 18, atk: 3, def: 3 },          // mỗi lv tăng
+    growth: { hp: 18, atk: 5, def: 2 },          // mỗi lv tăng
     weapon_types: ['sword', 'axe', 'mace'],      // loại vũ khí dùng được
     armor_types:  ['heavy', 'medium', 'light'],
     color: 0xE74C3C,
@@ -25,8 +36,18 @@ const CLASSES = {
     name: '🔮 Pháp Sư',
     desc: 'Phép thuật, ATK rất cao, HP/DEF thấp',
     emoji: '🔮',
+    // HP/DEF growth được nâng để KHÔNG bị tụt hậu theo cấp.
+    //
+    // Đo được: với growth cũ (hp+10, def+1), độ bền
+    // maxHP/(1-giảm thương) của Pháp Sư tụt từ 64% (Lv.1) xuống 36% (Lv.40)
+    // so với Chiến Binh (hp+18, def+3). Vì DEF nhân vào công thức giảm thương
+    // nên +3 DEF/cấp của Chiến Binh là lợi kép (HP nhiều hơn VÀ mỗi điểm HP
+    // đáng giá hơn), còn Pháp Sư chỉ có ATK — mà ATK không giúp sống sót.
+    // Hệ quả: Pháp Sư Lv.30 thắng 55% chênh 37 điểm so với Chiến Binh 92%.
+    // Nay: hp+13, def+3 → độ bền giữ ~64-70% suốt 1-40, đổi lại ATK growth
+    // giảm 5→4 để không thành class vừa trâu vừa mạnh.
     base: { hp: 80, atk: 17, def: 3 },
-    growth: { hp: 10, atk: 5, def: 1 },
+    growth: { hp: 13, atk: 4, def: 3 },
     weapon_types: ['staff', 'wand', 'orb'],
     armor_types:  ['robe', 'light'],
     color: 0x9B59B6,
