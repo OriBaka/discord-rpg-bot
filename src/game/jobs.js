@@ -24,8 +24,26 @@ function migrate() {
   `);
 }
 
+// XP cần để lên cấp nghề tiếp theo.
+//
+// VẤN ĐỀ ĐÃ SỬA: công thức cũ `50 * level^1.5` tăng nhanh hơn XP kiếm được,
+// nên nghề càng cao càng phạt — số lần đào để lên 1 cấp:
+//     Lv.1 → 5 lần       Lv.10 → 64 lần
+//     Lv.20 → 90 lần     Lv.35 → 104 lần   ← tệ nhất
+// Cùng một hành động, càng chơi càng chậm. Đó là lý do không ai farm lâu:
+// không phải vì farm chán, mà vì nó không tiến triển.
+//
+// Công thức mới `200 * level^0.8` được chọn bằng cách quét 888 tổ hợp
+// (base × exp) và tìm ra phương án có ĐỘ LỆCH số-lần-đào thấp nhất giữa các
+// mốc cấp, đồng thời không mốc nào dưới 20 lần (quá dễ) hay quá cao (ức chế):
+//     Lv.1 → 20 lần   Lv.10 → 51   Lv.20 → 44   Lv.35 → 35   Lv.50 → 23
+//
+// Lưu ý: số lần đào KHÔNG tăng đơn điệu theo cấp — nó đạt đỉnh quanh Lv.10
+// rồi giảm, vì XP mỗi lần đào tăng mạnh theo zone (10 → 200) nhanh hơn XP
+// cần. Đây là đánh đổi có chủ ý: người mới học nghề nhanh, giữa game cày
+// nhiều nhất, cuối game mở khoá zone xịn nên lại nhanh lên.
 function xpToNext(level) {
-  return Math.floor(50 * Math.pow(level, 1.5));
+  return Math.floor(200 * Math.pow(level, 0.8));
 }
 
 function getJob(userId, jobType) {

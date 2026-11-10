@@ -266,6 +266,18 @@ runMigrate('../game/lore_seed', 'migrateLoreSeed');
 // rồi tới các bảng phụ.
 runMigrate('../game/lore_surface_seed', 'migrateLoreSurfaceSeed');
 
+// Công cụ farm (pickaxe + cần câu). Trước đây công cụ chỉ có trong seeder
+// admin-gated → !mine và !fish báo "mua ở shop" nhưng shop không bán gì,
+// khiến hai kỹ năng farm hoàn toàn không dùng được.
+// Chạy SAU economy_seed: economy_seed bỏ qua weapon_type pickaxe/fishing_rod
+// (chúng không phải vũ khí chiến đấu), nên giá công cụ do module này quyết.
+runMigrate('../game/farm_tools_seed', 'migrateFarmTools');
+
+// Nối nguyên liệu farm vào chuỗi chế tác. PHẢI chạy SAU `recipes` (bảng phải
+// tồn tại) và SAU `economy_seed` (giá bán của vật phẩm mới). `recipes.js` chỉ
+// seed khi bảng rỗng nên recipe thêm sau này buộc phải ở migration riêng.
+runMigrate('../game/farm_recipes_seed', 'migrateFarmRecipes');
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
