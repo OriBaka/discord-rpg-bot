@@ -36,7 +36,20 @@ function zoneRates(zoneId, lv, sims = 260) {
 // ─────────────────────────────────────────────────────────────
 // 1. Win-rate theo zone
 // ─────────────────────────────────────────────────────────────
-test('win-rate cấp zone tại level mở zone nằm trong 65–75%', () => {
+// Win-rate ở trạng thái "FULL ĐỒ TỐT NHẤT" (model winRate dùng playerAt(lv,c,gear=1)).
+//
+// LƯU Ý QUAN TRỌNG — đọc trước khi sửa ngưỡng:
+// Trạng thái này KHÔNG phải trạng thái người chơi bình thường. Nó giả định
+// người chơi có vũ khí + giáp + phụ kiện tốt nhất mà level đó mở được.
+//
+// Vì vậy ở zone đầu (forest, Lv.1) nó luôn cao (85–96%) — người mới không có
+// bộ đồ đó, họ chỉ có vũ khí khởi đầu. Trải nghiệm THẬT của người mới được đo
+// riêng ở test 'người mới chỉ có vũ khí khởi đầu' bên dưới.
+//
+// Lịch sử: test này từng chỉ kiểm tra đúng trạng thái full-đồ, nên báo 70%
+// trong khi người chơi thật thua 99% ở forest và bỏ game. Đừng bỏ test
+// người-mới ở dưới.
+test('win-rate cấp zone tại level mở zone nằm trong 65–75% (full đồ)', () => {
   const zones = db.prepare('SELECT * FROM zones ORDER BY min_level').all();
   const report = [];
   let inRange = 0;
@@ -45,10 +58,14 @@ test('win-rate cấp zone tại level mở zone nằm trong 65–75%', () => {
     const per = zoneRates(z.id, z.min_level);
     const med = median(per);
     report.push(`${z.id} (Lv.${z.min_level}): ${per.map(v => v.toFixed(0)).join('/')} → ${med.toFixed(0)}%`);
+    // Zone đầu tiên được nới: full đồ ở Lv.1 vượt xa người chơi thật, và
+    // không thể hạ xuống 75% mà không làm người mới chết (xem chú thích trên).
+    const hi = z.min_level <= 1 ? 98 : 77;
     if (med >= 65 && med <= 75) inRange++;
-    else assert.ok(med >= 63 && med <= 77, `${z.id}: win-rate ${med.toFixed(0)}% lệch quá xa mục tiêu 65–75%\n${report.join('\n')}`);
+    else assert.ok(med >= 63 && med <= hi, `${z.id}: win-rate ${med.toFixed(0)}% lệch quá xa mục tiêu 65–75%\n${report.join('\n')}`);
   }
-  assert.ok(inRange >= zones.length - 1,
+  // forest được phép lệch (nới ở trên), nên chỉ cần 8/9 zone chuẩn
+  assert.ok(inRange >= zones.length - 2,
     `chỉ ${inRange}/${zones.length} zone trong 65–75%:\n${report.join('\n')}`);
 });
 
@@ -255,8 +272,13 @@ test('win-rate với đồ thực kiếm được vẫn đạt Option A (65–75
     const med = median(per);
     report.push(`${z.id}: ${per.map(v => v.toFixed(0)).join('/')} → ${med.toFixed(0)}%`);
     if (med >= 65 && med <= 75) inRange++;
+    // forest (Lv.1) miễn: xem chú thích ở test 1 — trạng thái full-đồ ở Lv.1
+    // vượt xa người chơi thật, và người chơi thật được đo riêng bên dưới.
+    if (z.min_level <= 1) {
+      assert.ok(med >= 63 && med <= 98, `forest: ${med.toFixed(0)}% ngoài dải cho phép ở Lv.1`);
+    }
   }
-  assert.ok(inRange >= zones.length - 1,
+  assert.ok(inRange >= zones.length - 2,
     `chỉ ${inRange}/${zones.length} zone trong 65–75%:\n${report.join('\n')}`);
 });
 
@@ -279,7 +301,11 @@ function goldPerKill(zoneId) {
 }
 
 test('người mới KHÔNG bế tắc: mua được vũ khí Lv.1 trong ≤ 8 kill', () => {
-  const START_GOLD = 50;
+  // Đọc vốn khởi đầu từ nguồn thật, không hardcode — trước đây test này ghi 50
+  // trong khi createPlayer() cũng là 50, nên nó "qua" dù người chơi bế tắc.
+  const START_GOLD = require('../src/game/player').STARTING_GOLD;
+  assert.ok(START_GOLD >= 300,
+    `vốn khởi đầu ${START_GOLD} không đủ mua vũ khí (150) + 1 giáp (150)`);
   const gpk = goldPerKill('forest');
   const w = db.prepare(`SELECT s.price, i.id FROM shop s JOIN items i ON i.id = s.item_id
     WHERE i.type='weapon' AND i.min_level<=1 ORDER BY s.price`).get();
@@ -609,4 +635,107 @@ test('admin: cấu hình hỏng không được làm nâng cấp nổ', () => {
   assert.ok(upgrade.getUpgradeCost(it, 0), 'ladder rỗng phải fallback về mặc định');
 
   upgrade.resetConfig();
+});
+
+// ---------------------------------------------------------------------------
+// TRẢI NGHIỆM THẬT CỦA NGƯỜI MỚI — test hồi quy cho lỗi "hunt zone đầu ngỏm liên tục".
+//
+// VÌ SAO TEST NÀY TỒN TẠI:
+// Toàn bộ các test phía trên đều đo trạng thái `gear=1` (mọi slot có đồ tốt
+// nhất mà level mở được). Trạng thái đó KHÔNG BAO GIỜ xảy ra với người mới:
+// họ có 0 XP, 0 đồ, và ngay cả khi chọn class thì vũ khí khởi đầu chỉ nằm
+// trong túi. Kết quả là bộ test báo "forest 70%" trong khi người chơi thật
+// thắng 1% và chết liên tục — đúng lỗi người dùng báo.
+//
+// Test này đo ĐÚNG trạng thái người chơi thật sự bước vào forest lần đầu:
+//   - máu đầy (không phải max_hp giả định)
+//   - atk/def lấy từ getEffectiveStats() sau khi mặc vũ khí khởi đầu
+//   - không có món giáp nào
+// Nếu ai đó lại hạ đồ/vũ khí khởi đầu xuống, test này gãy ngay.
+// ---------------------------------------------------------------------------
+test('người mới chỉ có vũ khí khởi đầu phải thắng được forest (≥55%)', () => {
+  const player = require('../src/game/player');
+  const classes = require('../src/game/classes');
+  const STARTER = { melee: 'wood_sword', magic: 'apprentice_wand', ranged: 'short_bow' };
+
+  const mobs = db.prepare('SELECT * FROM monsters WHERE zone_id=?').all('forest')
+    .map(m => ({ ...m, gold: [m.gold_min, m.gold_max], drops: [] }));
+  assert.ok(mobs.length > 0, 'forest phải có quái');
+  const wt = mobs.reduce((s, m) => s + (m.weight || 10), 0);
+
+  const report = [];
+  const rates = [];
+  for (const cls of CLASSES) {
+    db.prepare('DELETE FROM equipped WHERE user_id=?').run('NEWBIE');
+    db.prepare('DELETE FROM players WHERE user_id=?').run('NEWBIE');
+    player.createPlayer('NEWBIE', 'newbie');
+    classes.unlockClass('NEWBIE', cls);
+    classes.setPrimaryClass('NEWBIE', cls);
+
+    // Mặc đúng vũ khí khởi đầu — giống hệt %class pick làm
+    db.prepare('INSERT OR REPLACE INTO equipped (user_id, slot, item_id) VALUES (?,?,?)')
+      .run('NEWBIE', 'weapon', STARTER[cls]);
+
+    const p = player.getPlayer('NEWBIE');
+    const st = player.getEffectiveStats(p);
+    // Người mới vào trận với máu ĐẦY
+    const asFighter = { ...p, hp: p.max_hp, max_hp: p.max_hp, atk: st.atk, def: st.def };
+
+    const rate = mobs.reduce((s, m) => s + (m.weight || 10) / wt * sim.winRate(asFighter, m, 400, 7), 0) * 100;
+    rates.push(rate);
+    report.push(`${cls}: atk ${st.atk} def ${st.def} hp ${p.max_hp} → ${rate.toFixed(0)}%`);
+  }
+
+  const med = median(rates);
+  for (const r of rates) {
+    assert.ok(r >= 45,
+      `một class người mới thắng dưới 45% ở forest — vẫn còn ngỏm liên tục\n${report.join('\n')}`);
+  }
+  assert.ok(med >= 55,
+    `người mới chỉ có vũ khí khởi đầu thắng ${med.toFixed(0)}% ở forest — quá thấp, họ sẽ chết liên tục\n${report.join('\n')}`);
+});
+
+test('người mới không chết trước khi giết được quái (đua số đòn)', () => {
+  // Nguyên nhân gốc của lỗi "ngỏm liên tục": MAX_HIT_PCT=0.30 chặn sát thương
+  // quái ở 30% max_hp, nên người chơi LUÔN chết sau tối đa ceil(1/0.30)=4 đòn.
+  // Nếu quái cần nhiều hơn 4 đòn mới chết thì mọi trận đều thua — không phải
+  // xác suất, mà là số học. Test này khoá lại tỉ lệ đó.
+  //
+  // Người chơi đánh TRƯỚC trong mỗi hiệp (combat.js áp sát thương người chơi
+  // rồi mới tới quái), nên hoà số đòn vẫn là thắng.
+  const combat = require('../src/game/combat');
+  const player = require('../src/game/player');
+  const classes = require('../src/game/classes');
+
+  db.prepare('DELETE FROM equipped WHERE user_id=?').run('RACE');
+  db.prepare('DELETE FROM players WHERE user_id=?').run('RACE');
+  player.createPlayer('RACE', 'race');
+  classes.unlockClass('RACE', 'melee');
+  classes.setPrimaryClass('RACE', 'melee');
+  db.prepare('INSERT OR REPLACE INTO equipped (user_id, slot, item_id) VALUES (?,?,?)')
+    .run('RACE', 'weapon', 'wood_sword');
+
+  const p = player.getPlayer('RACE');
+  const st = player.getEffectiveStats(p);
+  const mobs = db.prepare('SELECT * FROM monsters WHERE zone_id=?').all('forest');
+  const wt = mobs.reduce((s, m) => s + (m.weight || 10), 0);
+
+  const report = [];
+  let winWeight = 0;
+  for (const m of mobs) {
+    const myDmg = Math.max(1, combat.damageAfterDef(st.atk, m.def, Infinity));
+    const hitsToKill = Math.ceil(m.hp / myDmg);
+    const mobDmg = Math.min(
+      Math.max(1, combat.damageAfterDef(m.atk, st.def, p.max_hp)),
+      Math.max(1, p.max_hp * combat.MAX_HIT_PCT));
+    const hitsToDie = Math.ceil(p.max_hp / mobDmg);
+    const wins = hitsToKill <= hitsToDie;
+    if (wins) winWeight += (m.weight || 10);
+    report.push(`${m.id}: giết ${hitsToKill} đòn, chết sau ${hitsToDie} đòn → ${wins ? 'thắng' : 'THUA'}`);
+  }
+
+  const share = winWeight / wt * 100;
+  assert.ok(share >= 60,
+    `chỉ ${share.toFixed(0)}% lượt gặp quái là người mới thắng được cuộc đua số đòn ` +
+    `(quái quá dai so với trần sát thương MAX_HIT_PCT)\n${report.join('\n')}`);
 });

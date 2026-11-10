@@ -10,12 +10,23 @@ function getPlayer(userId) {
   return db.prepare('SELECT * FROM players WHERE user_id = ?').get(userId);
 }
 
+// Vàng khởi đầu.
+//
+// Từng là 50 — nhưng món đồ rẻ nhất trong shop giá 150, nên người mới KHÔNG
+// MUA ĐƯỢC GÌ. Đo được: người mới + class + vũ khí khởi đầu thắng 1-4% ở
+// forest, mỗi trận chết sau 4 hiệp, và không có vàng để hồi máu hay mua đồ
+// → bế tắc hoàn toàn, không có đường tiến.
+//
+// Nay 400: đủ mua vũ khí khởi đầu (150) + 1 món giáp (150), còn 100 dự phòng
+// cho 1 lần hồi máu. Không đủ mua cả bộ — vẫn phải cày, nhưng không bế tắc.
+const STARTING_GOLD = 400;
+
 function createPlayer(userId, name) {
   const now = Date.now();
   db.prepare(`
-    INSERT INTO players (user_id, name, created_at)
-    VALUES (?, ?, ?)
-  `).run(userId, name, now);
+    INSERT INTO players (user_id, name, created_at, gold)
+    VALUES (?, ?, ?, ?)
+  `).run(userId, name, now, STARTING_GOLD);
   return getPlayer(userId);
 }
 
@@ -142,6 +153,7 @@ function addXpAndLevel(userId, xpGain) {
 }
 
 module.exports = {
+  STARTING_GOLD,
   xpToNext,
   getPlayer,
   createPlayer,

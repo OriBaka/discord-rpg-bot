@@ -13,15 +13,15 @@
 
 const db = require('../db/database');
 
-const META_KEY = 'monster_balance_v2';
+const META_KEY = 'monster_balance_v3';
 
 const MONSTERS = [
-  ['slime',    90,   42,   2,    40,    29,    67, 30],
-  ['giant_rat',    90,   36,   2,    40,    29,    67, 30],
-  ['forest_wisp',    90,   42,   4,    47,    34,    79, 20],
-  ['wolf',    90,   36,   6,    47,    34,    79, 20],
-  ['forest_bear',   110,   42,   7,    62,    45,   104, 10],
-  ['moss_golem',   110,   36,  10,    62,    45,   104, 10],
+  ['slime',    72,   42,   2,    40,    29,    67, 30],
+  ['giant_rat',    72,   36,   2,    40,    29,    67, 30],
+  ['forest_wisp',    72,   42,   4,    47,    34,    79, 20],
+  ['wolf',    72,   36,   6,    47,    34,    79, 20],
+  ['forest_bear',    88,   42,   7,    62,    45,   104, 10],
+  ['moss_golem',    88,   36,  10,    62,    45,   104, 10],
   ['bat',   129,   60,   0,    82,    59,   138, 30],
   ['cave_spider',   129,   52,   0,    82,    59,   138, 30],
   ['goblin',   149,   60,   0,    96,    69,   161, 20],
