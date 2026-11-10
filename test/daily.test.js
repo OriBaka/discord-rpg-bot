@@ -224,3 +224,19 @@ test('daily: daily_best giữ kỷ lục kể cả sau khi đứt chuỗi', asyn
   assert.strictEqual(p.daily_streak, 1, 'chuỗi hiện tại về 1');
   assert.strictEqual(p.daily_best, 3, 'kỷ lục phải giữ nguyên 3');
 });
+
+test('daily: thông báo LÊN CẤP thực sự hiện khi đủ XP', async () => {
+  // Bug từng có: grantReward đọc res.level trong khi addXpAndLevel trả
+  // { newLevel } → nhánh thông báo không bao giờ chạy, im lặng mất tính năng.
+  const uid = freshPlayer({ level: 1, xp: 0 });
+  const before = player.getPlayer(uid).level;
+  for (let i = 0; i < 7; i++) {
+    const txt = await claim(uid);
+    if (player.getPlayer(uid).level > before) {
+      assert.ok(/LÊN CẤP/.test(txt), `phải báo lên cấp, nhận: ${txt}`);
+      return;
+    }
+    rewind(uid, 24.1);
+  }
+  assert.fail('7 ngày điểm danh phải đủ XP để lên ít nhất 1 cấp');
+});
