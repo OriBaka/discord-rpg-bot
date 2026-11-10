@@ -459,6 +459,67 @@ const definitions = [
     handler: { cmdName: 'redeem', extractArgs: (i) => [i.options.getString('code')] },
   },
 
+  // ====== Nâng cấp vũ khí (+1..+5) ======
+  {
+    data: new SlashCommandBuilder().setName('upgrade').setDescription('Nâng cấp vũ khí +1..+5')
+      .addSubcommand(sc => sc.setName('xem').setDescription('Vũ khí đang mặc, cấp hiện tại, cần gì để lên cấp'))
+      .addSubcommand(sc => sc.setName('nangcap').setDescription('Nâng cấp vũ khí đang mặc lên 1 cấp')
+        .addStringOption(o => o.setName('item').setDescription('Id vũ khí (mặc định = đang mặc)').setRequired(false)))
+      .addSubcommand(sc => sc.setName('bang').setDescription('Bảng chi phí +1..+5 và nguồn nguyên liệu')),
+    handler: {
+      // Map sang tên subcommand riêng, KHÔNG dùng 'view'/'upgrade': prefix
+      // command sẽ hiểu chuỗi 'upgrade' là item id và báo "item không tồn tại".
+      cmdName: 'upgrade',
+      extractArgs: (i) => {
+        const sub = i.options.getSubcommand(false);
+        if (sub === 'nangcap') {
+          const item = i.options.getString('item');
+          if (item) return [item];
+          // Bỏ trống item: nâng vũ khí ĐANG MẶC. Phải trả 'nangcap' làm token
+          // đầu, nếu trả [] thì lệnh chỉ hiện trạng thái và người dùng tưởng
+          // nút hỏng (đã gặp thật khi test).
+          return ['nangcap'];
+        }
+        if (sub === 'bang') return ['list'];
+        return ['view'];
+      },
+    },
+  },
+
+  // ====== So sánh 2 món đồ ======
+  {
+    data: new SlashCommandBuilder().setName('compare')
+      .setDescription('So sánh 2 món đồ (bỏ trống món 2 = món đang mặc cùng slot)')
+      .addStringOption(o => o.setName('item1').setDescription('Món thứ nhất').setRequired(true).setAutocomplete(true))
+      .addStringOption(o => o.setName('item2').setDescription('Món thứ hai').setRequired(false).setAutocomplete(true)),
+    handler: {
+      cmdName: 'compare',
+      extractArgs: (i) => {
+        const a = i.options.getString('item1');
+        const b = i.options.getString('item2');
+        return b ? [a, b] : [a];
+      },
+    },
+    autocomplete: 'item_owned',
+  },
+
+  // ====== Battle (elite/boss) ======
+  {
+    data: new SlashCommandBuilder().setName('battle').setDescription('Đánh elite/boss (turn-based, có skill)')
+      .addSubcommand(sc => sc.setName('danh_sach').setDescription('Danh sách elite & boss'))
+      .addSubcommand(sc => sc.setName('danh').setDescription('Bắt đầu trận với một elite/boss')
+        .addStringOption(o => o.setName('mob').setDescription('Id elite/boss').setRequired(true).setAutocomplete(true))),
+    handler: {
+      cmdName: 'battle',
+      extractArgs: (i) => {
+        const sub = i.options.getSubcommand(false);
+        if (sub === 'danh_sach') return ['list'];
+        return [i.options.getString('mob')];
+      },
+    },
+    autocomplete: 'battle_mob',
+  },
+
   // ====== Help ======
   {
     data: new SlashCommandBuilder().setName('help').setDescription('Hướng dẫn các lệnh'),

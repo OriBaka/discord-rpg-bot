@@ -276,10 +276,23 @@ module.exports = {
     }
 
     if (!sub) return renderStatus(msg, p);
+    // 'view' là tên subcommand bên slash (/upgrade xem). Prefix `!upgrade view`
+    // cũng nhận, để hai đường vào cho cùng một kết quả.
+    if (sub === 'view' || sub === 'xem') return renderStatus(msg, p);
     if (sub === 'list' || sub === 'bang' || sub === 'help') return renderList(msg);
 
+    // `!upgrade nangcap` (không kèm id) = nâng vũ khí ĐANG MẶC.
+    // Đây là đường vào của slash /upgrade nangcap.
+    let itemId = sub === 'nangcap' || sub === 'up' ? null : args[0];
+    if (sub === 'nangcap' || sub === 'up') {
+      const eq = getEquipped(msg.author.id);
+      itemId = eq.weapon;
+      if (!itemId) {
+        return msg.reply('🗡️ Bạn chưa mặc vũ khí nào. Dùng `!equip <id>` trước.');
+      }
+    }
+
     // ===== Nâng cấp =====
-    const itemId = args[0];
     const item = getItem(itemId);
     if (!item) return msg.reply(`❌ Item \`${itemId}\` không tồn tại.`);
 

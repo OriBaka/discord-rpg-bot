@@ -107,6 +107,14 @@ const providers = {
     return filterChoices(zones.map(z => toChoice(z.id, z.name)), input);
   },
 
+  // Elite/boss cho lệnh battle
+  battle_mob: (i, input) => {
+    const mobs = db.prepare(`SELECT id, name, elite_tier FROM monsters
+      WHERE elite_tier >= 1 ORDER BY elite_tier, hp`).all();
+    const choices = mobs.map(m => toChoice(m.id, `${m.elite_tier === 2 ? '👑' : '⭐'} ${m.name}`));
+    return filterChoices(choices, input);
+  },
+
   // Pet — context-dependent
   pet_dynamic: (i, input) => {
     const sub = i.options.getSubcommand(false);
