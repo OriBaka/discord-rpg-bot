@@ -19,7 +19,7 @@ module.exports = {
   aliases: ['profile', 'tt', 'nv'],
   description: 'Xem thông tin nhân vật',
   async execute(msg) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Bạn chưa có nhân vật. Gõ \`${prefix}start\` để tạo!`);
 

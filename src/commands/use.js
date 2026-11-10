@@ -8,7 +8,7 @@ module.exports = {
   aliases: ['dung', 'open'],
   description: 'Dùng vật phẩm tiêu hao hoặc mở hộp quà: !use <id> [qty]',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
     const id = args[0];

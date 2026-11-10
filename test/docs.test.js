@@ -19,9 +19,9 @@ before(() => {
 });
 
 // ── !help trong bot ──────────────────────────────────────────────────────────
-test('!help nhắc tới mọi lệnh người chơi (trừ lệnh admin)', async () => {
+test('%help nhắc tới mọi lệnh người chơi (trừ lệnh admin)', async () => {
   const ADMIN_ONLY = new Set([
-    'admin', 'item', 'mob', 'gatherzone', 'craft', 'lootbox', 'setimage',
+    'admin', 'adm', 'item', 'mob', 'gatherzone', 'craft', 'lootbox', 'setimage',
     'slashadmin', 'petrestore', 'achdebug', 'redeem',
   ]);
   const helpSrc = read('src/commands/help.js');
@@ -44,7 +44,7 @@ test('!help nhắc tới mọi lệnh người chơi (trừ lệnh admin)', asyn
 test('README liệt kê mọi lệnh người chơi', () => {
   const readme = read('README.md');
   const ADMIN_ONLY = new Set([
-    'admin', 'item', 'mob', 'gatherzone', 'lootbox', 'setimage',
+    'admin', 'adm', 'item', 'mob', 'gatherzone', 'lootbox', 'setimage',
     'slashadmin', 'petrestore', 'achdebug',
   ]);
   const missing = [];
@@ -176,4 +176,69 @@ test('slash: lệnh người chơi quan trọng đều có slash', () => {
   ];
   const missing = must.filter(n => !have.has(n));
   assert.deepStrictEqual(missing, [], `lệnh chưa có slash: ${missing.join(', ')}`);
+});
+
+// ── Prefix ───────────────────────────────────────────────────────────────────
+// Server thật dùng `%`. Trước đây 45 chỗ hardcode `process.env.PREFIX || '!'`
+// khiến mọi hướng dẫn trong help đều sai. Test này chặn tái diễn.
+test('prefix: mặc định là % khi không set env', () => {
+  const saved = process.env.PREFIX;
+  delete process.env.PREFIX;
+  delete require.cache[require.resolve(`${ROOT}/src/game/prefix`)];
+  const { getPrefix } = require(`${ROOT}/src/game/prefix`);
+  assert.strictEqual(getPrefix(), '%');
+  if (saved !== undefined) process.env.PREFIX = saved;
+});
+
+test('prefix: không còn chỗ nào hardcode dấu ! làm mặc định', () => {
+  const { execSync } = require('child_process');
+  let out = '';
+  try {
+    out = execSync(
+      `grep -rn "process.env.PREFIX || '!'" ${ROOT}/src --include=*.js || true`,
+      { encoding: 'utf8' }
+    );
+  } catch { out = ''; }
+  assert.strictEqual(out.trim(), '', `còn chỗ hardcode '!':\n${out}`);
+});
+
+test('prefix: .env.example dùng %', () => {
+  const env = read('.env.example');
+  assert.ok(/^PREFIX=%$/m.test(env), 'PREFIX trong .env.example phải là %');
+});
+
+test('prefix: README không còn ví dụ lệnh bắt đầu bằng !', () => {
+  const readme = read('README.md');
+  const bad = readme.match(/`![a-z]/g) || [];
+  assert.deepStrictEqual(bad, [], `README còn ví dụ dùng !: ${bad.join(', ')}`);
+});
+
+// ── %adm ─────────────────────────────────────────────────────────────────────
+test('adm: mọi nhóm đều trỏ tới lệnh gốc tồn tại', () => {
+  const { GROUPS } = require(`${ROOT}/src/commands/adm`);
+  const bad = Object.entries(GROUPS)
+    .filter(([, g]) => !cmds.has(g.to))
+    .map(([k, g]) => `${k} → ${g.to}`);
+  assert.deepStrictEqual(bad, [], `nhóm adm trỏ tới lệnh không tồn tại: ${bad.join(', ')}`);
+});
+
+test('adm: nằm trong help admin và có slash /adm', () => {
+  const helpSrc = read('src/commands/help.js');
+  assert.ok(/adm help/.test(helpSrc), 'help phải nhắc tới %adm help');
+  const { adminDefs } = slashDefs();
+  const adm = adminDefs.find(d => d.data.toJSON().name === 'adm');
+  assert.ok(adm, 'phải có slash /adm');
+});
+
+test('adm: từ chối người không phải admin', async () => {
+  const adm = require(`${ROOT}/src/commands/adm`);
+  const saved = process.env.ADMIN_IDS;
+  process.env.ADMIN_IDS = 'SOMEONE_ELSE';
+  const { fakeMessage } = require('./harness');
+  const msg = fakeMessage('NOT_ADMIN', { admin: false, ownerId: 'OWNER2' });
+  // fakeMessage mặc định member.permissions.has() === true, ghi đè để rõ ràng
+  msg.member = { permissions: { has: () => false } };
+  await adm.execute(msg, ['stats']);
+  if (saved !== undefined) process.env.ADMIN_IDS = saved; else delete process.env.ADMIN_IDS;
+  assert.ok(/không có quyền/.test(msg._text()), `phải từ chối, nhận: ${msg._text()}`);
 });

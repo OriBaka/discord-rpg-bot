@@ -50,7 +50,7 @@ module.exports = {
     }
 
     const sub = (args[0] || '').toLowerCase();
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
 
     // ===== Help =====
     if (!sub || sub === 'help') {

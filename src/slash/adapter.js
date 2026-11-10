@@ -27,7 +27,7 @@ function buildContent(interaction, prefix, commandName, args) {
  * @returns {Object} msgLike
  */
 function wrap(interaction, commandName, args = []) {
-  const prefix = process.env.PREFIX || '!';
+  const prefix = require('../game/prefix').getPrefix();
   let hasReplied = false;
 
   // Build mentions map

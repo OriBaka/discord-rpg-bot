@@ -195,14 +195,18 @@ test('equip: mặc lại / chuyển slot hợp lệ không bị chặn nhầm', 
 // ─────────────────────────────────────────────────────────────
 // P1-6: petrestore dùng đúng prefix
 // ─────────────────────────────────────────────────────────────
-test('P1-6 petrestore hiển thị đúng prefix ! thay vì %', async () => {
+test('P1-6 petrestore dùng prefix từ env, không hardcode', async () => {
   const cmd = cmds.get('petrestore');
   assert.ok(cmd, 'petrestore phải được load như index.js');
+  const { getPrefix } = require(`${ROOT}/src/game/prefix`);
   const msg = fakeMessage(`PR${++userSeq}`);
   await cmd.execute(msg, []);
   const text = msg._text();
-  assert.ok(!text.includes('%petrestore'), `hướng dẫn không được hardcode %: ${text}`);
-  assert.match(text, /!petrestore/, 'phải dùng prefix thật (!)');
+  // Trước đây test này khẳng định hướng dẫn phải là `!petrestore` — chính là
+  // khoá cứng bug: server thật dùng `%` nên mọi hướng dẫn đều sai.
+  // Nay kiểm tra theo prefix thật (helper, không hardcode).
+  assert.ok(text.includes(`${getPrefix()}petrestore`),
+    `phải dùng prefix thật (${getPrefix()}): ${text}`);
 });
 
 // ─────────────────────────────────────────────────────────────

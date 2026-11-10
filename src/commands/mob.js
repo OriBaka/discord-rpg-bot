@@ -19,7 +19,7 @@ module.exports = {
   aliases: ['monster'],
   description: 'Quản lý quái vật (admin)',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const sub = (args[0] || '').toLowerCase();
 
     if (!sub || sub === 'help') {

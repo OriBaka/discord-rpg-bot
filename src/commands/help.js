@@ -5,7 +5,7 @@ module.exports = {
   aliases: ['h', 'giup'],
   description: 'Danh sách lệnh',
   async execute(msg) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const isOwner   = msg.guild && msg.guild.ownerId === msg.author.id;
     const hasAdmin  = msg.member && msg.member.permissions?.has('Administrator');
     const adminIds  = (process.env.ADMIN_IDS || '').split(',').map(s=>s.trim());
@@ -80,7 +80,8 @@ module.exports = {
           `\`${prefix}trade @user\` mở phiên trao đổi\n` +
           `\`${prefix}trade help\` xem hướng dẫn chi tiết` },
         { name: '🎁 Khác', value:
-          `\`${prefix}daily\` điểm danh nhận vàng\n` +
+          `\`${prefix}daily\` điểm danh — chuỗi 7 ngày, thưởng leo thang\n` +
+          `\`${prefix}daily xem\` xem bảng 7 ngày + đang ở đâu\n` +
           `\`${prefix}redeem <code>\` nhập code nhận thưởng` },
       );
 
@@ -88,7 +89,8 @@ module.exports = {
       embed.addFields({
         name: '🛠️ Admin (chỉ bạn thấy)',
         value:
-          `\`${prefix}admin help\` quản trị + class + channel notify\n` +
+          `\`${prefix}adm help\` **cửa vào chính** — tất cả lệnh admin\n` +
+          `\`${prefix}admin help\` (cũ) quản trị + class + channel notify\n` +
           `\`${prefix}item help\` tạo/sửa item\n` +
           `\`${prefix}mob help\` tạo/sửa quái & zone\n` +
           `\`${prefix}quest admin\` tạo/sửa quest\n` +

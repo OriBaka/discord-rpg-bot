@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **41 lệnh** prefix + **47 slash command** (32 người chơi + 15 admin)
+- **42 lệnh** prefix + **47 slash command** (32 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -48,7 +48,7 @@ discord-rpg-bot/
 │   │   ├── pets.js / guilds.js / quests.js / achievements.js
 │   │   ├── pvp.js / trade.js / jobs.js / recipes.js
 │   │   └── gather_zones.js / lootbox.js / redeem.js / settings.js / images.js
-│   ├── commands/             # 38 file → 41 lệnh (nhiều lệnh/file)
+│   ├── commands/             # 39 file → 42 lệnh (nhiều lệnh/file)
 │   └── slash/
 │       ├── definitions.js    # 32 slash command người chơi
 │       ├── admin_definitions.js  # 15 slash command admin
@@ -99,95 +99,111 @@ Trên Railway nhớ set `DB_PATH=/data/rpg.db` **và mount volume** `/data`, n�
 
 ## 🎮 Lệnh
 
-Prefix mặc định `!`. Mọi lệnh đều có slash tương ứng (trừ vài lệnh admin chỉ có prefix).
+Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ vài lệnh admin chỉ có prefix).
 
 ### Nhân vật & trang bị
 
 | Lệnh | Mô tả |
 |---|---|
-| `!start` | Tạo nhân vật mới |
-| `!me [@user]` | Xem hồ sơ: level, HP, chỉ số, vàng |
-| `!inv [filter]` | Xem túi đồ, lọc theo loại (vd `!inv weapon`, `!inv ring`) |
-| `!gear [@user]` | Xem trang bị đang mặc + tổng bonus |
-| `!equip <id> [slot]` | Mặc đồ (tự chọn slot, hoặc chỉ định ring2, offhand…) |
-| `!unequip <slot\|all>` | Tháo trang bị |
-| `!upgrade` / `!upgrade <id>` / `!upgrade list` | Nâng cấp vũ khí +1..+5 (nguyên liệu tăng dần theo cấp và phẩm chất) |
-| `!compare <id1> [id2]` | So sánh 2 món, hoặc so với món đang mặc cùng slot |
-| `!class` | Xem class hiện tại, `!class pick/switch/unlock <id>` |
-| `!top` | BXH level, `!top guild` BXH bang |
+| `%start` | Tạo nhân vật mới |
+| `%me [@user]` | Xem hồ sơ: level, HP, chỉ số, vàng |
+| `%inv [filter]` | Xem túi đồ, lọc theo loại (vd `%inv weapon`, `%inv ring`) |
+| `%gear [@user]` | Xem trang bị đang mặc + tổng bonus |
+| `%equip <id> [slot]` | Mặc đồ (tự chọn slot, hoặc chỉ định ring2, offhand…) |
+| `%unequip <slot\|all>` | Tháo trang bị |
+| `%upgrade` / `%upgrade <id>` / `%upgrade list` | Nâng cấp vũ khí +1..+5 (nguyên liệu tăng dần theo cấp và phẩm chất) |
+| `%compare <id1> [id2]` | So sánh 2 món, hoặc so với món đang mặc cùng slot |
+| `%class` | Xem class hiện tại, `%class pick/switch/unlock <id>` |
+| `%top` | BXH level, `%top guild` BXH bang |
 
 ### Chiến đấu
 
 | Lệnh | Mô tả |
 |---|---|
-| `!hunt` | Săn tự động theo level (alias: `!san`, `!fight`, `!atk`) |
-| `!hunt list` | Xem các khu vực |
-| `!hunt <zone>` | Săn ở khu vực cụ thể |
-| `!hunt <mob_id>` | Săn quái chỉ định |
-| `!battle list` | Danh sách elite/boss (alias: `!bt`, `!turnbattle`) |
-| `!battle <mob_id>` | Vào trận turn-based có nút bấm + skill |
-| `!heal` | Nghỉ quán trọ hồi đầy HP (tốn vàng, cooldown 10 phút) |
-| `!use <id> [qty]` | Dùng bình máu / mở lootbox |
-| `!daily` | Điểm danh nhận vàng + hồi máu |
+| `%hunt` | Săn tự động theo level (alias: `%san`, `%fight`, `%atk`) |
+| `%hunt list` | Xem các khu vực |
+| `%hunt <zone>` | Săn ở khu vực cụ thể |
+| `%hunt <mob_id>` | Săn quái chỉ định |
+| `%battle list` | Danh sách elite/boss (alias: `%bt`, `%turnbattle`) |
+| `%battle <mob_id>` | Vào trận turn-based có nút bấm + skill |
+| `%heal` | Nghỉ quán trọ hồi đầy HP (tốn vàng, cooldown 10 phút) |
+| `%use <id> [qty]` | Dùng bình máu / mở lootbox |
+| `%daily` / `%daily xem` | Điểm danh chuỗi 7 ngày — thưởng leo thang, ngày 7 tặng vật phẩm (xem bảng không điểm danh bằng `xem`) |
 
 ### Kinh tế & chế tạo
 
 | Lệnh | Mô tả |
 |---|---|
-| `!shop` | Xem cửa hàng |
-| `!buy <id> [qty]` / `!sell <id> [qty]` | Mua / bán (không bán được món đang mặc) |
-| `!mine [zone]` | Đào mỏ (alias: `!dao`) |
-| `!fish [zone]` | Câu cá (alias: `!cau`) |
-| `!craft list` / `!craft <id>` | Chế tạo |
-| `!cook list` / `!cook <id>` | Nấu ăn |
-| `!job [@user]` | Xem level các nghề, `!job top <type>` |
+| `%shop` | Xem cửa hàng |
+| `%buy <id> [qty]` / `%sell <id> [qty]` | Mua / bán (không bán được món đang mặc) |
+| `%mine [zone]` | Đào mỏ (alias: `%dao`) |
+| `%fish [zone]` | Câu cá (alias: `%cau`) |
+| `%craft list` / `%craft <id>` | Chế tạo |
+| `%cook list` / `%cook <id>` | Nấu ăn |
+| `%job [@user]` | Xem level các nghề, `%job top <type>` |
 
 ### Xã hội
 
 | Lệnh | Mô tả |
 |---|---|
-| `!guild` | Bang hội: `create`, `invite`, `vault`, `deposit`, `withdraw`, `buff`, `top` |
-| `!duel @user [gold]` | PvP có cược, `!duel accept/decline/top` |
-| `!trade @user` | Mở phiên trade, `!trade add/remove/ready/confirm` |
-| `!pet` | Pet: `active`, `shards`, `combine`, `collection` |
-| `!redeem <code>` | Nhập code nhận thưởng |
+| `%guild` | Bang hội: `create`, `invite`, `vault`, `deposit`, `withdraw`, `buff`, `top` |
+| `%duel @user [gold]` | PvP có cược, `%duel accept/decline/top` |
+| `%trade @user` | Mở phiên trade, `%trade add/remove/ready/confirm` |
+| `%pet` | Pet: `active`, `shards`, `combine`, `collection` |
+| `%redeem <code>` | Nhập code nhận thưởng |
 
 ### Tra cứu & tiến trình
 
 | Lệnh | Mô tả |
 |---|---|
-| `!info item/mob/zone <id>` | Chi tiết item / quái / khu vực |
-| `!quest` | Quest hằng ngày, `!quest claim <id>` nhận thưởng |
-| `!ach [@user]` | Thành tựu, `!ach list`, `!ach top` |
-| `!help` | Danh sách lệnh |
+| `%info item/mob/zone <id>` | Chi tiết item / quái / khu vực |
+| `%quest` | Quest hằng ngày, `%quest claim <id>` nhận thưởng |
+| `%ach [@user]` | Thành tựu, `%ach list`, `%ach top` |
+| `%help` | Danh sách lệnh |
 
 ### Admin
 
 Lệnh admin yêu cầu user ID nằm trong `ADMIN_IDS`, hoặc là chủ server, hoặc có quyền Administrator.
 
+**Cửa vào chính: `%adm`** (slash `/adm`). Mọi nhóm admin đều gọi được qua đây — không cần nhớ lệnh gốc nào có nhánh `admin`:
+
+| Nhóm | Mô tả |
+|---|---|
+| `%adm help` | Danh sách toàn bộ nhóm lệnh admin |
+| `%adm player <gold\|xp\|item\|takeitem\|setlevel\|sethp\|heal\|look\|reset>` | Sửa dữ liệu người chơi |
+| `%adm class <give\|take\|set\|lock\|unlock>` | Gán/khoá class |
+| `%adm item` / `%adm mob` / `%adm zone` | Nội dung: vật phẩm, quái, zone gather |
+| `%adm recipe` / `%adm cookrecipe` / `%adm upgrade` | Recipe và cấu hình nâng cấp |
+| `%adm shop` / `%adm quest` / `%adm ach` / `%adm pet` | Cửa hàng, quest, thành tựu, pet |
+| `%adm lootbox` / `%adm redeem` / `%adm image` | Lootbox, code sự kiện, ảnh |
+| `%adm stats` / `%adm announce` / `%adm channel` | Thống kê, thông báo, kênh notify |
+| `%adm slash` / `%adm petfix` / `%adm achdebug` | Slash command, khôi phục pet, debug thành tựu |
+
+Các lệnh gốc bên dưới **vẫn dùng được** như trước — `%adm` là cửa vào gom nhóm, không thay thế:
+
 | Lệnh | Mô tả |
 |---|---|
-| `!admin help` | Cộng/trừ vàng, XP, set level, xem thống kê server |
-| `!item help` | Tạo/sửa/xoá item, gán ảnh |
-| `!mob help` | Tạo/sửa quái & zone, thêm drop |
-| `!shop add/remove/setprice` | Chỉnh cửa hàng |
-| `!quest admin` / `!ach admin` / `!pet admin` | Tạo/sửa quest, thành tựu, pet & drop |
-| `!craft admin` / `!cook admin` | Tạo/sửa recipe |
-| `!upgrade admin` | Chỉnh nguyên liệu/vàng nâng cấp theo mốc (`set`/`tier`/`gold`/`reset`) |
-| `!gatherzone` (`!gz`) | Quản lý zone mining/fishing |
-| `!lootbox` | Quản lý nội dung lootbox |
-| `!redeem` | Tạo/quản lý code |
-| `!setimage <type> <id> <url>` | Gán ảnh cho item/quái/zone/pet/thành tựu |
-| `!slashadmin` (`!sla`) | Deploy/clear slash command |
-| `!petrestore` | Khôi phục pet bị thiếu (dùng một lần khi nâng cấp) |
-| `!achdebug <ach_id> [@user]` | Debug: xem/gán tiến độ một thành tựu |
+| `%admin help` | Cộng/trừ vàng, XP, set level, xem thống kê server |
+| `%item help` | Tạo/sửa/xoá item, gán ảnh |
+| `%mob help` | Tạo/sửa quái & zone, thêm drop |
+| `%shop add/remove/setprice` | Chỉnh cửa hàng |
+| `%quest admin` / `%ach admin` / `%pet admin` | Tạo/sửa quest, thành tựu, pet & drop |
+| `%craft admin` / `%cook admin` | Tạo/sửa recipe |
+| `%upgrade admin` | Chỉnh nguyên liệu/vàng nâng cấp theo mốc (`set`/`tier`/`gold`/`reset`) |
+| `%gatherzone` (`%gz`) | Quản lý zone mining/fishing |
+| `%lootbox` | Quản lý nội dung lootbox |
+| `%redeem` | Tạo/quản lý code |
+| `%setimage <type> <id> <url>` | Gán ảnh cho item/quái/zone/pet/thành tựu |
+| `%slashadmin` (`%sla`) | Deploy/clear slash command |
+| `%petrestore` | Khôi phục pet bị thiếu (dùng một lần khi nâng cấp) |
+| `%achdebug <ach_id> [@user]` | Debug: xem/gán tiến độ một thành tựu |
 
 ---
 
 ## 🔧 Mở rộng
 
-- **Thêm item**: `!item create ...` (admin) — không cần sửa code
-- **Thêm quái/zone**: `!mob create ...`, `!mob zone create ...`
+- **Thêm item**: `%item create ...` (admin) — không cần sửa code
+- **Thêm quái/zone**: `%mob create ...`, `%mob zone create ...`
 - **Thêm lệnh mới**: tạo file `.js` trong `src/commands/`:
   ```js
   module.exports = {

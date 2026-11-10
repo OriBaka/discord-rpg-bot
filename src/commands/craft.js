@@ -71,7 +71,7 @@ function renderRecipesPage({ msg, userId, type, filter, page, jobLevel, replyFn 
   // Sort by min_job_level asc
   filtered.sort((a, b) => a.min_job_level - b.min_job_level || a.id.localeCompare(b.id));
 
-  const prefix = process.env.PREFIX || '!';
+  const prefix = require('../game/prefix').getPrefix();
   const filterLabel = filterOpts.find(f => f.key === filter)?.label || 'All';
   const { embed, components } = paginator.build({
     domain: type, // 'craft' or 'cook'
@@ -91,7 +91,7 @@ function renderRecipesPage({ msg, userId, type, filter, page, jobLevel, replyFn 
 
 // Handler chính, type = 'craft' | 'cook'
 async function handleCommand(msg, args, type) {
-  const prefix = process.env.PREFIX || '!';
+  const prefix = require('../game/prefix').getPrefix();
   const jobType = type === 'craft' ? 'crafting' : 'cooking';
   const verbThe = type === 'craft' ? 'Crafted' : 'Cooked';
   const verbDo  = type === 'craft' ? 'Chế tạo' : 'Nấu';

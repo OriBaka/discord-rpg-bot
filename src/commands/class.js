@@ -40,7 +40,7 @@ module.exports = {
   aliases: ['cls', 'lop'],
   description: 'Hệ thống class. !class, !class pick, !class switch, !class unlock',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
 

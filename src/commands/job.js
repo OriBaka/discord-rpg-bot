@@ -21,7 +21,7 @@ module.exports = {
   aliases: ['jobs', 'nghe', 'profession'],
   description: 'Xem level các nghề. !job, !job @user, !job top <type>',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const sub = (args[0] || '').toLowerCase();
 
     // ===== top =====

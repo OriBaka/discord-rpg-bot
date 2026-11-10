@@ -50,7 +50,7 @@ module.exports = {
   aliases: ['quests', 'q', 'nv2'],
   description: 'Hệ thống nhiệm vụ. !quest, !quest claim <id>',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
 

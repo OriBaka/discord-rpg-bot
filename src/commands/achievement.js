@@ -24,7 +24,7 @@ module.exports = {
   aliases: ['achievement', 'achievements', 'tt2'],
   description: 'Xem thành tựu: !ach, !ach list, !ach top, !ach @user',
   async execute(msg, args) {
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const sub = (args[0] || '').toLowerCase();
 
     // ====== Admin ======

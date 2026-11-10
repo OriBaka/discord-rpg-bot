@@ -25,7 +25,7 @@ module.exports = {
   async execute(msg, args) {
     if (!isAdmin(msg)) return msg.reply('🚫 Chỉ admin.');
 
-    const prefix = process.env.PREFIX || '!';
+    const prefix = require('../game/prefix').getPrefix();
     const achId = args[0];
     if (!achId) return msg.reply(`❌ Cú pháp: \`${prefix}achdebug <ach_id> [@user]\``);
 

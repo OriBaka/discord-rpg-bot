@@ -7,7 +7,7 @@ const path = require('path');
 const ROOT = path.join(__dirname, '..');
 const TMP_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'rpg-test-'));
 process.env.DB_PATH = path.join(TMP_DIR, 'test.db');
-process.env.PREFIX = '!';
+process.env.PREFIX = '%';  // server thật dùng % — test phải giống thực tế
 
 // Im lặng hoá log migrate/seed để output test dễ đọc
 const REAL_LOG = console.log;

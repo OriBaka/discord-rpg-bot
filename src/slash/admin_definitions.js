@@ -128,6 +128,7 @@ const definitions = [
       .addSubcommand(s => s.setName('setlevel').setDescription('Set level')
         .addUserOption(o => o.setName('user').setDescription('User').setRequired(true))
         .addIntegerOption(o => o.setName('level').setDescription('Level 1-100').setRequired(true).setMinValue(1).setMaxValue(100)))
+      .addSubcommand(s => s.setName('help').setDescription('Xem toàn bộ nhóm lệnh admin (%adm help)'))
       .addSubcommand(s => s.setName('reset').setDescription('Xóa nhân vật của user')
         .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
       .addSubcommand(s => s.setName('look').setDescription('Xem chi tiết nhân vật')

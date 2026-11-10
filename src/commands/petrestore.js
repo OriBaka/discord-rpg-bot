@@ -33,7 +33,7 @@ const aliases = [];
 const description = 'Restore + fix pets bị lỗi (admin only)';
 
 async function execute(msg, args) {
-  const prefix = process.env.PREFIX || '!';
+  const prefix = require('../game/prefix').getPrefix();
   if (!msg.member?.permissions?.has('ManageGuild')) {
     return msg.reply('❌ Cần quyền Manage Guild.');
   }
