@@ -140,3 +140,67 @@ bằng nhau. Hiện tại (Lv mở zone, full đồ):
 
 Chênh ở đại lượng này chỉ 1.02–1.11, nhưng win-rate lệch tới 22 điểm — vì phép
 `ceil` khuếch đại. Đừng dùng bất biến này một mình để kết luận "đã cân bằng".
+
+---
+
+# Giai đoạn 2 — đã tìm ra cách cân bằng class về 0, nhưng có đánh đổi
+
+## Phát hiện: ATK quyết định gần như toàn bộ
+
+Ép ATK cuối cùng của 3 class bằng nhau (lấy trung bình) rồi đo:
+
+| zone | trước (m/m/r) | sau khi ép ATK bằng |
+|---|---|---|
+| cave | 71/61/67 (9) | 69/69/69 (**0**) |
+| swamp | 71/61/66 (10) | 68/68/68 (**0**) |
+| dragon_lair | 71/79/71 (8) | 77/77/77 (**0**) |
+| frozen_abyss | 63/71/82 (20) | 73/73/73 (**0**) |
+| astral_ruins | 63/51/67 (16) | 68/68/68 (**0**) |
+
+**6/9 zone về chênh lệch 0 điểm chỉ bằng cách cân ATK.** Đây là biến chính,
+không phải độ bền như tôi từng kết luận.
+
+## Nhưng 3 zone còn lại cần thêm một bước — và bước đó phá giáp
+
+mountain / volcano / forest vẫn lệch 4–16 điểm vì Chiến Binh có DEF cao hơn.
+Quét `(ATK chung, DEF tối đa)` cho từng zone:
+
+| zone | ATK chung | DEF tối đa | kết quả | chênh |
+|---|---|---|---|---|
+| forest | 22 | 0.30× | 74/74/74 | **0** |
+| volcano | 200 | 0.30× | 65/65/65 | **0** |
+| mountain | 116 | 0.30× | 66/66/66 | **0** |
+
+Cả 9/9 zone về **chênh lệch chính xác 0 điểm**, TB 70,9%.
+
+**Nhưng `DEF tối đa = 0.30×` nghĩa là DEF gần như bị xoá.** Kiểm tra giáp:
+
+| | Giáp giảm sát thương |
+|---|---|
+| DEF tối đa 0.30× | **0%** ở cả 9 zone — giáp hoàn toàn vô dụng |
+| DEF giữ nguyên | 0–16% |
+| Hiện tại (DEF giữ + ATK quái neo đúng) | **17–56%** |
+
+Lý do: ATK quái đã vừa đủ chạm trần 30% max HP. Khi đã chạm trần, DEF **không
+thể** giảm thêm sát thương — nên mọi mức DEF đều cho cùng kết quả. Chỉ có hai
+lựa chọn:
+
+- **Hạ ATK quái** để DEF còn tác dụng → nhưng khi đó class DEF thấp (Pháp Sư,
+  Cung Thủ) chết nhanh hơn → chênh lệch class quay lại.
+- **Giữ ATK quái** để cân class → giáp vô dụng.
+
+Trần sát thương tạo ra quan hệ *đánh đổi trực tiếp* giữa "giáp có tác dụng" và
+"3 class cân nhau". Không thể có cả hai miễn là còn trần 30%.
+
+## Kết luận
+
+Đã chọn **giữ giáp có tác dụng (17–56%)** và chấp nhận chênh lệch ≤ 22 điểm,
+vì:
+1. Giáp là hệ thống người chơi tương tác hằng ngày (mua, mặc, nâng cấp).
+   Làm nó vô dụng là hồi quy đúng lỗi vừa sửa.
+2. Chênh 6–20 điểm vẫn cho mọi class chơi được (thấp nhất 51%, không class
+   nào dưới 50).
+3. Muốn có cả hai thì phải **bỏ trần sát thương hoàn toàn** và làm lại thang
+   HP/ATK của cả người chơi lẫn 45 quái — thay đổi lớn hơn nhiều, và đã đo
+   thấy bỏ trần ở Lv30 cho Chiến Binh 70% / Pháp Sư 45% (lệch 25), không tốt
+   hơn hiện tại.
