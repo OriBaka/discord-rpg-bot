@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **40 lệnh** prefix + **44 slash command** (29 người chơi + 15 admin)
+- **41 lệnh** prefix + **44 slash command** (29 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -48,7 +48,7 @@ discord-rpg-bot/
 │   │   ├── pets.js / guilds.js / quests.js / achievements.js
 │   │   ├── pvp.js / trade.js / jobs.js / recipes.js
 │   │   └── gather_zones.js / lootbox.js / redeem.js / settings.js / images.js
-│   ├── commands/             # 37 file → 40 lệnh (nhiều lệnh/file)
+│   ├── commands/             # 38 file → 41 lệnh (nhiều lệnh/file)
 │   └── slash/
 │       ├── definitions.js    # 29 slash command người chơi
 │       ├── admin_definitions.js  # 15 slash command admin
@@ -111,6 +111,7 @@ Prefix mặc định `!`. Mọi lệnh đều có slash tương ứng (trừ và
 | `!gear [@user]` | Xem trang bị đang mặc + tổng bonus |
 | `!equip <id> [slot]` | Mặc đồ (tự chọn slot, hoặc chỉ định ring2, offhand…) |
 | `!unequip <slot\|all>` | Tháo trang bị |
+| `!upgrade` / `!upgrade <id>` / `!upgrade list` | Nâng cấp vũ khí +1..+5 (nguyên liệu tăng dần theo cấp và phẩm chất) |
 | `!compare <id1> [id2]` | So sánh 2 món, hoặc so với món đang mặc cùng slot |
 | `!class` | Xem class hiện tại, `!class pick/switch/unlock <id>` |
 | `!top` | BXH level, `!top guild` BXH bang |

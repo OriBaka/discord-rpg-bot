@@ -440,3 +440,123 @@ test('mô tả viết bằng tiếng Việt, không phải tiếng Anh thô', ()
   assert.deepStrictEqual(notVietnamese.map(r => r.id), [],
     `mô tả không phải tiếng Việt: ${notVietnamese.slice(0, 8).map(r => `${r.id}="${r.desc}"`).join(', ')}`);
 });
+
+// ---------------------------------------------------------------------------
+// NÂNG CẤP VŨ KHÍ (+1..+5) — các chốt chống hồi quy
+// ---------------------------------------------------------------------------
+const upgrade = require('../src/game/upgrade');
+
+test('nâng cấp: bonus tính theo % ATK của vũ khí, không phải số phẳng', () => {
+  // Số phẳng từng bị cân nhắc và bị loại: +5 ATK ở Lv.1 là +21% ATK (đẩy
+  // win-rate 68% → 87%) nhưng ở Lv.40 chỉ là +2% (vô nghĩa). Bonus phải co
+  // giãn theo độ mạnh vũ khí.
+  const weak = { atk: 5, def: 0, tier: 'common' };
+  const strong = { atk: 48, def: 0, tier: 'legendary' };
+  const bw = upgrade.upgradeBonus(weak, 5).atk;
+  const bs = upgrade.upgradeBonus(strong, 5).atk;
+  assert.ok(bs > bw, `vũ khí mạnh phải được bonus nhiều hơn (${bs} vs ${bw})`);
+  // Mỗi cấp đều tăng, không có cấp nào "không có tác dụng"
+  let prev = 0;
+  for (let lv = 1; lv <= upgrade.MAX_LEVEL; lv++) {
+    const b = upgrade.upgradeBonus(strong, lv).atk;
+    assert.ok(b >= prev, `bonus phải không giảm ở cấp +${lv}`);
+    prev = b;
+  }
+});
+
+test('nâng cấp: +5 không vượt quá 11 ATK ở mọi vũ khí thật', () => {
+  // Trần này là thứ giữ win-rate trong khoảng Option A. Với 2%/cấp:
+  //     atk 5  → +1   atk 14 → +2   atk 26 → +3
+  //     atk 48 → +5   atk 62 → +7
+  // Đo bằng mô phỏng: win-rate tại mốc mở khoá zone đi từ 66–77% lên
+  // 68–86%, trung bình +5,2 điểm. Không ô nào vượt 90%.
+  //
+  // Chặn theo số TUYỆT ĐỐI chứ không theo %: Math.ceil khiến atk 5 thành +1
+  // = 20%, trông to nhưng chỉ là 1 điểm ATK — vô hại. Chặn theo % sẽ buộc
+  // phải hạ xuống dưới 1, tức là nâng cấp mất tác dụng với đồ cấp thấp.
+  const weapons = db.prepare(`SELECT id, atk FROM items
+    WHERE type='weapon' AND weapon_type NOT IN ('pickaxe','fishing_rod')`).all();
+  const tooBig = [];
+  for (const w of weapons) {
+    const b = upgrade.upgradeBonus({ atk: w.atk, def: 0 }, 5).atk;
+    if (b > 11) tooBig.push(`${w.id}(atk ${w.atk} → +${b})`);
+  }
+  assert.deepStrictEqual(tooBig, [],
+    `nâng +5 cộng quá nhiều ATK: ${tooBig.join(', ')}`);
+});
+
+test('nâng cấp: chi phí tăng dần và không "ngược" giữa đồ yếu/đồ mạnh', () => {
+  // Lỗi thiết kế đã bị loại: dùng chung 1 thang nguyên liệu cho mọi vũ khí
+  // khiến copper_sword (atk 5) +5 đòi 3× Dragon Scale y như dragon_sword
+  // (atk 48) — đồ yếu chịu chi phí bằng đồ mạnh nhưng nhận 1/5 lợi ích.
+  const weak = db.prepare("SELECT * FROM items WHERE id='wood_sword'").get();
+  const strong = db.prepare("SELECT * FROM items WHERE id='dragon_sword'").get();
+  const wPath = upgrade.getUpgradePath(weak);
+  const sPath = upgrade.getUpgradePath(strong);
+
+  // 1) Trong cùng 1 món: vàng tăng dần
+  for (const path of [wPath, sPath]) {
+    for (let i = 1; i < path.length; i++) {
+      assert.ok(path[i].gold > path[i - 1].gold, 'vàng phải tăng theo cấp');
+    }
+  }
+  // 2) Đồ mạnh đắt hơn đồ yếu
+  const sum = p => p.reduce((a, c) => a + c.gold, 0);
+  assert.ok(sum(sPath) > sum(wPath), 'nâng cấp đồ mạnh phải đắt hơn đồ yếu');
+
+  // 3) Đồ yếu KHÔNG được đòi nguyên liệu cuối game
+  const lastWeak = wPath[wPath.length - 1].materials[0].item_id;
+  assert.notStrictEqual(lastWeak, 'dragon_scale',
+    'vũ khí Lv.1 không được đòi Dragon Scale (chỉ rơi từ quái Lv.20+)');
+});
+
+test('nâng cấp: mọi nguyên liệu đều có nguồn kiếm được trong game', () => {
+  const obtainable = sim.obtainableIds();
+  const missing = upgrade.MATERIAL_LADDER.filter(id => !obtainable.has(id));
+  assert.deepStrictEqual(missing, [],
+    `nguyên liệu nâng cấp không có nguồn: ${missing.join(', ')}`);
+});
+
+test('nâng cấp: chỉ áp dụng cho vũ khí chiến đấu, không cho công cụ farm', () => {
+  const tool = db.prepare("SELECT * FROM items WHERE weapon_type='pickaxe' LIMIT 1").get();
+  const weapon = db.prepare("SELECT * FROM items WHERE id='iron_sword'").get();
+  assert.strictEqual(upgrade.isValidUpgradeTarget(tool), false,
+    'công cụ farm không được nâng cấp (atk=0, bonus sẽ vô nghĩa)');
+  assert.strictEqual(upgrade.isValidUpgradeTarget(weapon), true);
+});
+
+test('nâng cấp: cấp gắn theo VŨ KHÍ, không theo slot (chống kế thừa)', () => {
+  // Nếu gắn theo slot, người chơi chỉ cần nâng +5 cho dao gỗ rồi thay
+  // dragon_sword vào là hưởng +5 miễn phí — không bao giờ phải nâng lại.
+  const { createPlayer } = require('../src/game/player');
+  const { setEquipped, getTotalBonus } = require('../src/game/slots');
+  const UID = '__test_upgrade_uid__';
+  try { db.prepare('DELETE FROM players WHERE user_id=?').run(UID); } catch {}
+  createPlayer(UID, 'UpgradeTester');
+  db.prepare('INSERT OR IGNORE INTO inventory (user_id,item_id,qty) VALUES (?,?,1)')
+    .run(UID, 'wood_sword');
+  db.prepare('INSERT OR IGNORE INTO inventory (user_id,item_id,qty) VALUES (?,?,1)')
+    .run(UID, 'dragon_sword');
+  setEquipped(UID, 'weapon', 'wood_sword');
+  upgrade.setLevel(UID, 'wood_sword', 5);
+
+  const woodAtk = db.prepare("SELECT atk FROM items WHERE id='wood_sword'").get().atk;
+  const bonusWood = getTotalBonus(UID).atk - woodAtk;
+  assert.ok(bonusWood > 0, 'nâng cấp phải có tác dụng khi đang mặc');
+
+  // Đổi sang dragon_sword → KHÔNG được mang theo cấp +5
+  setEquipped(UID, 'weapon', 'dragon_sword');
+  const drag = db.prepare("SELECT atk,def FROM items WHERE id='dragon_sword'").get();
+  const total = getTotalBonus(UID);
+  assert.strictEqual(total.atk, drag.atk,
+    `đổi vũ khí không được kế thừa nâng cấp (atk ${total.atk} ≠ gốc ${drag.atk})`);
+
+  // Đổi lại → cấp của dao gỗ vẫn còn
+  setEquipped(UID, 'weapon', 'wood_sword');
+  assert.ok(getTotalBonus(UID).atk - woodAtk > 0, 'cấp phải được giữ theo món đồ');
+
+  db.prepare('DELETE FROM item_upgrades WHERE user_id=?').run(UID);
+  db.prepare('DELETE FROM equipped WHERE user_id=?').run(UID);
+  db.prepare('DELETE FROM inventory WHERE user_id=?').run(UID);
+  db.prepare('DELETE FROM players WHERE user_id=?').run(UID);
+});
