@@ -278,6 +278,11 @@ runMigrate('../game/farm_tools_seed', 'migrateFarmTools');
 // seed khi bảng rỗng nên recipe thêm sau này buộc phải ở migration riêng.
 runMigrate('../game/farm_recipes_seed', 'migrateFarmRecipes');
 
+// Nâng cấp vũ khí (+1..+5). Bảng `item_upgrades` gắn cấp vào SLOT đang mặc,
+// không vào inventory — xem chú thích đầu file upgrade.js để biết lý do.
+// Chạy SAU slots (bảng equipped phải tồn tại vì có khoá ngoại tới players).
+runMigrate('../game/upgrade', 'migrateUpgrade');
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();

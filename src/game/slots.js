@@ -262,12 +262,26 @@ function clearEquipped(userId, slotPattern) {
 function getTotalBonus(userId) {
   const equipped = getEquipped(userId);
   let atk = 0, def = 0, heal = 0;
+  // Cấp nâng cấp đọc 1 lần cho cả lượt — tránh 1 query mỗi slot.
+  // Tra theo ITEM_ID (không theo slot): nâng cấp thuộc về loại vũ khí, nên
+  // thay vũ khí khác vào slot không kế thừa cấp.
+  // require trong hàm để không tạo circular dependency (upgrade → items).
+  let upg = {};
+  try { upg = require('./upgrade').getLevels(userId); } catch { upg = {}; }
   for (const slot of Object.keys(equipped)) {
     const it = getItem(equipped[slot]);
     if (!it) continue;
     atk  += it.atk  || 0;
     def  += it.def  || 0;
     heal += it.heal || 0;
+    // Bonus nâng cấp (+1..+5) — tính theo % ATK của chính món đó.
+    const lv = upg[it.id] || 0;
+    if (lv > 0) {
+      try {
+        const b = require('./upgrade').upgradeBonus(it, lv);
+        atk += b.atk; def += b.def;
+      } catch { /* bỏ qua nếu module lỗi — không được làm sập combat */ }
+    }
   }
   return { atk, def, heal };
 }

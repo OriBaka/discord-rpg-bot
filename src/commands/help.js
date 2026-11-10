@@ -36,6 +36,9 @@ module.exports = {
           `\`${prefix}equip <id> [slot]\` mặc đồ (auto chọn slot)\n` +
           `\`${prefix}unequip <slot|all>\` tháo trang bị\n` +
           `\`${prefix}compare <id1> [id2]\` so sánh 2 món\n` +
+          `\`${prefix}upgrade\` xem cấp nâng cấp vũ khí (+1..+5)\n` +
+          `\`${prefix}upgrade <id>\` nâng cấp vũ khí đang mặc\n` +
+          `\`${prefix}upgrade list\` bảng chi phí nâng cấp\n` +
           `Slots: weapon, offhand, head, chest, legs, feet, hands, ring1, ring2, necklace, special` },
         { name: '🏪 Chợ', value:
           `\`${prefix}shop\` xem cửa hàng\n` +
