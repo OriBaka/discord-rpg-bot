@@ -173,6 +173,7 @@ Lệnh admin yêu cầu user ID nằm trong `ADMIN_IDS`, hoặc là chủ server
 | `!shop add/remove/setprice` | Chỉnh cửa hàng |
 | `!quest admin` / `!ach admin` / `!pet admin` | Tạo/sửa quest, thành tựu, pet & drop |
 | `!craft admin` / `!cook admin` | Tạo/sửa recipe |
+| `!upgrade admin` | Chỉnh nguyên liệu/vàng nâng cấp theo mốc (`set`/`tier`/`gold`/`reset`) |
 | `!gatherzone` (`!gz`) | Quản lý zone mining/fishing |
 | `!lootbox` | Quản lý nội dung lootbox |
 | `!redeem` | Tạo/quản lý code |

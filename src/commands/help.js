@@ -96,6 +96,7 @@ module.exports = {
           `\`${prefix}pet admin\` tạo/sửa pet + drop\n` +
           `\`${prefix}gatherzone\` (hoặc \`${prefix}gz\`) quản lý zone mining/fishing\n` +
           `\`${prefix}craft admin\` / \`${prefix}cook admin\` tạo/sửa recipe\n` +
+          `\`${prefix}upgrade admin\` chỉnh nguyên liệu nâng cấp theo mốc\n` +
           `\`${prefix}shop add/remove/setprice\` chỉnh shop\n` +
           `\`${prefix}setimage <type> <id> <url>\` gán ảnh\n` +
           `\`${prefix}lootbox\` quản lý hộp quà event\n` +
