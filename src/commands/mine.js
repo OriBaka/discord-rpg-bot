@@ -5,6 +5,7 @@ const jobs = require('../game/jobs');
 const gz = require('../game/gather_zones');
 const { tierInfo } = require('../game/tiers');
 const settings = require('../game/settings');
+const farmEvents = require('../game/farm_events');
 
 const JOB = 'mining';
 
@@ -113,14 +114,41 @@ module.exports = {
     // Set cooldown & roll drops
     jobs.setCooldown(msg.author.id, JOB);
     const drops = gz.rollDrops(zoneId);
-    // Apply tool bonus qty
+
+    // --- Cơ chế vui (chuỗi / mạch khoáng / kho báu) ---
+    // Chuỗi chỉ tăng khi TRÚNG, đứt khi TRƯỢT — nếu không nó là buff vĩnh viễn.
+    const hit = drops.length > 0;
+    const streakRes = hit
+      ? farmEvents.bumpStreak(msg.author.id, JOB)
+      : farmEvents.resetStreak(msg.author.id, JOB);
+    const streak = streakRes.streak;
+    // Chạm mốc là ăn ngay lần đó — phản hồi tức thì, không phải chờ lần sau.
+    const sMult = farmEvents.streakMult(streak);
+    const vein = farmEvents.rollVein();
+    const treasure = farmEvents.rollTreasure(zoneId);
+
+    let bonusText = '';
+    const effMult = mult * sMult * (vein ? 2 : 1);
+
+    // Apply tool + streak + vein bonus qty
     for (const d of drops) {
-      d.qty = Math.max(1, Math.round(d.qty * mult));
+      d.qty = Math.max(1, Math.round(d.qty * effMult));
     }
 
-    // Apply drops
+    if (vein && hit) bonusText += '\n💎 **Mạch khoáng giàu!** Số lượng ×2';
+    if (!hit) {
+      bonusText += streakRes.streak === 0 && streakRes.best > 0
+        ? `\n💔 Trượt — chuỗi đứt (kỷ lục: **${streakRes.best}**)`
+        : '';
+    } else {
+      const sLabel = farmEvents.streakLabel(streak);
+      if (sLabel) bonusText += `\n${sLabel} — chuỗi **${streak}** (×${sMult} số lượng)`;
+      else if (streak >= 2) bonusText += `\n🔥 Chuỗi **${streak}**`;
+    }
+
+    // --- Apply drops ---
     let dropText = '';
-    if (drops.length === 0) {
+    if (drops.length === 0 && !treasure) {
       dropText = '*Không tìm thấy gì...*';
     } else {
       for (const d of drops) {
@@ -129,7 +157,15 @@ module.exports = {
         const t = tierInfo(it?.tier || 'common');
         dropText += `${t.emoji} +${d.qty}× ${it?.name || d.item_id}\n`;
       }
+      // Kho báu hiếm: món đã có nguồn khác, đây chỉ là đường tắt may mắn
+      if (treasure) {
+        addItem(msg.author.id, treasure.item_id, treasure.qty);
+        const tit = getItem(treasure.item_id);
+        const tt = tierInfo(tit?.tier || 'common');
+        dropText += `\n${tt.emoji} ✨ **KHO BÁU!** +${treasure.qty}× ${tit?.name || treasure.item_id}`;
+      }
     }
+    dropText += bonusText;
 
     // Add XP
     const xpResult = jobs.addJobXp(msg.author.id, JOB, zone.base_xp);
