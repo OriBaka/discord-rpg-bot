@@ -204,3 +204,79 @@ vì:
    HP/ATK của cả người chơi lẫn 45 quái — thay đổi lớn hơn nhiều, và đã đo
    thấy bỏ trần ở Lv30 cho Chiến Binh 70% / Pháp Sư 45% (lệch 25), không tốt
    hơn hiện tại.
+
+---
+
+# Giai đoạn 3 — điều kiện CHÍNH XÁC để cân bằng tuyệt đối
+
+Người dùng yêu cầu bỏ trần sát thương và làm lại thang chỉ số. Đã đo và tìm
+ra điều kiện cần, nhưng nó đòi hỏi một đánh đổi thiết kế lớn.
+
+## Bỏ trần + giữ quái cũ: Pháp Sư sụp còn 7–17%
+
+| zone | melee | magic | ranged | chênh |
+|---|---|---|---|---|
+| cave | 69 | **11** | 14 | 59 |
+| swamp | 71 | **10** | 12 | 61 |
+| astral_ruins | 61 | **7** | 10 | 55 |
+
+Trần đang *che* lệch class. Bỏ nó ra là lộ ngay.
+
+## Vì sao: ngưỡng thắng/thua là một điểm gãy, không phải độ dốc
+
+Đo ở cave Lv.5, quái ATK = 0.5 × ATK người chơi, quét HP quái:
+
+| HP quái | melee | magic | ranged | đòn để chết (m/m/r) |
+|---|---|---|---|---|
+| 200 | 100 | 100 | 100 | 12.3 / 8.3 / 9.4 |
+| 300 | 100 | **68** | 95 | 12.3 / 8.3 / 9.4 |
+| 400 | 92 | **2** | 18 | 12.3 / 8.3 / 9.4 |
+| 600 | 1 | 0 | 0 | 12.3 / 8.3 / 9.4 |
+
+Không có HP quái nào cho cả 3 class quanh 70%: giữa HP 300 và 400, Chiến Binh
+còn 92% còn Pháp Sư rơi từ 68% xuống 2%. Ngưỡng nằm đúng chỗ "sống 12.3 đòn"
+so với "sống 8.3 đòn".
+
+## Điều kiện cần (đã kiểm chứng)
+
+Thử: bỏ trần + ép **ATK bằng nhau** + ép **độ bền bằng nhau**
+(HP điều chỉnh theo DEF để `maxHP / (1 − giảm thương)` như nhau):
+
+| zone | melee | magic | ranged | chênh |
+|---|---|---|---|---|
+| forest | 0 | 1 | 2 | **2** |
+| cave | 0 | 0 | 0 | **0** |
+| volcano | 1 | 2 | 0 | **2** |
+| frozen_abyss | 2 | 0 | 0 | **2** |
+
+**Chênh lệch tối đa 2 điểm ở cả 9 zone**, và giáp vẫn giảm **48%** sát thương.
+
+(Win-rate tuyệt đối trong thí nghiệm là 1% vì bước bisect HP quái chưa hội tụ
+— khi bỏ trần, win-rate là hàm bậc thang rất gắt nên bisect cần độ phân giải
+cao hơn nhiều. Phần *chênh lệch class* mới là kết quả cần đọc.)
+
+## Nghĩa là gì
+
+Để có cả ba thứ — **3 class cân bằng, giáp có tác dụng, không trần sát thương**
+— thì:
+
+1. Cả 3 class phải có **ATK bằng nhau** ở mọi cấp.
+2. Cả 3 class phải có **độ bền thực bằng nhau**: `maxHP / (1 − def/(def+K))`.
+
+Khác biệt class chỉ còn ở **cách đạt độ bền**: Chiến Binh HP thấp + DEF cao
+("trâu bằng giáp"), Pháp Sư HP cao + DEF thấp ("trâu bằng máu"). Cả hai cùng
+sống được số đòn như nhau.
+
+Đây là thay đổi lớn, đụng tới:
+- `src/game/classes.js` — base/growth HP + ATK của cả 3 class
+- `src/game/combat.js` + `test/balance_sim.js` — bỏ trần
+- 45 quái — sinh lại toàn bộ theo thang mới (sát thương lớn hơn nhiều)
+- **heal / potion / PvP / raid** — mọi thứ neo theo "sát thương so với max HP"
+- `test/balance.test.js` — nhiều test giả định có trần
+
+Rủi ro: hồi máu và bình máu hiện tính theo % hoặc số tuyệt định; khi sát thương
+tăng vọt (không còn trần 30%), chúng có thể thành vô dụng hoặc quá mạnh. Cần đo
+lại cả hệ kinh tế, không chỉ win-rate.
+
+**Chưa làm** vì cần một lượt riêng đo được toàn bộ các hệ liên quan, không chỉ
+bảng quái. Làm nửa vời sẽ để game ở trạng thái tệ hơn hiện tại.
