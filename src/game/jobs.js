@@ -1,15 +1,25 @@
-// Job system: mining / fishing / cooking / crafting
+// Job system: mining / fishing / foraging / cooking / crafting
 // Mỗi nghề có level + XP riêng
+//
+// ĐÂY LÀ NGUỒN DUY NHẤT khai báo nghề. `%job`, `%job top`, slash `/job`,
+// `%gz create job=...` và autocomplete zone đều đọc từ đây — thêm nghề mới chỉ
+// cần thêm 1 dòng, không phải sửa 5 chỗ như trước.
 const db = require('./../db/database');
 
-const JOB_TYPES = ['mining', 'fishing', 'cooking', 'crafting'];
+const JOB_TYPES = ['mining', 'fishing', 'foraging', 'cooking', 'crafting'];
 
 const JOB_INFO = {
   mining:   { name: 'Mining',   icon: '⛏️', desc: 'Đào mỏ lấy ore' },
   fishing:  { name: 'Fishing',  icon: '🎣', desc: 'Câu cá' },
+  foraging: { name: 'Foraging', icon: '🌿', desc: 'Hái lượm gỗ/thảo dược' },
   cooking:  { name: 'Cooking',  icon: '👨‍🍳', desc: 'Nấu món ăn buff' },
   crafting: { name: 'Crafting', icon: '⚒️', desc: 'Chế tạo vũ khí/giáp' },
 };
+
+// Nghề nào là nghề "ra ngoài hái/đào/câu" (có gather zone). Hiện là 3 nghề đầu;
+// cooking/crafting dùng recipe nên không có zone. `%gz` hỏi thẳng DB chứ không
+// dựa vào danh sách này khi list.
+const GATHER_JOB_TYPES = ['mining', 'fishing', 'foraging'];
 
 function migrate() {
   db.exec(`
@@ -108,7 +118,7 @@ function getJobLeaderboard(jobType, limit = 10) {
 }
 
 module.exports = {
-  JOB_TYPES, JOB_INFO,
+  JOB_TYPES, JOB_INFO, GATHER_JOB_TYPES,
   migrate, xpToNext,
   getJob, getAllJobs, updateJob,
   addJobXp, setCooldown, getCooldownRemaining,
