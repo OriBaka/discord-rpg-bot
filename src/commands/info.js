@@ -1,43 +1,45 @@
 const { EmbedBuilder } = require('discord.js');
-const { getItem, getAllItems, getItemsByType } = require('../game/items');
+const { getItem, getAllItems } = require('../game/items');
 const { getMonster, getAllMonsters, getAllZones, getZone, getMonstersInZone } = require('../game/monsters');
 const { tierInfo, tierBadge } = require('../game/tiers');
+const paginator = require('../game/paginator');
+const display = require('../game/item_display');
 const { classInfo } = require('../game/classes');
 const db = require('../db/database');
 
 // ===== Helper: hiển thị 1 item =====
+//
+// Dùng item_display.statPairs(): mọi field CÓ DỮ LIỆU đều được hiện, kể cả
+// field thêm sau này. Bản cũ kiểm tra từng field bằng `if (it.x)` nên:
+//   • bình máu dùng heal_pct (heal = 0) không hiện gì về hồi máu;
+//   • `min_level` không bao giờ hiện — người chơi không biết món đồ cần Lv bao nhiêu;
+//   • cột mới thêm vào bảng items (vd heal_pct) hoàn toàn vô hình ở lệnh info.
 function itemEmbed(it, prefix) {
   const t = tierInfo(it.tier);
   const fields = [
-    { name: '📦 Loại', value: typeLabel(it.type), inline: true },
+    { name: '📦 Loại', value: display.typeLabel(it.type), inline: true },
     { name: '✨ Độ hiếm', value: tierBadge(it.tier), inline: true },
     { name: '🆔 ID', value: `\`${it.id}\``, inline: true },
   ];
+  for (const f of display.statPairs(it)) {
+    // class_req hiện TÊN class (⚔️ Chiến Binh), không phải id thô 'melee'
+    if (f.name === '🎭 Yêu cầu class') {
+      const c = classInfo(it.class_req);
+      fields.push({ name: f.name, value: c?.name || it.class_req, inline: true });
+    } else {
+      fields.push({ ...f, inline: true });
+    }
+  }
 
-  // Embed builder + thumbnail nếu có
   const embedBase = new EmbedBuilder()
     .setColor(t.color)
     .setTitle(it.name)
     .setDescription(it.desc || '*(Không có mô tả)*');
   if (it.image_url) embedBase.setThumbnail(it.image_url);
-  if (it.class_req) {
-    const c = classInfo(it.class_req);
-    fields.push({ name: '🎭 Yêu cầu class', value: c?.name || it.class_req, inline: true });
-  }
-  if (it.weapon_type)    fields.push({ name: '🗡️ Loại vũ khí', value: it.weapon_type, inline: true });
-  if (it.armor_slot)     fields.push({ name: '🎽 Slot giáp',   value: it.armor_slot,  inline: true });
-  if (it.armor_type)     fields.push({ name: '🦺 Loại giáp',   value: it.armor_type,  inline: true });
-  if (it.accessory_type) fields.push({ name: '✨ Loại phụ kiện',value: it.accessory_type, inline: true });
-  if (it.atk)   fields.push({ name: '⚔️ ATK', value: `+${it.atk}`, inline: true });
-  if (it.def)   fields.push({ name: '🛡️ DEF', value: `+${it.def}`, inline: true });
-  if (it.heal)  fields.push({ name: '❤️ Hồi HP', value: `+${it.heal}`, inline: true });
-  if (it.price) fields.push({ name: '💰 Giá mua', value: `${it.price}`, inline: true });
-  if (it.sell)  fields.push({ name: '💸 Giá bán', value: `${it.sell}`, inline: true });
-  if (it.soulbound) fields.push({ name: '🔒 Soulbound', value: 'Không thể trade', inline: true });
 
   embedBase.addFields(fields);
 
-  if (it.type === 'weapon' || it.type === 'armor') {
+  if (it.type === 'weapon' || it.type === 'armor' || it.type === 'offhand' || it.type === 'accessory') {
     embedBase.setFooter({ text: `Trang bị: ${prefix}equip ${it.id}` });
   } else if (it.type === 'consumable') {
     embedBase.setFooter({ text: `Sử dụng: ${prefix}use ${it.id}` });
@@ -67,7 +69,10 @@ function monsterEmbed(m, prefix) {
       { name: '🛡️ DEF', value: `${m.def}`, inline: true },
       { name: '✨ XP thưởng', value: `${m.xp}`, inline: true },
       { name: '💰 Vàng', value: `${m.gold[0]}-${m.gold[1]}`, inline: true },
-      { name: '\u200B', value: '\u200B', inline: true },
+      // elite_tier là cột thêm sau này (battle elite/boss). Bản cũ không hiện
+      // nên `%info mob raid_ember_wyrm` trông y như quái thường.
+      ...(m.elite_tier ? [{ name: '👑 Elite/Boss', value: m.elite_tier === 2 ? 'Boss cấp 2' : 'Elite cấp 1', inline: true }]
+        : [{ name: '\u200B', value: '\u200B', inline: true }]),
       { name: '📦 Drop', value: dropText },
     )
     .setFooter({ text: `Săn: ${prefix}hunt ${m.id}` });
@@ -75,17 +80,130 @@ function monsterEmbed(m, prefix) {
   return embed;
 }
 
-function typeLabel(type) {
-  return {
-    weapon: '🗡️ Vũ khí', offhand: '🛡️ Tay phụ', armor: '🦺 Giáp',
-    accessory: '✨ Phụ kiện',
-    consumable: '🧪 Tiêu hao', material: '📦 Nguyên liệu',
-    pet: '🐾 Pet',
-  }[type] || type;
+// ===== info items: DANH SÁCH PHÂN TRANG =====
+//
+// Bản cũ nhồi TẤT CẢ item vào 1 embed rồi cắt mỗi field ở 1024 ký tự. Với 223
+// item trong DB, kết quả là 16 item biến mất khỏi danh sách mà không ai biết —
+// và nhóm nào không có trong `groupOrder` viết cứng (vd type=lootbox do admin
+// tạo) thì không bao giờ xuất hiện. Nay:
+//   • danh sách phân trang theo loại (nút bấm), đọc thẳng từ bảng items;
+//   • bộ lọc sinh từ DỮ LIỆU (loại/slot đang có trong DB), không viết cứng;
+//   • hiện đủ số lượng + chỉ số từng món.
+const INFO_FILTER_LABELS = {
+  all: { label: 'Tất cả', emoji: '📚' },
+  weapon: { label: 'Vũ khí', emoji: '🗡️' },
+  armor: { label: 'Giáp', emoji: '🦺' },
+  accessory: { label: 'Phụ kiện', emoji: '✨' },
+  offhand: { label: 'Tay phụ', emoji: '🛡️' },
+  consumable: { label: 'Tiêu hao', emoji: '🧪' },
+  material: { label: 'Nguyên liệu', emoji: '📦' },
+  pet: { label: 'Pet', emoji: '🐾' },
+  lootbox: { label: 'Hộp quà', emoji: '🎁' },
+};
+
+function itemFilters() {
+  // Lấy từ DB: loại nào đang có thì hiện nút, loại mới tự xuất hiện.
+  const rows = db.prepare('SELECT type, COUNT(*) c FROM items GROUP BY type ORDER BY c DESC').all();
+  const opts = [{ key: 'all', label: 'Tất cả', emoji: '📚' }];
+  for (const r of rows) {
+    const known = INFO_FILTER_LABELS[r.type];
+    opts.push(known
+      ? { key: r.type, ...known }
+      : { key: r.type, label: r.type, emoji: '📦' });
+  }
+  return opts;
+}
+
+function renderItemsPage({ userId, filter, page, replyFn }) {
+  const prefix = require('../game/prefix').getPrefix();
+  const all = getAllItems();
+  const opts = itemFilters();
+  const valid = new Set(opts.map(o => o.key));
+  const cur = valid.has(filter) ? filter : 'all';
+  const items = cur === 'all' ? all : all.filter(it => it.type === cur);
+  // Xếp theo nhóm quen thuộc (vũ khí → tay phụ → giáp → phụ kiện → ...), trong
+  // nhóm thì độ hiếm cao trước. Trước đây thứ tự là `ORDER BY type` của SQL
+  // nên danh sách mở đầu bằng phụ kiện — người chơi phải lật nhiều trang mới
+  // thấy vũ khí.
+  items.sort((a, b) => {
+    const ga = display.groupOf(a).key, gb = display.groupOf(b).key;
+    const byGroup = display.sortGroupKeys([ga, gb])[0] === ga ? -1 : 1;
+    if (ga !== gb) return byGroup;
+    const t = tierInfo(b.tier).order - tierInfo(a.tier).order;
+    return t !== 0 ? t : a.name.localeCompare(b.name);
+  });
+
+  const { embed, components } = paginator.build({
+    domain: 'info',
+    userId,
+    items,
+    filter: cur,
+    filterOptions: opts,
+    page,
+    title: `📚 Danh sách item${cur === 'all' ? '' : ` (${cur})`} — ${items.length} món`,
+    color: 0xFEE75C,
+    formatItem: (it) => display.oneLine(it, { tierInfo }),
+    footer: `Xem chi tiết: ${prefix}info item <id>`,
+    perPage: 10,
+  });
+  return replyFn({ embeds: [embed], components });
+}
+
+// ===== info mobs: DANH SÁCH PHÂN TRANG =====
+//
+// Bản cũ gom quái theo zone rồi cắt mỗi field ở 1024 ký tự. Một zone có
+// ~20+ quái (hoặc admin thêm quái mới bằng `%mob create`) là phần đuôi danh
+// sách biến mất, không dấu vết. Nay dùng paginator: bộ lọc zone sinh từ DB,
+// đếm đủ số con, mỗi con 1 dòng.
+function mobFilters(all) {
+  const counts = new Map();
+  for (const m of all) counts.set(m.zone_id, (counts.get(m.zone_id) || 0) + 1);
+  const opts = [{ key: 'all', label: 'Tất cả', emoji: '🌍' }];
+  for (const [zoneId, c] of [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4)) {
+    const z = getZone(zoneId);
+    // Nhãn nút tối đa 80 ký tự; cắt cho gọn nhưng vẫn nhận ra zone
+    const name = (z?.name || zoneId).replace(/^[^\w\p{L}]+/u, '').slice(0, 24) || zoneId;
+    opts.push({ key: zoneId, label: name, emoji: '📍' });
+  }
+  return opts;
+}
+
+function renderMobsPage({ userId, filter, page, replyFn }) {
+  const prefix = require('../game/prefix').getPrefix();
+  const all = getAllMonsters();
+  const opts = mobFilters(all);
+  const zones = new Set(all.map(m => m.zone_id));
+  const cur = (filter === 'all' || zones.has(filter)) ? filter : 'all';
+  const mobs = (cur === 'all' ? all : all.filter(m => m.zone_id === cur)).slice();
+  // Xếp theo zone (level tăng dần) rồi tới HP — đọc từ đầu tới cuối là thấy
+  // tiến trình độ khó, không phải thứ tự ngẫu nhiên của SQL.
+  const zoneLevel = (id) => getZone(id)?.min_level ?? 999;
+  mobs.sort((a, b) => (zoneLevel(a.zone_id) - zoneLevel(b.zone_id))
+    || (a.hp - b.hp) || a.name.localeCompare(b.name));
+
+  const { embed, components } = paginator.build({
+    domain: 'mobs',
+    userId,
+    items: mobs,
+    filter: cur,
+    filterOptions: opts,
+    page,
+    title: `👹 Danh sách quái${cur === 'all' ? '' : ` — ${getZone(cur)?.name || cur}`} — ${mobs.length} con`,
+    color: 0xED4245,
+    formatItem: (m) => {
+      const z = getZone(m.zone_id);
+      return `${m.name} \`${m.id}\` · HP ${m.hp} · ATK ${m.atk}${m.elite_tier ? ' 👑' : ''}\n› 📍 ${z?.name || m.zone_id}`;
+    },
+    footer: `Xem chi tiết: ${prefix}info mob <id>`,
+    perPage: 10,
+  });
+  return replyFn({ embeds: [embed], components });
 }
 
 // ===== Command =====
 module.exports = {
+  renderItemsPage,
+  renderMobsPage,
   name: 'info',
   aliases: ['xem', 'i'],
   description: 'Xem thông tin item/quái/zone: !info item <id>, !info mob <id>, !info zone <id>',
@@ -152,62 +270,22 @@ module.exports = {
 
     // ===== info items [type] =====
     if (sub === 'items') {
-      const type = args[1];
-      const items = type ? getItemsByType(type) : getAllItems();
-      if (items.length === 0) return msg.reply('❌ Không có item nào.');
-      // Group: armor tách theo armor_slot, accessory tách theo accessory_type
-      const groups = {};
-      for (const it of items) {
-        let k;
-        if (it.type === 'armor') k = `armor:${it.armor_slot || 'chest'}`;
-        else if (it.type === 'accessory') k = `accessory:${it.accessory_type || 'special'}`;
-        else k = it.type;
-        (groups[k] = groups[k] || []).push(it);
-      }
-      const labelMap = {
-        weapon: '🗡️ Vũ khí', offhand: '🛡️ Tay phụ',
-        'armor:head': '⛑️ Đầu', 'armor:chest': '👕 Thân', 'armor:legs': '👖 Quần',
-        'armor:feet': '👢 Giày', 'armor:hands': '🧤 Găng',
-        'accessory:ring': '💍 Nhẫn', 'accessory:necklace': '📿 Dây chuyền', 'accessory:special': '✨ Đặc biệt',
-        consumable: '🧪 Tiêu hao', material: '📦 Nguyên liệu', pet: '🐾 Pet',
-      };
-      const embed = new EmbedBuilder().setColor(0xFEE75C)
-        .setTitle(`📚 Danh sách item${type ? ` (${type})` : ''}`)
-        .setFooter({ text: `Xem chi tiết: ${prefix}info item <id>` });
-      // Order
-      const groupOrder = [
-        'weapon', 'offhand',
-        'armor:head', 'armor:chest', 'armor:legs', 'armor:feet', 'armor:hands',
-        'accessory:ring', 'accessory:necklace', 'accessory:special',
-        'consumable', 'material', 'pet',
-      ];
-      for (const k of groupOrder) {
-        if (!groups[k]) continue;
-        groups[k].sort((a, b) => tierInfo(b.tier).order - tierInfo(a.tier).order);
-        const lines = groups[k].map(it => `${tierInfo(it.tier).emoji} ${it.name} \`${it.id}\``);
-        embed.addFields({ name: labelMap[k] || k, value: lines.join('\n').slice(0, 1024) });
-      }
-      return msg.reply({ embeds: [embed] });
+      return renderItemsPage({
+        userId: msg.author.id,
+        filter: (args[1] || 'all').toLowerCase(),
+        page: 0,
+        replyFn: (opts) => msg.reply(opts),
+      });
     }
 
     // ===== info mobs [zone] =====
     if (sub === 'mobs' || sub === 'monsters') {
-      const zone = args[1];
-      const mobs = zone ? getMonstersInZone(zone) : getAllMonsters();
-      if (mobs.length === 0) return msg.reply('❌ Không có quái nào.');
-      const groups = {};
-      for (const m of mobs) {
-        const k = m.zone_id;
-        (groups[k] = groups[k] || []).push(m);
-      }
-      const embed = new EmbedBuilder().setColor(0xED4245).setTitle('👹 Danh sách quái');
-      for (const k of Object.keys(groups)) {
-        const z = getZone(k);
-        const lines = groups[k].map(m => `${m.name} \`${m.id}\` HP:${m.hp}`);
-        embed.addFields({ name: `📍 ${z?.name || k}`, value: lines.join('\n').slice(0, 1024) });
-      }
-      embed.setFooter({ text: `Xem chi tiết: ${prefix}info mob <id>` });
-      return msg.reply({ embeds: [embed] });
+      return renderMobsPage({
+        userId: msg.author.id,
+        filter: (args[1] || 'all').toLowerCase(),
+        page: 0,
+        replyFn: (opts) => msg.reply(opts),
+      });
     }
 
     // ===== info zones =====

@@ -102,10 +102,22 @@ function renderList(msg) {
   desc += ['common', 'rare', 'epic', 'legendary']
     .map(t => `${tierInfo(t).emoji}×${cfg.tier_mult[t]}`).join(' · ') + '\n\n';
 
-  const samples = ['wood_sword', 'iron_sword', 'steel_sword', 'dragon_sword'];
-  for (const id of samples) {
-    const it = getItem(id);
-    if (!it) continue;
+  // Mẫu vũ khí lấy TỪ DB, không viết cứng id.
+  //
+  // Bản cũ hardcode ['wood_sword','iron_sword','steel_sword','dragon_sword']:
+  // đổi tên/xoá một món là bảng chi phí mất luôn dòng đó (hoặc rỗng hoàn toàn),
+  // và vũ khí mới thêm không bao giờ xuất hiện trong ví dụ.
+  // Nay: mỗi độ hiếm lấy 1 vũ khí, chọn món có ATK cao nhất mà level mở thấp
+  // nhất (đại diện), tối đa 4 dòng.
+  const samples = db.prepare(`SELECT id FROM items
+      WHERE type='weapon' AND weapon_type IN ('sword','axe','mace','staff','wand','orb','bow','crossbow','gun')
+      ORDER BY min_level ASC, atk DESC`).all()
+    .map(r => getItem(r.id))
+    .filter(Boolean);
+  const byTier = new Map();
+  for (const it of samples) if (!byTier.has(it.tier)) byTier.set(it.tier, it);
+  const sampleItems = [...byTier.values()].slice(0, 4);
+  for (const it of sampleItems) {
     const t = tierInfo(it.tier);
     desc += `${t.emoji} **${it.name}** (Lv.${it.min_level}, ATK ${it.atk}) → +5 cho **+${upgrade.upgradeBonus(it, 5).atk} ATK**\n`;
     for (const c of upgrade.getUpgradePath(it)) {

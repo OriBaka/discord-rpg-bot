@@ -1,11 +1,16 @@
 const { getPlayer } = require('../game/player');
 const { getItem } = require('../game/items');
-const { SLOTS, getEquipped, setEquipped } = require('../game/slots');
+const { SLOTS, SLOT_ORDER, getEquipped, setEquipped } = require('../game/slots');
 
-// Tất cả slot có thể tháo (trừ pet là phase 3)
-const ALL_ACTIVE_SLOTS = ['weapon', 'offhand', 'head', 'chest', 'legs', 'feet', 'hands', 'ring1', 'ring2', 'necklace', 'special'];
-const ALL_ARMOR_SLOTS = ['head', 'chest', 'legs', 'feet', 'hands'];
-const ALL_ACCESSORY_SLOTS = ['ring1', 'ring2', 'necklace', 'special'];
+// Danh sách slot lấy từ slots.js (nguồn duy nhất), không chép tay.
+//
+// Bản cũ viết cứng 11 slot: thêm slot mới vào slots.js (vd 'cape') thì
+// `%unequip all` lặng lẽ BỎ QUA slot đó — người chơi tháo "tất cả" mà vẫn còn
+// đồ trên người, không hiểu vì sao. Pet để riêng: nó không phải trang bị
+// thường và `%unequip pet` có alias riêng.
+const ALL_ACTIVE_SLOTS = SLOT_ORDER.filter(s => s !== 'pet');
+const ALL_ARMOR_SLOTS = SLOT_ORDER.filter(s => ['head', 'chest', 'legs', 'feet', 'hands'].includes(s));
+const ALL_ACCESSORY_SLOTS = SLOT_ORDER.filter(s => ['ring1', 'ring2', 'necklace', 'special'].includes(s));
 
 // Map alias → slot id(s)
 const SLOT_ALIASES = {
@@ -49,7 +54,8 @@ module.exports = {
     if (!targetSlots) {
       return msg.reply(
         `❌ Slot không hợp lệ. Các lựa chọn:\n` +
-        `**Slot cụ thể**: \`weapon\` \`offhand\` \`head\` \`chest\` \`legs\` \`feet\` \`hands\` \`ring1\` \`ring2\` \`necklace\` \`special\` \`pet\`\n` +
+        // Sinh từ slots.js: thêm slot mới là tự hiện trong gợi ý.
+        `**Slot cụ thể**: ${SLOT_ORDER.map(s => `\`${s}\``).join(' ')}\n` +
         `**Nhóm**: \`armor\` (5 slot giáp), \`accessory\` (4 phụ kiện), \`ring\` (cả 2 nhẫn), \`all\` (tất cả)`
       );
     }

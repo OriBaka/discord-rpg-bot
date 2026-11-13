@@ -3,6 +3,13 @@ const { getItem, createItem, updateItem, deleteItem } = require('../game/items')
 const { TIERS } = require('../game/tiers');
 const { getRestTokens, parseKV } = require('../game/argparse');
 
+// % hồi máu hợp lệ: 0..100 (0 = tắt hồi theo %)
+function clampPct(v) {
+  const n = parseInt(v);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(100, n);
+}
+
 function isAdmin(msg) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim());
   return adminIds.includes(msg.author.id)
@@ -30,7 +37,7 @@ module.exports = {
           '`name` — Tên (bao trong ngoặc kép nếu có khoảng trắng)',
           '`type` — weapon | offhand | armor | accessory | consumable | material | pet',
           `\`tier\` — ${Object.keys(TIERS).join(' | ')}`,
-          '`atk`, `def`, `heal` — Chỉ số (số nguyên)',
+          '`atk`, `def`, `heal`, `heal_pct` — Chỉ số (số nguyên). `heal_pct` = % max HP (ưu tiên hơn `heal`)',
           '`price`, `sell` — Giá mua/bán',
           '`desc` — Mô tả (trong ngoặc kép)',
           '`class_req` (hoặc `class`) — melee | magic | ranged (để trống = dùng chung)',
@@ -38,6 +45,8 @@ module.exports = {
           '`accessory_type` — ring | necklace | special (bắt buộc nếu type=accessory)',
           '`weapon_type` — sword | axe | bow | staff | shield | orb | quiver... (gợi ý)',
           '`armor_type` — heavy | medium | light | robe (gợi ý)',
+          '`min_level` — Level tối thiểu để dùng (mặc định 1)',
+          '`image_url` (hoặc `img`) — link ảnh hiển thị trong `%info item`',
           '`soulbound` (hoặc `sb`) — true/false: cấm trade item này',
           '',
           `💡 Xem chi tiết item: \`${prefix}info item <id>\``,
@@ -84,12 +93,19 @@ module.exports = {
       const isSb = kv.soulbound === 'true' || kv.soulbound === '1' || kv.sb === 'true' || kv.sb === '1';
       try {
         const db = require('../db/database');
+        // min_level + heal_pct PHẢI ghi được: thiếu min_level thì món đồ Lv.45
+        // mặc được từ Lv.1, thiếu heal_pct thì không tạo được bình hồi theo %
+        // (mọi bình trong game đều dùng heal_pct — xem potion_balance.js).
+        // Trước đây hai cột này tồn tại trong bảng nhưng lệnh không ghi tới,
+        // nên admin tạo item mới luôn ra món "Lv.1, hồi 0".
         db.prepare(`INSERT INTO items
-          (id, name, type, tier, atk, def, heal, price, sell, desc, class_req, weapon_type, armor_type, accessory_type, armor_slot, soulbound)
-          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+          (id, name, type, tier, atk, def, heal, heal_pct, price, sell, desc, class_req,
+           weapon_type, armor_type, accessory_type, armor_slot, soulbound, min_level, image_url)
+          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
           .run(
             id, kv.name, kv.type, tier,
             parseInt(kv.atk) || 0, parseInt(kv.def) || 0, parseInt(kv.heal) || 0,
+            clampPct(kv.heal_pct),
             parseInt(kv.price) || 0, parseInt(kv.sell) || 0,
             kv.desc || '',
             kv.class_req || kv.class || '',
@@ -98,6 +114,8 @@ module.exports = {
             kv.accessory_type || '',
             kv.armor_slot || '',
             isSb ? 1 : 0,
+            Math.max(1, parseInt(kv.min_level) || 1),
+            kv.image_url || kv.img || kv.image || '',
           );
         const it = getItem(id);
         const sbTag = isSb ? ' 🔒 **SOULBOUND**' : '';
@@ -116,7 +134,7 @@ module.exports = {
       if (Object.keys(kv).length === 0) return msg.reply('❌ Cần ít nhất 1 field để sửa.');
 
       const fields = {};
-      const numKeys = ['atk', 'def', 'heal', 'price', 'sell', 'soulbound'];
+      const numKeys = ['atk', 'def', 'heal', 'heal_pct', 'price', 'sell', 'soulbound', 'min_level'];
       const strKeys = ['name', 'desc', 'type', 'tier', 'class_req', 'weapon_type', 'armor_type', 'accessory_type', 'armor_slot', 'image_url'];
       const keyMap = { class: 'class_req', sb: 'soulbound', img: 'image_url', image: 'image_url' };
       for (const rawK of Object.keys(kv)) {
@@ -125,7 +143,11 @@ module.exports = {
         else if (k === 'soulbound') {
           fields.soulbound = (kv[rawK] === 'true' || kv[rawK] === '1' || kv[rawK] === 'yes') ? 1 : 0;
         }
-        else if (numKeys.includes(k)) fields[k] = parseInt(kv[rawK]) || 0;
+        else if (numKeys.includes(k)) {
+          fields[k] = k === 'heal_pct' ? clampPct(kv[rawK])
+            : k === 'min_level' ? Math.max(1, parseInt(kv[rawK]) || 1)
+            : parseInt(kv[rawK]) || 0;
+        }
       }
       if (fields.tier && !TIERS[fields.tier]) {
         return msg.reply(`❌ tier không hợp lệ.`);

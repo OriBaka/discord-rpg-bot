@@ -205,6 +205,14 @@ Các lệnh gốc bên dưới **vẫn dùng được** như trước — `%adm`
 ## 🔧 Mở rộng
 
 - **Thêm item**: `%item create ...` (admin) — không cần sửa code
+  ```
+  %item create <id> name="Tên" type=weapon tier=rare atk=10 min_level=12 price=500
+  %item edit <id> heal_pct=45 min_level=20
+  ```
+  Field đầy đủ: `atk` `def` `heal` `heal_pct` (% max HP) `price` `sell` `min_level`
+  `class_req` `weapon_type` `armor_type` `armor_slot` `accessory_type` `soulbound`
+  `image_url`. Item tạo xong hiện ngay trong `%info item <id>` và `%info items`
+  (cả field/cột mới thêm — lệnh đọc thẳng bảng `items`).
 - **Thêm quái/zone**: `%mob create ...`, `%mob zone create ...`
 - **Thêm lệnh mới**: tạo file `.js` trong `src/commands/`:
   ```js
