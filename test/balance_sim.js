@@ -5,11 +5,15 @@
 //   winChance         — xác suất thắng 1 quái, tính giải tích (khớp simulateBattle
 //                       trong src/game/combat.js, sai số < 2% so với mô phỏng 4000 trận).
 // Dùng bởi test/balance.test.js và tools/zone_rate.js.
-const CLS = {
-  melee:  { base: { hp: 120, atk: 12, def: 8 }, growth: { hp: 18, atk: 3, def: 3 } },
-  magic:  { base: { hp: 80,  atk: 18, def: 3 }, growth: { hp: 10, atk: 5, def: 1 } },
-  ranged: { base: { hp: 100, atk: 15, def: 5 }, growth: { hp: 14, atk: 4, def: 2 } },
-};
+// Chỉ số class đọc THẲNG từ src/game/classes.js.
+//
+// Trước đây chỗ này là một BẢN SAO của chỉ số class. Nó lệch với game từ lâu
+// (melee atk 12 vs 15, magic growth 10/5/1 vs 13/4/3) nhưng các test vẫn
+// "qua" vì chúng so bản sao với bản sao. Mọi lần đo cân bằng đều dựa trên nó,
+// nên một thay đổi chỉ số class trong game không hề làm test đổi số.
+//
+// Nay không còn bản sao: công cụ đo dùng đúng object mà game dùng.
+const CLS = require('../src/game/classes').CLASSES;
 
 // Hằng số đọc từ src/game/mitigation.js — nguồn DUY NHẤT, không chép lại.
 // (Trước đây chép tay 3 nơi; sửa một chỗ là test đo công thức khác game.)
@@ -70,12 +74,35 @@ function obtainableSql(ids) {
 // có item, cờ không bao giờ được nạp lại → bộ lọc "chỉ đồ kiếm được" bị bỏ qua
 // và các test cân bằng lại đọc chỉ số của đồ không có nguồn.
 let GEAR_IDS = new Set();
+// Cache danh sách item — nhưng cache CÓ THỂ NẠP QUÁ SỚM.
+//
+// Lỗi thật đã gặp: tools/tune_balance.js nạp module này trước khi DB được
+// seed. Lần gọi bestGear() đầu tiên thấy bảng items rỗng, GEAR_LOADED thành
+// false, nhưng GEAR_IDS vẫn là Set rỗng — và vì GEAR_IDS được gán lại mỗi lần
+// gọi nên trước đây nó tự sửa được. Tệ hơn: obtainableIds() cache vĩnh viễn,
+// nên sau khi tool ghi lại bảng quái / nạp item, phép đo vẫn dùng danh sách
+// CŨ, khiến melee đo được atk 44 thay vì 49 và cả bảng lệch hàng chục điểm.
+// Nay: theo dõi số item đã thấy; nếu DB có nhiều item hơn cache thì nạp lại,
+// và export resetGearCache() để tool gọi sau khi seed xong.
 let GEAR_LOADED = false;
+let GEAR_COUNT = -1;
+function resetGearCache() {
+  GEAR_LOADED = false;
+  GEAR_COUNT = -1;
+  GEAR_IDS = new Set();
+  // Xoá LUÔN cache chỉ số người chơi. Đây là lỗi thật đã gặp: tools/tune_balance
+  // gọi playerAt() khi bảng item chưa đủ, cache giữ chỉ số "thiếu đồ" suốt tiến
+  // trình, nên tool bisect HP quái theo một người chơi yếu hơn thực tế →
+  // cave in ra 63% cho Chiến Binh trong khi đo lại (tiến trình sạch) là 90%.
+  _statsCache.clear();
+}
 function loadGearIds() {
-  if (GEAR_LOADED) return GEAR_IDS;
   const db = require('../src/db/database');
+  const n = (() => { try { return db.prepare('SELECT COUNT(*) c FROM items').get().c; } catch { return 0; } })();
+  if (GEAR_LOADED && n === GEAR_COUNT) return GEAR_IDS;
   GEAR_IDS = new Set(db.prepare(`SELECT id FROM items
     WHERE type IN ('weapon','offhand','armor','accessory')`).all().map(r => r.id));
+  GEAR_COUNT = n;
   GEAR_LOADED = GEAR_IDS.size > 0;
   return GEAR_IDS;
 }
@@ -100,11 +127,18 @@ function bestGear(db, lv, cls = 'melee', onlyObtainable = true) {
 
   const w = best(`type='weapon' AND weapon_type IN (${wts})`);
 
-  // Giáp theo từng slot: mỗi slot lấy 1 món có def cao nhất
+  // Giáp theo từng slot: mỗi slot lấy 1 món có def cao nhất.
+  //
+  // Rồi nhân HỆ SỐ GIÁP của class — đúng như slots.getTotalBonus() làm với
+  // người chơi thật. Nếu bỏ qua bước này, model coi Pháp Sư hưởng 100% DEF
+  // của áo giáp trong khi trong game họ chỉ hưởng 50%, và mô hình lại đo một
+  // trò chơi khác.
+  const share = (CLS[cls] && typeof CLS[cls].armor_share === 'number') ? CLS[cls].armor_share : 1;
   let armorDef = 0;
   for (const slot of ['head', 'chest', 'legs', 'feet', 'hands']) {
     armorDef += best(`type='armor' AND armor_slot='${slot}'`, 'def DESC').def || 0;
   }
+  armorDef = Math.round(armorDef * share);
   // Tay phụ: 1 món, ưu tiên tổng atk+def
   const off = best(`type='offhand'`, TIE);
 
@@ -151,6 +185,42 @@ function playerAt(a, b, c, d) {
     def: mix(base.def, full.def),
   };
 }
+
+/**
+ * Ba "chiến binh người mới": ĐÚNG trạng thái một người vừa tạo nhân vật.
+ *
+ * Vì sao phải có: trước đây mọi phép đo cân bằng (kể cả tools/tune_balance.js)
+ * đều dùng playerAt(1, cls, 1) — tức "full đồ tốt nhất Lv.1". Đó là trạng thái
+ * KHÔNG AI CÓ lúc mới vào game: người chơi thật chỉ có vũ khí khởi đầu, 0 giáp.
+ * Hậu quả đo được: bảng quái được neo theo full-đồ nên người mới cần 11 đòn
+ * để giết quái trong khi chỉ sống 6 đòn → thắng 0% ở forest, trong khi bảng
+ * cân bằng vẫn in ra 70%. Hai bên phải đo CÙNG một trạng thái, nên hàm này
+ * nằm ở đây và được cả test lẫn tools/tune_balance.js dùng chung.
+ */
+const STARTER_WEAPON = { melee: 'wood_sword', magic: 'apprentice_wand', ranged: 'short_bow' };
+function newbieAt(cls) {
+  const db = require('../src/db/database');
+  const player = require('../src/game/player');
+  const classes = require('../src/game/classes');
+  const uid = '__sim_newbie';
+  db.prepare('DELETE FROM equipped WHERE user_id=?').run(uid);
+  db.prepare('DELETE FROM players WHERE user_id=?').run(uid);
+  player.createPlayer(uid, 'sim');
+  classes.unlockClass(uid, cls);
+  classes.setPrimaryClass(uid, cls);
+  const weapon = STARTER_WEAPON[cls];
+  if (weapon) {
+    db.prepare('INSERT OR REPLACE INTO equipped (user_id, slot, item_id) VALUES (?,?,?)')
+      .run(uid, 'weapon', weapon);
+  }
+  const p = player.getPlayer(uid);
+  const st = player.getEffectiveStats(p);
+  const out = { user_id: uid, level: 1, hp: p.max_hp, max_hp: p.max_hp, atk: st.atk, def: st.def };
+  db.prepare('DELETE FROM equipped WHERE user_id=?').run(uid);
+  db.prepare('DELETE FROM players WHERE user_id=?').run(uid);
+  return out;   // DB đã dọn sạch, không để rác lại trong DB test
+}
+function newbieFighters() { return ['melee', 'magic', 'ranged'].map(newbieAt); }
 
 /** Giảm sát thương theo DEF (khớp damageAfterDef của combat.js) */
 const { mitigation } = require('../src/game/mitigation');
@@ -285,6 +355,6 @@ function measurePlayer(lv, clsId = 'melee', withGear = true) {
 
 module.exports = {
   measurePlayer, playerAt,
-  CLS, bestGear, obtainableIds, avgDamage, winChance, winRate, zoneWinRate, erf, makeRng,
+  CLS, bestGear, obtainableIds, resetGearCache, newbieAt, newbieFighters, STARTER_WEAPON, avgDamage, winChance, winRate, zoneWinRate, erf, makeRng,
   MAX_ROUNDS, MITIGATION_K, MITIGATION_CAP, CRIT_CHANCE, CRIT_MULT, MAX_HIT_PCT, mitigation,
 };

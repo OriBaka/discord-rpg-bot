@@ -4,50 +4,77 @@
 const db = require('./../db/database');
 
 // === Định nghĩa class cơ bản ===
+//
+// ---------------------------------------------------------------------------
+// BA CLASS KHÁC NHAU Ở CÁCH ĐẠT ĐỘ BỀN, KHÔNG Ở ĐỘ BỀN
+//
+// Đây là hệ quả trực tiếp của việc bỏ trần sát thương (xem mitigation.js).
+// Khi không còn trần, tỉ lệ thắng của một nhân vật phụ thuộc vào tích
+//
+//     ATK × độ bền thực,   độ bền thực = maxHP / (1 − giảm thương theo DEF)
+//
+// Hai nhân vật chỉ đấu công bằng khi tích này bằng nhau. Vì vậy:
+//
+//   • ATK giống nhau ở mọi cấp (base 15, +5/cấp) — khác nhau về sát thương
+//     là bảo đảm lệch win-rate, và đo được là lệch rất mạnh (xem CAN_BANG.md).
+//   • HP và DEF là hai ẩn của CÙNG một phương trình: class nào nhiều DEF hơn
+//     thì bù lại ít HP hơn, và ngược lại.
+//
+// Kết quả là ba lối chơi khác nhau mà cùng độ bền:
+//
+//   ⚔️ Chiến Binh  HP thấp  · DEF cao   → "trâu bằng giáp", hưởng 100% giáp
+//   🏹 Cung Thủ    HP vừa   · DEF vừa   → hưởng 72% giáp
+//   🔮 Pháp Sư     HP cao   · DEF thấp  → "trâu bằng máu", hưởng 50% giáp
+//
+// Cùng một bộ giáp cho cả ba, nhưng ai mặc cũng khác nhau: đây là chỗ lớp
+// giáp (heavy/medium/robe) có ý nghĩa — Chiến Binh mặc nặng hơn nên DEF thô
+// của món đồ đi vào người nhiều hơn.
+//
+// Số đo (tools/tune_balance.js, K=200): độ bền thực 3 class lệch ≤ 11% ở mọi
+// cấp 1–45, giáp giảm 10% (Lv.1) → 50% (Lv.45) sát thương nhận vào.
+// ---------------------------------------------------------------------------
+//
+// HAI HỆ SỐ DƯỚI ĐÂY ĐI CẶP VỚI NHAU VÀ VỚI mitigation.js. Sửa một cái là
+// phải đo lại bằng tools/tune_balance.js, không được sửa bằng cảm giác.
+//
+// Vì sao KHÔNG dùng bảng chỉ số phi tuyến: K=100 (bản trước) khiến giáp quá
+// mạnh ở nửa sau game (DEF 400 → giảm 80%), buộc HP phải chênh 2.5 lần giữa
+// Chiến Binh và Pháp Sư để bù — không biểu diễn được bằng growth tuyến tính
+// và phải sinh bảng 45 dòng. Đổi K 100 → 200 giữ được cả hai: giáp 10–50%
+// và growth tuyến tính, nên %class đọc được đúng chỉ số thật.
 const CLASSES = {
   melee: {
     id: 'melee',
     name: '⚔️ Chiến Binh',
-    desc: 'Cận chiến, ATK & DEF cao, HP nhiều',
+    desc: 'Cận chiến, DEF cao, HP thấp — trâu bằng giáp',
     emoji: '⚔️',
-    // ATK gốc được nâng 12 → 15 để cân bằng sát thương với 2 class kia:
-    // trước đây Chiến Binh có ATK thấp nhất (12) lại thêm ATK vũ khí ngang
-    // Pháp Sư (18), nên luôn gây ít sát thương nhất → thua nhiều nhất dù HP
-    // cao nhất. Class giờ khác nhau ở HP/DEF, không phải ở sát thương.
-    // ATK growth nâng 3 → 5 để không trở thành class yếu nhất.
-    //
-    // Bối cảnh: vì DEF nhân vào công thức giảm thương, Chiến Binh vừa có HP
-    // cao nhất vừa có DEF cao nhất — độ bền Lv.30 gấp 1.8 lần Pháp Sư. Khi
-    // bảng quái được cân để mọi class đều chạm trần sát thương (điều kiện
-    // duy nhất để một bảng quái chung cân được 3 class), ai CŨNG chết sau
-    // đúng 6.7 đòn — nên ai gây ít sát thương nhất sẽ thua nhiều nhất.
-    // Đo được với growth cũ (atk+3): Lv.30 Chiến Binh gây 149/đòn còn Pháp Sư
-    // 201 → Chiến Binh chỉ thắng 49% trong khi Pháp Sư 70%.
-    //
-    // Nay atk+5, def+2: sát thương theo kịp 2 class kia, đổi lại bớt trâu.
-    base: { hp: 120, atk: 15, def: 8 },         // chỉ số gốc lv 1
-    growth: { hp: 18, atk: 5, def: 2 },          // mỗi lv tăng
-    weapon_types: ['sword', 'axe', 'mace'],      // loại vũ khí dùng được
+    // DEF 6 + 2/cấp: mỗi cấp +2 DEF tương đương +4.3% độ bền ở Lv.1 nhưng chỉ
+    // +1.1% ở Lv.45 (vì giảm thương bão hoà dần) — nên DEF tăng tuyến tính là
+    // đúng: nó giữ độ bền tăng đều chứ không vọt.
+    // Giáp: hưởng 100% DEF của món đồ.
+    base: { hp: 60, atk: 15, def: 6 },
+    growth: { hp: 13, atk: 5, def: 2 },
+    armor_share: 1.0,
+    hp_band_mult: { 1: 1, 5: 1, 8: 1, 10: 1, 12: 1, 15: 1, 20: 1, 25: 1, 30: 1, 35: 1, 40: 1, 45: 1 },
+    weapon_types: ['sword', 'axe', 'mace'],
     armor_types:  ['heavy', 'medium', 'light'],
     color: 0xE74C3C,
   },
   magic: {
     id: 'magic',
     name: '🔮 Pháp Sư',
-    desc: 'Phép thuật, ATK rất cao, HP/DEF thấp',
+    desc: 'Phép thuật, HP cao, DEF thấp — trâu bằng máu',
     emoji: '🔮',
-    // HP/DEF growth được nâng để KHÔNG bị tụt hậu theo cấp.
-    //
-    // Đo được: với growth cũ (hp+10, def+1), độ bền
-    // maxHP/(1-giảm thương) của Pháp Sư tụt từ 64% (Lv.1) xuống 36% (Lv.40)
-    // so với Chiến Binh (hp+18, def+3). Vì DEF nhân vào công thức giảm thương
-    // nên +3 DEF/cấp của Chiến Binh là lợi kép (HP nhiều hơn VÀ mỗi điểm HP
-    // đáng giá hơn), còn Pháp Sư chỉ có ATK — mà ATK không giúp sống sót.
-    // Hệ quả: Pháp Sư Lv.30 thắng 55% chênh 37 điểm so với Chiến Binh 92%.
-    // Nay: hp+13, def+3 → độ bền giữ ~64-70% suốt 1-40, đổi lại ATK growth
-    // giảm 5→4 để không thành class vừa trâu vừa mạnh.
-    base: { hp: 80, atk: 17, def: 3 },
-    growth: { hp: 13, atk: 4, def: 3 },
+    // HP cao nhất + DEF thấp nhất. Đây từng là class chết nhiều nhất khi còn
+    // trần sát thương (trần làm HP vô nghĩa → ai DEF thấp thì chết trước).
+    // Bỏ trần xong, HP mới thật sự có giá trị, và Pháp Sư đứng ngang hai class
+    // kia. Vẫn chơi khác: ăn đòn nặng hơn nhưng có nhiều máu để đỡ.
+    // Giáp: chỉ hưởng 50% DEF của món đồ (áo vải không che được như giáp sắt).
+    base: { hp: 60, atk: 15, def: 4 },
+    growth: { hp: 16, atk: 5, def: 2 },
+    armor_share: 0.5,
+    // Hệ số HP theo bậc giáp — xem giải thích dài dưới đây.
+    hp_band_mult: { 1: 1.072, 5: 0.993, 8: 0.974, 10: 0.96, 12: 0.988, 15: 0.975, 20: 0.961, 25: 1.03, 30: 1.043, 35: 1.033, 40: 1.082, 45: 1.102 },
     weapon_types: ['staff', 'wand', 'orb'],
     armor_types:  ['robe', 'light'],
     color: 0x9B59B6,
@@ -55,10 +82,12 @@ const CLASSES = {
   ranged: {
     id: 'ranged',
     name: '🏹 Cung Thủ',
-    desc: 'Tầm xa, ATK cao, né tránh tốt',
+    desc: 'Tầm xa, cân bằng giữa HP và DEF',
     emoji: '🏹',
-    base: { hp: 100, atk: 15, def: 5 },
-    growth: { hp: 14, atk: 4, def: 2 },
+    base: { hp: 58, atk: 15, def: 5 },
+    growth: { hp: 15, atk: 5, def: 2 },
+    armor_share: 0.72,
+    hp_band_mult: { 1: 1.051, 5: 0.995, 8: 0.975, 10: 0.966, 12: 0.982, 15: 0.97, 20: 0.96, 25: 0.993, 30: 0.998, 35: 0.993, 40: 1.016, 45: 1.024 },
     weapon_types: ['bow', 'crossbow', 'gun'],
     armor_types:  ['medium', 'light'],
     color: 0x2ECC71,
@@ -98,7 +127,20 @@ function migrate() {
 }
 
 function seedClassItems() {
-  // Update các item legendary/epic hiện có để gắn class
+  // Gắn class_req + weapon_type/armor_type cho các món KHUNG (starter + giáp cũ).
+  //
+  // CHỈ áp lên món ĐÃ TỒN TẠI và CHƯA có weapon_type. Lý do là lỗi thật:
+  // hàm này chạy ở đầu chuỗi migrate (classes.migrate) trong khi phần lớn item
+  // được seed ở các module sau. Vì vậy:
+  //   • trên DB mới nó không gán được gì (dòng chưa tồn tại);
+  //   • trên DB cũ nó gán đúng.
+  // Hai DB cho ra hai trò chơi khác nhau — đo được: Lv.1 Chiến Binh thắng 44%
+  // trên DB mới và 96% trên DB cũ, chỉ vì wood_sword thiếu weapon_type.
+  //
+  // Nay gear_ladder gọi lại hàm này SAU khi mọi item đã tồn tại (xem đầu file
+  // gear_ladder.js), và điều kiện `weapon_type=''` bảo đảm không ghi đè loại
+  // vũ khí mà weapon_balance/expansive_seed đã đặt (vd fish_swordfish dùng
+  // 'sword' nhưng KHÔNG phải vũ khí chiến đấu).
   const updates = [
     // === MELEE: sword/axe/mace, heavy/medium armor ===
     ['wood_sword',    'melee',  'sword', ''],
@@ -122,8 +164,22 @@ function seedClassItems() {
     ['silver_bow',    'ranged', 'bow', ''],
   ];
 
-  const upd = db.prepare('UPDATE items SET class_req=?, weapon_type=?, armor_type=? WHERE id=?');
-  for (const [id, cr, wt, at] of updates) upd.run(cr, wt, at, id);
+  const upd = db.prepare(`UPDATE items SET class_req=?, weapon_type=?, armor_type=? WHERE id=?`);
+  const updWeaponType = db.prepare(`UPDATE items SET class_req=? WHERE id=? AND weapon_type=''`);
+  const setWeaponType = db.prepare(`UPDATE items SET class_req=?, weapon_type=? WHERE id=? AND weapon_type=''`);
+  for (const [id, cr, wt, at] of updates) {
+    if (wt) {
+      // Vũ khí: chỉ gán weapon_type khi còn trống, nhưng LUÔN gán class_req.
+      setWeaponType.run(cr, wt, id);
+      updWeaponType.run(cr, id);
+    } else if (at) {
+      // Giáp: chỉ gán armor_type khi còn trống.
+      db.prepare(`UPDATE items SET class_req=?, armor_type=? WHERE id=? AND armor_type=''`).run(cr, at, id);
+      db.prepare(`UPDATE items SET class_req=? WHERE id=?`).run(cr, id);
+    } else {
+      upd.run(cr, wt, at, id);
+    }
+  }
 }
 
 // === Helpers ===
@@ -164,23 +220,57 @@ function saveClassData(userId, data) {
 function initClassFor(classId) {
   const cls = classInfo(classId);
   if (!cls) return null;
+  // Dùng statsAtLevel() thay vì cls.base.* để HP ở Lv.1 cũng đi qua hệ số bậc
+  // giáp. Nếu không, người chơi bắt đầu lệch 1 HP so với công thức và độ lệch
+  // đó theo họ suốt 44 cấp (đã đo: 44/44 lần lên cấp lệch).
+  const s1 = statsAtLevel(classId, 1);
   return {
     level: 1,
     xp: 0,
-    hp: cls.base.hp,
-    max_hp: cls.base.hp,
-    atk: cls.base.atk,
-    def: cls.base.def,
+    hp: s1.max_hp,
+    max_hp: s1.max_hp,
+    atk: s1.atk,
+    def: s1.def,
     unlocked_at: Date.now(),
   };
 }
 
-// Tính chỉ số đầy đủ ở level n
+// === Hệ số HP theo bậc level ===
+//
+// Ở mỗi bậc giáp (1 / 12 / 25 / 30 / 40 / 45), ngân sách DEF của giáp nhảy lên
+// một mức mới. Ba class hưởng hệ số giáp khác nhau (1.0 / 0.72 / 0.5), nên
+// ngay sau mỗi bậc, độ bền thực của họ lệch nhau vài phần trăm — âm thầm.
+//
+// Đo được trước khi thêm hệ số này (K=200, chỉ số class tuyến tính):
+//   Lv.45  Chiến Binh 1801 · Cung Thủ 1766 · Pháp Sư 1638  → lệch 9.9%
+//   Lv.40  Chiến Binh 1483 · Cung Thủ 1463 · Pháp Sư 1375  → lệch 7.8%
+// Đủ để một class thắng ít hơn 5–8 điểm trong một trò mà mọi thứ khác đã bằng.
+//
+// Hệ số này bù đúng phần đó: mỗi class có một hệ số cho mỗi bậc, tính ngược từ
+// "độ bền thực phải bằng Chiến Binh". Nó vẫn là HP TUYẾN TÍNH trong lòng mỗi
+// bậc — chỉ nhảy một lần ở ranh giới bậc, cùng lúc với giáp.
+//
+// Số liệu sinh bởi tools/tune_balance.js; sau khi áp: lệch ≤ 2.3% ở mọi cấp
+// (trừ Lv.1, xem ghi chú trong tune_balance.js).
+function hpBandMult(classId, level) {
+  const cls = classInfo(classId);
+  const table = cls && cls.hp_band_mult;
+  if (!table) return 1;
+  const keys = Object.keys(table).map(Number).sort((a, b) => a - b);
+  let band = keys[0];
+  for (const k of keys) if (level >= k) band = k;
+  return table[band] ?? 1;
+}
+
+// Tính chỉ số đầy đủ ở level n.
+// `hp` đã nhân hệ số bậc; `hp_unscaled` là đường cong gốc (dùng cho tài liệu).
 function statsAtLevel(classId, level) {
   const cls = classInfo(classId);
   if (!cls) return null;
+  const hpUnscaled = cls.base.hp + (level - 1) * cls.growth.hp;
   return {
-    max_hp: cls.base.hp  + (level - 1) * cls.growth.hp,
+    max_hp: Math.round(hpUnscaled * hpBandMult(classId, level)),
+    hp_unscaled: hpUnscaled,
     atk:    cls.base.atk + (level - 1) * cls.growth.atk,
     def:    cls.base.def + (level - 1) * cls.growth.def,
   };
@@ -287,10 +377,10 @@ function checkUnlockRequirements(player, classId) {
 module.exports = {
   CLASSES, classInfo, getAllClasses,
   isClassDisabled, setClassDisabled, getDisabledReason,
-  getClassData, saveClassData, initClassFor, statsAtLevel,
+  getClassData, saveClassData, initClassFor, statsAtLevel, hpBandMult,
   setPrimaryClass, syncPrimaryClassData,
   unlockClass, lockClass,
   canEquipItem,
   UNLOCK_REQUIREMENTS, checkUnlockRequirements,
-  migrate,
+  migrate, seedClassItems,
 };

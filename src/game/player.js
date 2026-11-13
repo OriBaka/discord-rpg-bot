@@ -42,7 +42,9 @@ function updatePlayer(userId, fields) {
 function getEffectiveStats(p) {
   // Dùng require trong hàm để tránh circular dependency
   const { getTotalBonus } = require('./slots');
-  const bonus = getTotalBonus(p.user_id);
+  // Truyền player để slots áp hệ số DEF theo class (armor_share).
+  // Không truyền thì mọi class hưởng 100% giáp và Pháp Sư mất phần bù HP.
+  const bonus = getTotalBonus(p.user_id, p);
   return {
     atk: p.atk + bonus.atk,
     def: p.def + bonus.def,
@@ -119,21 +121,41 @@ function addXpAndLevel(userId, xpGain) {
   //
   // Nay đọc growth của class đang dùng; không có class thì giữ mức chung cũ.
   let g = { hp: 15, atk: 3, def: 2 };
+  let classesMod = null, classDrift = null;
   if (p.primary_class) {
     try {
-      const { CLASSES } = require('./classes');
-      const cls = CLASSES[p.primary_class];
+      classesMod = require('./classes');
+      const cls = classesMod.CLASSES[p.primary_class];
       if (cls && cls.growth) g = cls.growth;
-    } catch { /* classes.js lỗi thì dùng mức chung */ }
+      // Độ lệch giữa chỉ số HIỆN TẠI và công thức của class.
+      //
+      // Thường là 0. Nhưng admin có thể đã chỉnh tay (!admin), hoặc người chơi
+      // đổi class, nên không được ghi đè mất phần đó — chỉ cộng thêm phần lớn
+      // lên theo cấp. Nhờ vậy công thức ở đây và statsAtLevel() luôn khớp nhau
+      // tuyệt đối, thay vì trôi dần vì làm tròn.
+      const cur = classesMod.statsAtLevel(p.primary_class, p.level);
+      classDrift = { hp: p.max_hp - cur.max_hp, atk: p.atk - cur.atk, def: p.def - cur.def };
+    } catch { classesMod = null; classDrift = null; }
   }
 
   while (xp >= xpToNext(level)) {
     xp -= xpToNext(level);
     level += 1;
-    max_hp += g.hp;
-    atk    += g.atk;
-    def    += g.def;
     lvlUps.push(level);
+  }
+
+  if (classDrift && lvlUps.length > 0) {
+    // Tính lại từ công thức thay vì cộng dồn: growth là tuyến tính nên kết quả
+    // bằng nhau, nhưng cách này không bao giờ trôi và tự áp hệ số bậc giáp
+    // (hp_band_mult) đúng một lần.
+    const now = classesMod.statsAtLevel(p.primary_class, level);
+    max_hp = now.max_hp + classDrift.hp;
+    atk    = now.atk    + classDrift.atk;
+    def    = now.def    + classDrift.def;
+  } else if (lvlUps.length > 0) {
+    max_hp += g.hp * lvlUps.length;
+    atk    += g.atk * lvlUps.length;
+    def    += g.def * lvlUps.length;
   }
 
   // CHỈ hồi đầy HP khi thực sự lên cấp.

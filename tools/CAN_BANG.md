@@ -12,13 +12,33 @@ Chạy lại: `node tools/tune_balance.js [--detail] [--json]`
 
 | | Kết quả |
 |---|---|
-| Win-rate full đồ theo zone | TB **69,5%**, **9/9** zone trong 65–75% |
-| Chênh lệch class (tối đa) | **22 điểm** (frozen_abyss) |
-| Giáp giảm sát thương | **17–56%** tuỳ zone |
-| Người mới (vũ khí khởi đầu) ở forest | **67 / 70 / 75%** |
+| Win-rate full đồ theo zone | TB **69,8%**, **9/9** zone trong 65–75% |
+| Chênh lệch class (tối đa) | **13 điểm** (forest), 1–5 điểm ở 8/9 zone |
+| Giáp giảm sát thương | **18–47%** tuỳ zone |
+| Người mới (vũ khí khởi đầu) ở forest | **65 / 80 / 69%** |
+| Độ bền thực 3 class (HP ÷ (1−giảm thương)) | lệch **≤ 5,5%** ở mọi level 1–45 |
+| Test | **175/175** |
 
-Ba class vẫn khác nhau có chủ ý: Lv.40 độ bền (maxHP ÷ (1−giảm thương)) là
-1529 / 1291 / 1182 cho Chiến Binh / Pháp Sư / Cung Thủ.
+Bảng đo mới nhất (`DB_PATH=/tmp/x/t.db node tools/tune_balance.js --write`):
+
+```
+zone           Lv  hit  |  melee  magic ranged |  med |  chenh
+forest           1  0.160  |    66     78     70 |  70 |   13
+cave             5  0.180  |    73     69     70 |  70 |    5
+swamp            8  0.180  |    68     69     70 |  69 |    2
+desert          10  0.180  |    71     70     72 |  71 |    2
+mountain        15  0.180  |    69     71     70 |  70 |    2
+dragon_lair     20  0.180  |    70     69     70 |  70 |    1
+volcano         25  0.160  |    69     70     70 |  70 |    1
+frozen_abyss    30  0.140  |    70     70     71 |  70 |    1
+astral_ruins    40  0.060  |    68     68     70 |  68 |    3
+```
+
+Ba class có **cùng ATK** và **cùng độ bền thực**; khác nhau chỉ ở CÁCH đạt được
+(Chiến Binh HP thấp/giáp dày, Pháp Sư HP cao/giáp mỏng). Đó là yêu cầu đã chốt:
+một bảng quái chung chỉ cân được 3 class nếu ATK × độ bền thực của chúng bằng
+nhau. `hp_band_mult` trong `classes.js` là 12 hệ số theo bậc level giữ cân bằng
+này; sửa nó mà không chạy lại `tools/tune_balance.js` sẽ phá vỡ bảng quái.
 
 ---
 
@@ -280,3 +300,74 @@ lại cả hệ kinh tế, không chỉ win-rate.
 
 **Chưa làm** vì cần một lượt riêng đo được toàn bộ các hệ liên quan, không chỉ
 bảng quái. Làm nửa vời sẽ để game ở trạng thái tệ hơn hiện tại.
+
+---
+
+## Bốn lỗi "vô hình" tìm được khi làm lại thang chỉ số
+
+Bốn lỗi này đều KHÔNG nằm trong công thức cân bằng — chúng nằm ở thứ tự nạp
+module và ở các chỗ còn sót công thức cũ. Chúng giải thích vì sao trước đây
+"class lệch 20+ điểm" mà sửa chỉ số class mãi không hết.
+
+**1. Chiến Binh không trang bị được vũ khí trên DB mới.**
+`classes.migrate()` → `seedClassItems()` chạy TRƯỚC khi bảng `items` được seed,
+nên `UPDATE ... SET weapon_type='sword'` khớp 0 dòng và `wood_sword` giữ
+`weapon_type=''`. `equip` lọc theo `weapon_type` nên Chiến Binh Lv.1 không thể
+mặc vũ khí: **ATK 24 so với 29** của 2 class kia, và kéo dài tới hết game.
+Trên `data/rpg.db` cũ migrate chạy 2 lần nên lỗi vô hình.
+→ `gear_ladder.migrate()` gọi lại `seedClassItems()` sau khi đã có item.
+
+**2. Cache đồ bị đóng băng trong `test/balance_sim.js`.**
+`obtainableIds()`/`_statsCache` giữ danh sách item của lần gọi ĐẦU. Khi
+`tools/tune_balance.js` chạy, cache được nạp lúc bảng item còn thiếu → Chiến
+Binh Lv.5 đo ra ATK 44 thay vì 49, tool bisect HP quái theo một người chơi yếu
+hơn thực tế, **cave in ra 63% trong khi đo lại là 90%**.
+→ `resetGearCache()` xoá cả cache chỉ số; tool gọi nó (và chạy nốt các migrate
+bị hoãn bằng `setTimeout`) trước khi đo.
+
+**3. Ghi bảng quái theo THỨ TỰ thay vì theo ID.**
+`--write` duyệt `LAYOUT` rồi thay cả khối `MONSTERS`; hai danh sách xếp khác
+nhau nên chỉ số gán lệch hàng (slime nhận atk 2, HP 406) → **forest thắng 100%**.
+→ Nay khớp theo id từng dòng và dựng lại đúng thụt lề của dòng đó.
+
+**4. "Full đồ ở Lv.1" là trạng thái không ai có.**
+Giáp Lv.1 trong shop cộng tới 45 DEF trong khi DEF gốc người mới là 6 — người
+mua đủ 5 món mạnh lên 7 lần NGAY Lv.1. Quái neo theo trạng thái đó thì người
+mới thật (chỉ có vũ khí khởi đầu) cần **11 đòn** để giết quái trong khi chỉ
+sống **6 đòn** → thắng **0%** ở forest, trong khi bảng cân bằng vẫn in 70%.
+→ Quái Lv.1 neo theo `newbieFighters()` (dùng chung giữa tool và test),
+ngân sách giáp bậc 1 hạ về 40, và test cá cược "đua số đòn" được đo bằng đúng
+mô hình sát thương của sim (bản cũ bỏ crit và lấy roll thấp nên báo 17% trong
+khi sim báo 60–78% — hai bên không thể cùng đạt 65–75%).
+
+---
+
+## Đo lại sau khi đổi thang HP
+
+**Heal (kỹ năng 30% max HP)** — đã đúng sẵn, không phải sửa: hồi 19/58/137/252
+máu ở Lv.1/10/25/45, luôn bằng 30% max HP. Nhờ vậy heal không bị "phế" khi HP
+tăng.
+
+**Bình máu** — SAI, đã sửa. `heal` là số cố định từ thời HP tính bằng hàng
+nghìn, nên: `potion_astral` 2500 máu = hồi đầy ở MỌI cấp với 1600 vàng, trong
+khi `potion_s` 50 máu chỉ còn 8% max HP ở Lv.45. Nay tất cả hồi theo
+`heal_pct`; giá sửa lại cho đơn điệu theo %:
+
+```
+potion_s 25%/30g · potion_m 45%/100g · potion_percent 35%/60g ·
+potion_l 55%/280g · potion_full 65%/620g · potion_ancient 70%/700g ·
+potion_astral 85%/1400g · elixir 100%/2000g
+```
+
+**PvP** — SAI, đã sửa. `simulateDuel()` trừ thẳng `atk − def`; với DEF hiện tại
+(Lv.1 đã 41 khi mặc giáp) thì mọi đòn bị kẹp về 1 sát thương. Nay dùng chung
+`mitigation.js`. Đo 2000 trận/cặp sau khi sửa: **48–52%** cho mọi cặp cùng
+level (trước là 100% cho người đi trước — trận tất định vì không có crit và
+bằng level thì luôn challenger đánh trước).
+
+**Raid** — SAI, đã sửa. `expectedDamagePerAttack()` viết cứng
+`atk = 10 + 3×(lv−1)` và bảng vũ khí chia bậc thô (62/40/20/7/0), cộng thêm
+`def/(def+240)` trong khi toàn game dùng K=200. Đo lại: công thức cũ ước tính
+sát thương **thấp hơn thực tế 30%** ở Lv.25–40 → HP boss bị đặt thấp. Nay lấy
+ATK từ `classes.statsAtLevel` + vũ khí/tay phụ/phụ kiện tốt nhất trong bảng
+items: lệch **0–3%** so với người chơi thật ở cả 4 boss.

@@ -7,44 +7,57 @@
 //
 // Công thức: giảm = min(CAP, def / (def + K));  sát thương = atk * (1 - giảm)
 //
+// ===========================================================================
+// TRẦN SÁT THƯƠNG ĐÃ BỊ BỎ (MAX_HIT_PCT = 1)
+//
+// Trần "mỗi đòn không quá 30% max HP" từng là cơ chế DUY NHẤT khiến một bảng
+// quái chung cân được cả 3 class: khi mọi class đều chạm trần, ai cũng chết
+// sau đúng 1/0.30 = 3.3 đòn bất kể HP/DEF, nên chênh lệch độ bền biến mất.
+//
+// Nhưng nó trả giá bằng chính thứ người chơi tương tác hằng ngày:
+//   • quái được neo ATK vừa đủ chạm trần → mặc thêm giáp KHÔNG giảm được một
+//     điểm sát thương nào (đo được với K=240: cả bộ giáp da 750 vàng chỉ giảm
+//     6.8%; có thời điểm là 0%);
+//   • số đòn sống được luôn là 3–4 → trận đánh không có chỗ cho biến thiên;
+//   • mọi thay đổi HP/DEF của class đều vô nghĩa.
+//
+// Nay bỏ hẳn trần. Bù lại, ba class được xếp để ĐỘ BỀN THỰC bằng nhau:
+//
+//     độ bền thực = maxHP / (1 − giảm thương theo DEF)
+//
+// Nhờ vậy một bảng quái chung vẫn cân được cả ba (xem classes.js), mà giáp
+// vẫn giảm 25–45% sát thương nhận vào. Đây là điều kiện toán học: khi không
+// còn trần, tỉ lệ thắng của hai nhân vật chỉ bằng nhau nếu ATK × độ bền thực
+// của họ bằng nhau. Trần cũ "giả" điều kiện đó bằng cách chặn sát thương.
+//
+// MAX_HIT_PCT vẫn được export = 1 để mọi nơi đọc nó không phải sửa, và để
+// nếu cần bật lại thì chỉ sửa một số. Giá trị 1 nghĩa là "không chặn".
+// ===========================================================================
+//
 // ---------------------------------------------------------------------------
-// VÌ SAO K ĐỔI TỪ 240 XUỐNG 100
+// VÌ SAO K = 200
 //
-// Với K=240, một điểm DEF gần như không có nghĩa ở nửa đầu game:
-//   def   8 → giảm  3.2%      def 26 → giảm  9.8%
-//   def  33 → giảm 12.1%      def 50 → giảm 17.2%
-// Hệ quả đo được: mặc CẢ BỘ giáp da (5 món, 750 vàng) chỉ giảm 6.8% sát
-// thương nhận vào. Người chơi mua giáp, không thấy khác gì, và kết luận
-// "giáp vô dụng" — đúng. Toàn bộ nhánh trang bị phòng thủ của game thành
-// trang trí.
+// K là mức DEF mà tại đó giảm đúng 50%. Nó quyết định giáp "đáng giá" bao
+// nhiêu và độ bền 3 class có bằng nhau được hay không.
 //
-// Với K=100:
-//   def   8 → giảm  7.4%      def 26 → giảm 20.6%
-//   def  33 → giảm 24.8%      def 50 → giảm 33.3%
-// Mỗi món giáp giờ đều cảm nhận được, và trần 75% vẫn đạt được ở def 300 —
-// vẫn không ai miễn nhiễm.
+//   def  20 → giảm  9.1%      def  60 → giảm 23.1%
+//   def  40 → giảm 16.7%      def 120 → giảm 37.5%
+//   def  80 → giảm 28.6%      def 200 → giảm 50.0%
 //
-// ĐÁNH ĐỔI: hạ K làm người chơi sống lâu hơn ở MỌI zone, nên toàn bộ bảng
-// quái phải tăng ATK để bù (xem balance_seed.js). Đây là thay đổi có hệ
-// thống, không phải nerf lẻ.
+// Với K=100 (bản trước), giáp quá mạnh ở nửa sau game: DEF 400 cho giảm 80%,
+// và để 3 class cùng độ bền thì HP phải chênh tới 2.5 lần — HP tuyến tính
+// không biểu diễn nổi, buộc phải dùng bảng tra phi tuyến. K=200 giữ được mức
+// giảm 25–45% (giáp vẫn cảm nhận rõ) mà vẫn cho phép HP tuyến tính như cũ.
+//
+// Số liệu đo (tools/tune_balance.js + test/balance_sim.js): với K=200 và thang
+// chỉ số trong classes.js, độ bền thực của 3 class lệch < 6% ở mọi cấp 1–45,
+// trong khi giáp giảm 18% (Lv.1) → 51% (Lv.45) sát thương nhận vào.
 // ---------------------------------------------------------------------------
-const MITIGATION_K = 100;
+const MITIGATION_K = 200;
 const MITIGATION_CAP = 0.75;
 
-// ===== Trần sát thương nhận mỗi đòn =====
-//
-// Không ai bị hạ trong 1-2 đòn. Nhưng nó còn là CƠ CHẾ CÂN BẰNG CLASS: khi cả
-// 3 class đều chạm trần, mỗi class chết sau đúng 1/PCT đòn BẤT KỂ HP/DEF, nên
-// khoảng cách độ bền giữa Chiến Binh (HP 642) và Pháp Sư (HP 457) biến mất và
-// một bảng quái chung cân được cho cả 3.
-//
-// Đo được (tỉ lệ số đòn sống được giữa class trâu nhất/yếu nhất ở Lv.30; phải
-// NHỎ HƠN tỉ lệ sát thương ~1.4 thì mới cân được cả 3):
-//   30% → 1.77   → chênh tối đa 20 điểm sau khi sửa các lỗi bên dưới
-//   15% → 1.28   → không tốt hơn (quái phải mạnh gấp nhiều lần, win-rate
-//                   thành bậc thang: hoặc 0% hoặc 100%)
-// Giữ 30%: trận 3-5 đòn, vẫn có biến thiên, và không cần ATK quái phi lý.
-const MAX_HIT_PCT = 0.30;
+/** Trần sát thương mỗi đòn, tính theo % max HP của bên nhận. 1 = không chặn. */
+const MAX_HIT_PCT = 1;
 
 /** Tỉ lệ giảm sát thương (0..MITIGATION_CAP) ứng với một mức DEF. */
 function mitigation(def) {
