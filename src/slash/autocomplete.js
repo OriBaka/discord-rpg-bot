@@ -20,6 +20,12 @@ function toChoice(id, name, prefix = '') {
 // ============================================================
 // Providers
 // ============================================================
+// Zone của một nghề, sắp theo cấp mở khoá — dùng chung cho mọi nghề.
+function zoneChoices(jobType, input) {
+  const zones = db.prepare('SELECT id, name FROM gather_zones WHERE job_type = ? ORDER BY min_job_level').all(jobType);
+  return filterChoices(zones.map(z => toChoice(z.id, z.name)), input);
+}
+
 const providers = {
   // Tất cả item (cho info item)
   item_all: (i, input) => {
@@ -95,17 +101,12 @@ const providers = {
     return filterChoices(choices, input, 25);
   },
 
-  // Zone mining
-  zone_mining: (i, input) => {
-    const zones = db.prepare("SELECT id, name FROM gather_zones WHERE job_type = 'mining' ORDER BY min_job_level").all();
-    return filterChoices(zones.map(z => toChoice(z.id, z.name)), input);
-  },
-
-  // Zone fishing
-  zone_fishing: (i, input) => {
-    const zones = db.prepare("SELECT id, name FROM gather_zones WHERE job_type = 'fishing' ORDER BY min_job_level").all();
-    return filterChoices(zones.map(z => toChoice(z.id, z.name)), input);
-  },
+  // Zone cho TỪNG nghề — một hàm dùng chung thay vì copy cho mỗi nghề
+  // (trước đây zone_mining và zone_fishing là 2 bản giống hệt nhau, thêm nghề
+  // thứ 3 là phải copy thêm lần nữa).
+  zone_mining:   (i, input) => zoneChoices('mining', input),
+  zone_fishing:  (i, input) => zoneChoices('fishing', input),
+  zone_foraging: (i, input) => zoneChoices('foraging', input),
 
   // Elite/boss cho lệnh battle
   battle_mob: (i, input) => {

@@ -10,12 +10,23 @@ function getPlayer(userId) {
   return db.prepare('SELECT * FROM players WHERE user_id = ?').get(userId);
 }
 
+// Vàng khởi đầu.
+//
+// Từng là 50 — nhưng món đồ rẻ nhất trong shop giá 150, nên người mới KHÔNG
+// MUA ĐƯỢC GÌ. Đo được: người mới + class + vũ khí khởi đầu thắng 1-4% ở
+// forest, mỗi trận chết sau 4 hiệp, và không có vàng để hồi máu hay mua đồ
+// → bế tắc hoàn toàn, không có đường tiến.
+//
+// Nay 400: đủ mua vũ khí khởi đầu (150) + 1 món giáp (150), còn 100 dự phòng
+// cho 1 lần hồi máu. Không đủ mua cả bộ — vẫn phải cày, nhưng không bế tắc.
+const STARTING_GOLD = 400;
+
 function createPlayer(userId, name) {
   const now = Date.now();
   db.prepare(`
-    INSERT INTO players (user_id, name, created_at)
-    VALUES (?, ?, ?)
-  `).run(userId, name, now);
+    INSERT INTO players (user_id, name, created_at, gold)
+    VALUES (?, ?, ?, ?)
+  `).run(userId, name, now, STARTING_GOLD);
   return getPlayer(userId);
 }
 
@@ -31,7 +42,9 @@ function updatePlayer(userId, fields) {
 function getEffectiveStats(p) {
   // Dùng require trong hàm để tránh circular dependency
   const { getTotalBonus } = require('./slots');
-  const bonus = getTotalBonus(p.user_id);
+  // Truyền player để slots áp hệ số DEF theo class (armor_share).
+  // Không truyền thì mọi class hưởng 100% giáp và Pháp Sư mất phần bù HP.
+  const bonus = getTotalBonus(p.user_id, p);
   return {
     atk: p.atk + bonus.atk,
     def: p.def + bonus.def,
@@ -98,13 +111,51 @@ function addXpAndLevel(userId, xpGain) {
   let max_hp = p.max_hp, atk = p.atk, def = p.def;
   const lvlUps = [];
 
+  // TỐC ĐỘ TĂNG CẤP PHẢI THEO CLASS.
+  //
+  // Trước đây hàm này cộng cứng +15 HP / +3 ATK / +2 DEF cho MỌI class, hoàn
+  // toàn bỏ qua `growth` trong classes.js. Hệ quả: `statsAtLevel()` (dùng bởi
+  // %class, mô hình cân bằng và công cụ tune) và chỉ số THẬT của người chơi
+  // khác nhau ngay từ Lv.2 — và khác càng lúc càng xa. Mọi lần tinh chỉnh
+  // growth trước đây đều không có tác dụng gì vì lý do này.
+  //
+  // Nay đọc growth của class đang dùng; không có class thì giữ mức chung cũ.
+  let g = { hp: 15, atk: 3, def: 2 };
+  let classesMod = null, classDrift = null;
+  if (p.primary_class) {
+    try {
+      classesMod = require('./classes');
+      const cls = classesMod.CLASSES[p.primary_class];
+      if (cls && cls.growth) g = cls.growth;
+      // Độ lệch giữa chỉ số HIỆN TẠI và công thức của class.
+      //
+      // Thường là 0. Nhưng admin có thể đã chỉnh tay (!admin), hoặc người chơi
+      // đổi class, nên không được ghi đè mất phần đó — chỉ cộng thêm phần lớn
+      // lên theo cấp. Nhờ vậy công thức ở đây và statsAtLevel() luôn khớp nhau
+      // tuyệt đối, thay vì trôi dần vì làm tròn.
+      const cur = classesMod.statsAtLevel(p.primary_class, p.level);
+      classDrift = { hp: p.max_hp - cur.max_hp, atk: p.atk - cur.atk, def: p.def - cur.def };
+    } catch { classesMod = null; classDrift = null; }
+  }
+
   while (xp >= xpToNext(level)) {
     xp -= xpToNext(level);
     level += 1;
-    max_hp += 15;
-    atk    += 3;
-    def    += 2;
     lvlUps.push(level);
+  }
+
+  if (classDrift && lvlUps.length > 0) {
+    // Tính lại từ công thức thay vì cộng dồn: growth là tuyến tính nên kết quả
+    // bằng nhau, nhưng cách này không bao giờ trôi và tự áp hệ số bậc giáp
+    // (hp_band_mult) đúng một lần.
+    const now = classesMod.statsAtLevel(p.primary_class, level);
+    max_hp = now.max_hp + classDrift.hp;
+    atk    = now.atk    + classDrift.atk;
+    def    = now.def    + classDrift.def;
+  } else if (lvlUps.length > 0) {
+    max_hp += g.hp * lvlUps.length;
+    atk    += g.atk * lvlUps.length;
+    def    += g.def * lvlUps.length;
   }
 
   // CHỈ hồi đầy HP khi thực sự lên cấp.
@@ -142,6 +193,7 @@ function addXpAndLevel(userId, xpGain) {
 }
 
 module.exports = {
+  STARTING_GOLD,
   xpToNext,
   getPlayer,
   createPlayer,

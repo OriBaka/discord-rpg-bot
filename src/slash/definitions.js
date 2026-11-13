@@ -45,12 +45,13 @@ const CLASS_CHOICES = [
   { name: '🏹 Cung Thủ (Ranged)', value: 'ranged' },
 ];
 
-const JOB_CHOICES = [
-  { name: 'Mining', value: 'mining' },
-  { name: 'Fishing', value: 'fishing' },
-  { name: 'Cooking', value: 'cooking' },
-  { name: 'Crafting', value: 'crafting' },
-];
+// Sinh từ jobs.JOB_TYPES + JOB_INFO: thêm nghề mới không phải sửa file này
+// (trước đây 4 choice viết cứng nên nghề mới không chọn được trên slash).
+const jobChoicesModule = require('../game/jobs');
+const JOB_CHOICES = jobChoicesModule.JOB_TYPES.map(t => ({
+  name: `${jobChoicesModule.JOB_INFO[t]?.icon || ''} ${jobChoicesModule.JOB_INFO[t]?.name || t}`.trim(),
+  value: t,
+}));
 
 const definitions = [
   // ====== Player profile ======
@@ -292,6 +293,15 @@ const definitions = [
       return z ? [z] : [];
     }},
     autocomplete: 'zone_fishing',
+  },
+  {
+    data: new SlashCommandBuilder().setName('gather').setDescription('Hái lượm (foraging)')
+      .addStringOption(o => o.setName('zone').setDescription('Zone (mặc định = cao nhất unlock)').setRequired(false).setAutocomplete(true)),
+    handler: { cmdName: 'gather', extractArgs: (i) => {
+      const z = i.options.getString('zone');
+      return z ? [z] : [];
+    }},
+    autocomplete: 'zone_foraging',
   },
   {
     data: new SlashCommandBuilder().setName('craft').setDescription('Chế tạo')

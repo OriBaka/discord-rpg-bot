@@ -136,6 +136,12 @@ const TREASURES = {
   lake: ['gem_sapphire', 'fish_tuna'],
   ocean: ['fish_swordfish', 'diamond'],
   void_pool: ['void_essence', 'fish_void'],
+  // Foraging — toàn món ĐÃ CÓ nguồn khác (shop/khoáng), kho báu chỉ là đường tắt
+  sunlit_meadow: ['potion_s', 'leather_necklace'],
+  whisper_woods: ['potion_m', 'silver_ring'],
+  mossy_marsh: ['potion_percent', 'gem_sapphire'],
+  ancient_grove: ['potion_full', 'gold_ingot'],
+  world_tree_roots: ['potion_astral', 'mithril_ingot'],
 };
 
 function rollTreasure(zoneId, rng = Math.random) {

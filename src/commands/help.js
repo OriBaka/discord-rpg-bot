@@ -65,6 +65,7 @@ module.exports = {
           `\`${prefix}job [@user]\` xem level các nghề\n` +
           `\`${prefix}mine [zone]\` đào mỏ (mining)\n` +
           `\`${prefix}fish [zone]\` câu cá (fishing)\n` +
+          `\`${prefix}gather [zone]\` hái lượm gỗ/thảo dược (foraging)\n` +
           `\`${prefix}craft list\` / \`${prefix}craft <recipe>\` chế tạo\n` +
           `\`${prefix}cook list\` / \`${prefix}cook <recipe>\` nấu ăn` },
         { name: '🏰 Bang hội', value:
@@ -104,7 +105,7 @@ module.exports = {
           `\`${prefix}quest admin\` tạo/sửa quest\n` +
           `\`${prefix}ach admin\` tạo/sửa achievement\n` +
           `\`${prefix}pet admin\` tạo/sửa pet + drop\n` +
-          `\`${prefix}gatherzone\` (hoặc \`${prefix}gz\`) quản lý zone mining/fishing\n` +
+          `\`${prefix}gatherzone\` (hoặc \`${prefix}gz\`) quản lý zone mining/fishing/foraging\n` +
           `\`${prefix}craft admin\` / \`${prefix}cook admin\` tạo/sửa recipe\n` +
           `\`${prefix}upgrade admin\` chỉnh nguyên liệu nâng cấp theo mốc\n` +
           `\`${prefix}shop add/remove/setprice\` chỉnh shop\n` +

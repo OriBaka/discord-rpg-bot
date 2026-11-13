@@ -318,6 +318,28 @@ async function handle(interaction) {
         });
       }
 
+      // info items: danh sách item phân trang (đọc từ bảng items, nên item
+      // mới thêm tự xuất hiện — trước đây danh sách bị cắt ở 1024 ký tự).
+      if (decoded.domain === 'info') {
+        const infoCmd = require('./commands/info');
+        return await infoCmd.renderItemsPage({
+          userId: decoded.userId,
+          filter: decoded.filter,
+          page: decoded.page,
+          replyFn: (opts) => interaction.update(opts),
+        });
+      }
+
+      if (decoded.domain === 'mobs') {
+        const infoCmd = require('./commands/info');
+        return await infoCmd.renderMobsPage({
+          userId: decoded.userId,
+          filter: decoded.filter,
+          page: decoded.page,
+          replyFn: (opts) => interaction.update(opts),
+        });
+      }
+
       if (decoded.domain === 'shop') {
         const shopCmd = require('./commands/shop');
         const p = getPlayer(decoded.userId);
