@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **43 lệnh** prefix + **48 slash command** (33 người chơi + 15 admin)
+- **44 lệnh** prefix + **49 slash command** (34 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -18,7 +18,7 @@ Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, 
 | ⚔️ Chiến đấu | `hunt` (mô phỏng nhanh) và `battle` (turn-based có nút bấm, elite/boss) |
 | 🗺️ Khu vực | 5 zone mở theo level, 18 quái, 38 loại nguyên liệu |
 | 🧪 Vật phẩm | 133 item: 4 độ hiếm (common/rare/epic/legendary), shop mua bán |
-| 🛠️ Nghề & chế tạo | Mining, fishing, cooking, crafting + 21 recipe |
+| 🛠️ Nghề & chế tạo | 5 nghề: mining, fishing, foraging, cooking, crafting + 27 recipe |
 | 🐾 Pet | 13 pet, drop trực tiếp hoặc ghép từ mảnh, cộng chỉ số khi đi theo |
 | 🏰 Bang hội | Tạo bang, mời thành viên, kho chung, buff vàng/XP/drop, BXH bang |
 | 🐲 Boss tuần (raid) | Cả server đánh chung một thanh máu, 5 lượt/tuần/người, chia thưởng theo hạng sát thương |
@@ -139,6 +139,7 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 | `%buy <id> [qty]` / `%sell <id> [qty]` | Mua / bán (không bán được món đang mặc) |
 | `%mine [zone]` | Đào mỏ (alias: `%dao`) |
 | `%fish [zone]` | Câu cá (alias: `%cau`) |
+| `%gather [zone]` | Hái lượm gỗ/thảo dược (foraging, alias: `%forage`, `%hai`) |
 | `%craft list` / `%craft <id>` | Chế tạo |
 | `%cook list` / `%cook <id>` | Nấu ăn |
 | `%job [@user]` | Xem level các nghề, `%job top <type>` |
@@ -192,7 +193,7 @@ Các lệnh gốc bên dưới **vẫn dùng được** như trước — `%adm`
 | `%quest admin` / `%ach admin` / `%pet admin` | Tạo/sửa quest, thành tựu, pet & drop |
 | `%craft admin` / `%cook admin` | Tạo/sửa recipe |
 | `%upgrade admin` | Chỉnh nguyên liệu/vàng nâng cấp theo mốc (`set`/`tier`/`gold`/`reset`) |
-| `%gatherzone` (`%gz`) | Quản lý zone mining/fishing |
+| `%gatherzone` (`%gz`) | Quản lý zone mining/fishing/foraging |
 | `%lootbox` | Quản lý nội dung lootbox |
 | `%redeem` | Tạo/quản lý code |
 | `%setimage <type> <id> <url>` | Gán ảnh cho item/quái/zone/pet/thành tựu |
@@ -205,6 +206,14 @@ Các lệnh gốc bên dưới **vẫn dùng được** như trước — `%adm`
 ## 🔧 Mở rộng
 
 - **Thêm item**: `%item create ...` (admin) — không cần sửa code
+  ```
+  %item create <id> name="Tên" type=weapon tier=rare atk=10 min_level=12 price=500
+  %item edit <id> heal_pct=45 min_level=20
+  ```
+  Field đầy đủ: `atk` `def` `heal` `heal_pct` (% max HP) `price` `sell` `min_level`
+  `class_req` `weapon_type` `armor_type` `armor_slot` `accessory_type` `soulbound`
+  `image_url`. Item tạo xong hiện ngay trong `%info item <id>` và `%info items`
+  (cả field/cột mới thêm — lệnh đọc thẳng bảng `items`).
 - **Thêm quái/zone**: `%mob create ...`, `%mob zone create ...`
 - **Thêm lệnh mới**: tạo file `.js` trong `src/commands/`:
   ```js

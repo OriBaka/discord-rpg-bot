@@ -119,10 +119,35 @@ module.exports = {
       // Nay chọn class là có vũ khí, giống mọi game nhập vai.
       const STARTER = { melee: 'wood_sword', magic: 'apprentice_wand', ranged: 'short_bow' };
       const starterId = STARTER[id];
+      let equipped = false;
       if (starterId) {
         const has = db.prepare('SELECT 1 FROM inventory WHERE user_id=? AND item_id=?')
           .get(msg.author.id, starterId);
         if (!has) addItem(msg.author.id, starterId, 1);
+
+        // TỰ MẶC vũ khí khởi đầu.
+        //
+        // Từng chỉ đưa vào túi và nhắc "nhớ %equip". Đo được: người mới chưa
+        // equip thắng 1% ở forest (atk 15, def 8) — gần như chắc chắn thua, và
+        // thua liên tục thì họ bỏ game trước khi kịp đọc hướng dẫn.
+        // Mặc sẵn: 67% (đúng mục tiêu Option A). Không có lý do kỹ thuật nào
+        // để người mới phải làm thêm một bước để đạt trạng thái cân bằng.
+        //
+        // QUAN TRỌNG: chỉ tự mặc khi ô vũ khí đang TRỐNG. Nếu người chơi đã
+        // cầm vũ khí tốt hơn (vd rusty_dagger) mà chọn lại class, ghi đè sẽ
+        // làm họ mất vũ khí mạnh hơn — tự dưng nerf người chơi.
+        try {
+          const slots = require('../game/slots');
+          const { getItem } = require('../game/items');
+          const item = getItem(starterId);
+          const cur = slots.getEquipped(msg.author.id).weapon;
+          if (item && slots.isItemValidForSlot(item, 'weapon') && !cur) {
+            slots.setEquipped(msg.author.id, 'weapon', starterId);
+            equipped = true;
+          }
+        } catch {
+          // Nếu slot bị chiếm hoặc item không hợp lệ thì để trong túi
+        }
       }
 
       const c = classInfo(id);
@@ -134,7 +159,9 @@ module.exports = {
           { name: '❤️ HP',  value: `${c.base.hp}`, inline: true },
           { name: '⚔️ ATK', value: `${c.base.atk}`, inline: true },
           { name: '🛡️ DEF', value: `${c.base.def}`, inline: true },
-          { name: '🗡️ Vũ khí khởi đầu', value: starterId ? `\`${starterId}\` (đã vào túi — nhớ \`${prefix}equip ${starterId}\`)` : '—' },
+          { name: '🗡️ Vũ khí khởi đầu', value: starterId
+            ? (equipped ? `\`${starterId}\` **(đã mặc sẵn)**` : `\`${starterId}\` (đã vào túi — gõ \`${prefix}equip ${starterId}\`)`)
+            : '—' },
           { name: '💡 Tip', value: `Mỗi class có item riêng. Vào \`${prefix}shop\` xem đồ phù hợp.` },
         );
       return msg.reply({ embeds: [embed] });

@@ -1,4 +1,4 @@
-// Gather zones cho mining/fishing
+// Gather zones cho mining/fishing/foraging
 const db = require('./../db/database');
 
 function migrate() {
@@ -6,7 +6,7 @@ function migrate() {
     -- Zones cho mining/fishing (chung schema)
     CREATE TABLE IF NOT EXISTS gather_zones (
       id           TEXT PRIMARY KEY,
-      job_type     TEXT NOT NULL,        -- mining | fishing
+      job_type     TEXT NOT NULL,        -- mining | fishing | foraging
       name         TEXT NOT NULL,
       icon         TEXT NOT NULL DEFAULT '',
       desc         TEXT NOT NULL DEFAULT '',
@@ -27,6 +27,10 @@ function migrate() {
   `);
 
   seedDefaults();
+  // Nội dung thêm SAU khi DB đã có zone (server đang chạy) không đi qua
+  // seedDefaults() vì hàm đó early-return khi bảng đã có dữ liệu — nên mỗi lần
+  // migrate phải tự bổ sung phần còn thiếu, kiểu idempotent.
+  seedForaging();
 }
 
 function seedDefaults() {
@@ -151,6 +155,90 @@ function seedDefaults() {
   for (const d of [...miningDrops, ...fishingDrops]) insDrop.run(...d);
 
   console.log(`🌱 Seeded ${miningZones.length + fishingZones.length} gather zones, ${ores.length + fish.length} items, ${miningDrops.length + fishingDrops.length} drops`);
+}
+
+
+// === FORAGING (nghề hái lượm) ===
+//
+// Vì sao có hàm riêng thay vì nhét vào seedDefaults(): seedDefaults() return
+// sớm khi gather_zones đã có dữ liệu, nên DB đang chạy sẽ không bao giờ nhận
+// được zone mới. Ở đây mọi INSERT đều OR IGNORE → chạy lại bao nhiêu lần cũng
+// không nhân đôi, và server cũ tự có nội dung mới sau khi restart.
+function seedForaging() {
+  const zones = [
+    ['sunlit_meadow',    'foraging', 'Sunlit Meadow',    '🌻', 'Cỏ, quả mọng cho người mới',   1,  28000, 8],
+    ['whisper_woods',    'foraging', 'Whispering Woods', '🌲', 'Gỗ sồi & nhựa thông',          10, 32000, 22],
+    ['mossy_marsh',      'foraging', 'Mossy Marsh',      '🍄', 'Nấm & thảo dược hiếm',         20, 38000, 45],
+    ['ancient_grove',    'foraging', 'Ancient Grove',    '🎋', 'Gỗ cổ & hoa ánh trăng',        35, 48000, 90],
+    ['world_tree_roots', 'foraging', 'World Tree Roots', '🌳', 'Gỗ thế giới & hạt ánh sao',    50, 58000, 180],
+  ];
+
+  // Nguyên liệu hái lượm. sell tăng dần theo zone giống ladder của ore/fish.
+  // Giá đã đo bằng tools đo vàng/phút (xem test/gather.test.js + báo cáo #6):
+  // foraging phải nằm CÙNG DẢI với mining/fishing. Giá đầu tiên đặt theo cảm
+  // tính cho ra 401 vàng/phút ở Lv.50 (mining 286, fishing 236) → đã hạ lại.
+  const items = [
+    ['grass_fiber',    '🌾 Grass Fiber',     'material', 'common',    0, 0, 0, 0, 2,   'Bó cỏ khô se lại thành dây, buộc đồ hoặc bện thừng'],
+    ['wild_berry',     '🫐 Wild Berry',      'material', 'common',    0, 0, 0, 0, 4,   'Quả mọng hái ven rừng, ăn được và có vị chua nhẹ'],
+    ['herb_common',    '🌿 Common Herb',     'material', 'common',    0, 0, 0, 0, 9,   'Thảo dược thường ngày, giã nhuyễn là thành thuốc bôi'],
+    ['oak_log',        '🪵 Oak Log',         'material', 'common',    0, 0, 0, 0, 15,  'Gỗ sồi chắc tay, nguyên liệu cho mọi món đồ gỗ'],
+    ['pine_resin',     '🧴 Pine Resin',      'material', 'common',    0, 0, 0, 0, 22,  'Nhựa thông vàng dính, giữ lửa lâu và thơm mùi rừng'],
+    ['marsh_mushroom', '🍄 Marsh Mushroom',  'material', 'rare',      0, 0, 0, 0, 36,  'Nấm mọc trong đầm lầy, vị đậm và rất khó tìm'],
+    ['herb_rare',      '🌱 Rare Herb',       'material', 'rare',      0, 0, 0, 0, 50,  'Thảo dược quý, chỉ mọc ở nơi ẩm tối dưới tán cây'],
+    ['ancient_log',    '🎋 Ancient Log',     'material', 'epic',      0, 0, 0, 0, 95,  'Gỗ của cổ thụ trăm năm, thớ gỗ rắn chắc như đá'],
+    ['amber_resin',    '🟠 Amber Resin',     'material', 'epic',      0, 0, 0, 0, 110, 'Nhựa cây hoá thạch, trong như pha lê và giữ ánh sáng'],
+    ['moonflower',     '🌸 Moonflower',      'material', 'epic',      0, 0, 0, 0, 170, 'Hoa chỉ nở khi trăng lên, cánh mỏng phát sáng dịu'],
+    ['worldwood',      '🌳 Worldwood',       'material', 'legendary', 0, 0, 0, 0, 250, 'Gỗ chặt từ rễ cây thế giới, ấm như còn sống'],
+    ['star_seed',      '✨ Star Seed',       'material', 'legendary', 0, 0, 0, 0, 300, 'Hạt giống óng ánh như mang theo cả một vì sao nhỏ'],
+  ];
+
+  const drops = [
+    // sunlit_meadow — Lv.1
+    ['sunlit_meadow',    'grass_fiber',    0.80, 1, 3],
+    ['sunlit_meadow',    'wild_berry',     0.45, 1, 2],
+    ['sunlit_meadow',    'herb_common',    0.25, 1, 1],
+    // whisper_woods — Lv.10
+    ['whisper_woods',    'oak_log',        0.65, 1, 2],
+    ['whisper_woods',    'grass_fiber',    0.40, 1, 2],
+    ['whisper_woods',    'herb_common',    0.50, 1, 2],
+    ['whisper_woods',    'pine_resin',     0.22, 1, 1],
+    // mossy_marsh — Lv.20
+    ['mossy_marsh',      'marsh_mushroom', 0.55, 1, 2],
+    ['mossy_marsh',      'herb_rare',      0.28, 1, 1],
+    ['mossy_marsh',      'oak_log',        0.35, 1, 2],
+    ['mossy_marsh',      'pine_resin',     0.30, 1, 2],
+    // ancient_grove — Lv.35
+    ['ancient_grove',    'ancient_log',    0.45, 1, 2],
+    ['ancient_grove',    'herb_rare',      0.40, 1, 2],
+    ['ancient_grove',    'amber_resin',    0.22, 1, 1],
+    ['ancient_grove',    'moonflower',     0.12, 1, 1],
+    // world_tree_roots — Lv.50
+    ['world_tree_roots', 'worldwood',      0.40, 1, 2],
+    ['world_tree_roots', 'ancient_log',    0.35, 1, 2],
+    ['world_tree_roots', 'amber_resin',    0.30, 1, 2],
+    ['world_tree_roots', 'moonflower',     0.25, 1, 1],
+    ['world_tree_roots', 'star_seed',      0.10, 1, 1],
+  ];
+
+  const insZone = db.prepare(`INSERT OR IGNORE INTO gather_zones
+    (id, job_type, name, icon, desc, min_job_level, cooldown_ms, base_xp)
+    VALUES (?,?,?,?,?,?,?,?)`);
+  const insItem = db.prepare(`INSERT OR IGNORE INTO items
+    (id, name, type, tier, atk, def, heal, price, sell, desc, class_req, weapon_type, armor_type, accessory_type, armor_slot)
+    VALUES (?,?,?,?,?,?,?,?,?,?,'','','','','')`);
+  const insDrop = db.prepare(`INSERT OR IGNORE INTO gather_drops
+    (zone_id, item_id, chance, qty_min, qty_max) VALUES (?,?,?,?,?)`);
+
+  let added = 0;
+  const tx = db.transaction(() => {
+    for (const z of zones) added += insZone.run(...z).changes;
+    for (const it of items) added += insItem.run(...it).changes;
+    for (const d of drops) added += insDrop.run(...d).changes;
+  });
+  tx();
+  if (added > 0) {
+    console.log(`🌱 Seeded foraging: ${zones.length} zones, ${items.length} items, ${drops.length} drops (${added} dòng mới)`);
+  }
 }
 
 // === CRUD ===

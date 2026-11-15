@@ -242,6 +242,14 @@ runMigrate('../game/expansive_seed', 'migrateExpansive');
 // Phải chạy SAU expansive_seed (dùng các id vũ khí mới của module đó).
 runMigrate('../game/weapon_balance', 'migrateWeaponBalance');
 
+// Thang chỉ số TRANG BỊ: lấp giáp còn thiếu cho 3 class, đưa giáp về một bảng
+// chung (DEF theo bậc level), phụ kiện/tay phụ +ATK=+DEF, vũ khí bỏ DEF.
+//
+// Phải chạy SAU weapon_balance (module đó ghi đè atk/def của vũ khí) và TRƯỚC
+// balance_seed — balance_seed sinh quái dựa trên chỉ số người chơi mà giáp
+// quyết định một nửa trong số đó.
+runMigrate('../game/gear_ladder', 'migrateGearLadder');
+
 // Cân bằng chỉ số quái (45 con, 9 zone) — chạy 1 lần, có guard trong meta.
 // Phải chạy SAU expansive_seed vì cần quái của các zone mới đã tồn tại.
 runMigrate('../game/balance_seed', 'migrateBalanceSeed');
@@ -277,6 +285,12 @@ runMigrate('../game/farm_tools_seed', 'migrateFarmTools');
 // tồn tại) và SAU `economy_seed` (giá bán của vật phẩm mới). `recipes.js` chỉ
 // seed khi bảng rỗng nên recipe thêm sau này buộc phải ở migration riêng.
 runMigrate('../game/farm_recipes_seed', 'migrateFarmRecipes');
+
+// Bình máu / thức ăn hồi theo % max HP. PHẢI chạy SAU mọi seed tạo consumable
+// (expansive_seed, farm_recipes_seed) — nếu chạy sớm, các món thức ăn chưa tồn
+// tại và vẫn giữ số hồi cố định (đo được: food_trout_smoked 160, còn 100% max
+// HP ở Lv.1 và 25% ở Lv.45).
+runMigrate('../game/potion_balance', 'migratePotionBalance');
 
 // Nâng cấp vũ khí (+1..+5). Bảng `item_upgrades` gắn cấp vào SLOT đang mặc,
 // không vào inventory — xem chú thích đầu file upgrade.js để biết lý do.

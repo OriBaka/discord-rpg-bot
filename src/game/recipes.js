@@ -20,6 +20,10 @@ function migrate() {
   `);
 
   seedDefaults();
+  // Nội dung thêm sau khi DB đã có recipe (server đang chạy) không đi qua
+  // seedDefaults() (hàm đó early-return khi bảng đã có dữ liệu) → bổ sung
+  // idempotent ở đây.
+  seedForagingRecipes();
 }
 
 function seedDefaults() {
@@ -92,6 +96,69 @@ function seedDefaults() {
   for (const r of recipes) ins.run(...r, now);
 
   console.log(`🌱 Seeded ${foods.length + ingots.length} food/ingot items, ${recipes.length} recipes`);
+}
+
+
+// === RECIPE dùng nguyên liệu hái lượm ===
+//
+// Nguyên liệu mới phải CÓ CHỖ DÙNG, nếu không nó chỉ là rác trong túi. Hai món
+// thuốc (crafting) + một món ăn (cooking) tạo thành chuỗi: hái → chế/nấu → dùng.
+// Tất cả INSERT OR IGNORE nên chạy lại không nhân đôi.
+function seedForagingRecipes() {
+  const items = [
+    // Consumable: heal_pct (% max HP) theo đúng thang potion đã cân bằng ở #4
+    ['herb_salve',    '🧴 Herb Salve',    'consumable', 'common', 0, 0, 0, 0, 36,  'Thuốc bôi từ thảo dược, hồi 30% máu tối đa'],
+    ['moon_tonic',    '🌙 Moon Tonic',    'consumable', 'rare',   0, 0, 0, 0, 380, 'Chưng từ hoa ánh trăng, hồi 55% máu tối đa'],
+    ['forest_stew',   '🍲 Forest Stew',   'consumable', 'common', 0, 0, 0, 0, 60,  'Món hầm nấm rừng, ấm bụng và hồi máu'],
+  ];
+
+  const recipes = [
+    // [id, name, type, job_type, min_lv, inputs, output, qty, xp, desc]
+    ['recipe_herb_salve',  'Herb Salve',   'craft', 'crafting', 3,
+      '[{"item_id":"herb_common","qty":2},{"item_id":"wild_berry","qty":1}]', 'herb_salve', 1, 12, 'Giã thảo dược thành thuốc'],
+    ['recipe_moon_tonic',  'Moon Tonic',   'craft', 'crafting', 25,
+      '[{"item_id":"moonflower","qty":1},{"item_id":"herb_rare","qty":2}]', 'moon_tonic', 1, 70, 'Chưng cất hoa ánh trăng'],
+    ['recipe_forest_stew', 'Forest Stew',  'cook',  'cooking',  6,
+      '[{"item_id":"marsh_mushroom","qty":1},{"item_id":"wild_berry","qty":2}]', 'forest_stew', 1, 22, 'Hầm nấm với quả mọng'],
+  ];
+
+  const insItem = db.prepare(`INSERT OR IGNORE INTO items
+    (id, name, type, tier, atk, def, heal, price, sell, desc, class_req, weapon_type, armor_type, accessory_type, armor_slot)
+    VALUES (?,?,?,?,?,?,?,?,?,?,'','','','','')`);
+  const insRecipe = db.prepare(`INSERT OR IGNORE INTO recipes
+    (id, name, type, job_type, min_job_level, inputs, output_id, output_qty, xp_gain, desc, created_at)
+    VALUES (?,?,?,?,?,?,?,?,?,?,?)`);
+
+  let added = 0;
+  const now = Date.now();
+  const tx = db.transaction(() => {
+    for (const it of items) added += insItem.run(...it).changes;
+    for (const r of recipes) added += insRecipe.run(...r, now).changes;
+  });
+  tx();
+
+  // heal_pct / min_level nằm ngoài câu INSERT ở trên (giữ danh sách cột ngắn) →
+  // set riêng, chỉ khi còn trống, để không đè giá trị admin đã sửa tay.
+  //
+  // heal_pct là cột do migration khác thêm vào (expansive_seed) và thứ tự
+  // migrate KHÔNG được bảo đảm: trên DB mới, lúc hàm này chạy thì cột chưa tồn
+  // tại → nếu chỉ "kiểm tra rồi bỏ qua" thì thuốc hồi 0% vĩnh viễn (đã xảy ra,
+  // phát hiện lúc test). Nội dung này CẦN cột đó, nên tự bảo đảm nó tồn tại.
+  const cols = db.prepare('PRAGMA table_info(items)').all().map(c => c.name);
+  if (!cols.includes('heal_pct')) {
+    db.exec('ALTER TABLE items ADD COLUMN heal_pct INTEGER NOT NULL DEFAULT 0');
+  }
+  // Chỉ điền khi còn trống → không đè giá trị admin đã sửa tay.
+  const pct = db.prepare('UPDATE items SET heal_pct=?, min_level=? WHERE id=? AND (heal_pct IS NULL OR heal_pct=0)');
+  pct.run(30, 3, 'herb_salve');
+  pct.run(55, 25, 'moon_tonic');
+  // Thức ăn cũng hồi theo % max HP (quy ước từ #4) — không dùng heal cố định,
+  // vì 150 HP là "hồi gần đầy" ở Lv.1 nhưng chỉ 24% ở Lv.45.
+  pct.run(30, 6, 'forest_stew');
+
+  if (added > 0) {
+    console.log(`🌱 Seeded foraging recipes: ${items.length} items, ${recipes.length} recipes (${added} dòng mới)`);
+  }
 }
 
 // === CRUD ===

@@ -193,8 +193,15 @@ async function handleAdmin(msg, args, prefix) {
     const embed = new EmbedBuilder().setColor(0xED4245).setTitle('📜 All Quests');
     for (const [t, list] of Object.entries(grouped)) {
       if (list.length === 0) continue;
-      const lines = list.slice(0, 20).map(q => `\`${q.id}\` ${q.name} — ${q.objective}/${q.target_qty}`);
-      embed.addFields({ name: t, value: lines.join('\n').slice(0, 1024) });
+      // Hiện TỐI ĐA 20 dòng nhưng phải NÓI RA là còn bao nhiêu — bản cũ cắt
+      // im lặng nên admin tạo quest thứ 21 trở đi thì không ai thấy nó tồn tại.
+      const shown = list.slice(0, 20);
+      const lines = shown.map(q => `\`${q.id}\` ${q.name} — ${q.objective}/${q.target_qty}`);
+      let value = lines.join('\n').slice(0, 1024);
+      if (list.length > shown.length) {
+        value += `\n… và **${list.length - shown.length}** quest nữa`;
+      }
+      embed.addFields({ name: `${t} (${list.length})`, value });
     }
     return msg.reply({ embeds: [embed] });
   }

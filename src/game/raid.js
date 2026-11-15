@@ -324,17 +324,49 @@ function getCurrentRaid(now = Date.now()) {
 // thật là Ember Wyrm (def 90). HP bị đặt cao hơn thực tế ~27%, và boss trở
 // thành bất khả thi: đo được 5/5 lượt chỉ gây 24.308/27.981 máu.
 function expectedDamagePerAttack(refLevel, bossDef = BOSS_POOL[0].def) {
-  // Chỉ số người chơi ở level này (theo công thức addXpAndLevel: +3 atk/level)
-  const atk = 10 + 3 * (refLevel - 1);
-  // Vũ khí tốt nhất mở được ở level đó (đo từ bảng items)
-  const weaponAtk = refLevel >= 45 ? 62
-    : refLevel >= 30 ? 40
-    : refLevel >= 18 ? 20
-    : refLevel >= 6 ? 7
-    : 0;
-  const totalAtk = atk + weaponAtk;
-  // Giảm thương theo DEF (cùng công thức combat.js: def/(def+240), trần 75%)
-  const reduction = Math.min(0.75, bossDef / (bossDef + 240));
+  // ATK phải lấy từ CHÍNH bảng chỉ số của class (classes.statsAtLevel), không
+  // phải công thức chép tay.
+  //
+  // Bản cũ viết cứng `10 + 3 * (lv - 1)` và một bảng vũ khí chia bậc thô
+  // (62/40/20/7/0). Cả hai đều lạc hậu sau khi thang chỉ số được làm lại:
+  // ATK thật của 3 class bây giờ đi theo `growth` riêng, còn vũ khí tốt nhất
+  // ở mỗi level là dữ liệu trong bảng items. Sai lệch này làm HP boss bị đặt
+  // sai (đã từng khiến boss bất khả thi: 5/5 lượt chỉ gây 24.308/27.981 máu).
+  const classes = require('./classes');
+  const db = require('../db/database');   // đọc bảng items để biết đồ tốt nhất
+  let baseAtk = 0, n = 0;
+  for (const cls of ['melee', 'magic', 'ranged']) {
+    const st = classes.statsAtLevel(cls, Math.max(1, Math.min(45, Math.round(refLevel))));
+    if (st) { baseAtk += st.atk; n++; }
+  }
+  baseAtk = n ? baseAtk / n : 10 + 3 * (refLevel - 1);
+
+  // Trang bị: vũ khí + tay phụ + phụ kiện — ĐÚNG các slot mà slots.js cộng.
+  // Chỉ cộng vũ khí (bản đầu của hàm này) làm sát thương kỳ vọng thấp hơn
+  // thực tế 30% ở Lv.25-40, vì tay phụ + 4 món phụ kiện đóng góp tới 40% ATK.
+  // Hệ quả: HP boss bị đặt thấp → boss chết trước khi hết tuần.
+  const lv = Math.round(refLevel);
+  const bestAtk = (where, n = 1) => {
+    try {
+      return db.prepare(`SELECT atk FROM items WHERE ${where} AND min_level<=?
+        ORDER BY (atk+def) DESC, atk DESC LIMIT ${n}`).all(lv);
+    } catch { return []; }
+  };
+  const sumAtk = (rows) => rows.reduce((s, r) => s + (r.atk || 0), 0);
+  const weaponAtk = sumAtk(bestAtk(`type='weapon' AND weapon_type IN
+    ('sword','axe','mace','staff','wand','orb','bow','crossbow','gun')`));
+  const offAtk = sumAtk(bestAtk(`type='offhand'`));
+  let accAtk = 0;
+  for (const [type, count] of [['ring', 2], ['necklace', 1], ['special', 1]]) {
+    accAtk += sumAtk(bestAtk(`type='accessory' AND accessory_type='${type}'`, count));
+  }
+
+  const totalAtk = baseAtk + weaponAtk + offAtk + accAtk;
+  // Giảm thương theo DEF — DÙNG CHUNG mitigation.js (K=200, trần 75%).
+  // Bản cũ hardcode `bossDef / (bossDef + 240)` và trần 0.75: từ khi K đổi
+  // thành 200, mọi con số raid đều lệch ~10-15%.
+  const { mitigation, MITIGATION_CAP } = require('./mitigation');
+  const reduction = Math.min(MITIGATION_CAP, mitigation(bossDef));
   const perHit = totalAtk * (1 - reduction);
   // Crit 15% × 1.6 → hệ số kỳ vọng 0.85 + 0.15×1.6 = 1.09
   const critFactor = 0.85 + 0.15 * 1.6;

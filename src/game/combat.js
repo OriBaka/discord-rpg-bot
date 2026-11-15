@@ -1,4 +1,5 @@
 const { getEffectiveStats } = require('./player');
+const { MITIGATION_K, MITIGATION_CAP, MAX_HIT_PCT, mitigation } = require('./mitigation');
 
 // ===== Giới hạn vòng =====
 // Trước đây hard-code 20 vòng: trận nào chưa xong sau 20 vòng bị tính là THUA,
@@ -25,8 +26,8 @@ const MAX_ROUNDS = 100;
 // DEF vẫn quý (mỗi điểm DEF đều có tác dụng) nhưng KHÔNG BAO GIỜ miễn nhiễm,
 // và khoảng cách giữa 3 class thu hẹp lại → cùng một bảng quái cân được cho cả ba.
 // Trần 75% để DEF khủng không thành bất tử.
-const MITIGATION_K = 240;      // hằng số cân bằng: def = K → giảm 50% sát thương
-const MITIGATION_CAP = 0.75;   // giảm tối đa 75% (đạt được khi def >= 720)
+// Hằng số nằm ở mitigation.js (nguồn duy nhất, dùng chung với skills.js và
+// test/balance_sim.js). def = K → giảm 50%; giảm tối đa 75% (def >= 3K).
 
 // ===== Chí mạng =====
 // Trước đây sát thương hoàn toàn tất định (chỉ lệch ±2), nên một trận hoặc
@@ -35,15 +36,12 @@ const MITIGATION_CAP = 0.75;   // giảm tối đa 75% (đạt được khi def 
 const CRIT_CHANCE = 0.15;
 const CRIT_MULT = 1.6;
 
-// ===== Trần sát thương nhận mỗi đòn =====
-// Không ai bị hạ trong 1-2 đòn, kể cả Pháp Sư (HP thấp). Nhờ vậy độ khó
-// được đo bằng SỐ ĐÒN phải chịu thay vì chênh lệch HP thô giữa các class,
-// và một bảng quái chung cân được cho cả 3 class.
-const MAX_HIT_PCT = 0.30;
+// Trần sát thương nhận mỗi đòn — đọc từ mitigation.js. Đây là cơ chế cân
+// bằng class, không chỉ là chống one-shot; xem chú thích chi tiết ở đó.
 
 // Sát thương sau khi giảm theo DEF (và trần theo % max HP của bên nhận)
 function damageAfterDef(atk, def, receiverMaxHp = Infinity) {
-  const reduction = Math.min(MITIGATION_CAP, Math.max(0, def) / (Math.max(0, def) + MITIGATION_K));
+  const reduction = mitigation(def);
   const raw = atk * (1 - reduction) + rand(-2, 3);
   const capped = Number.isFinite(receiverMaxHp)
     ? Math.min(raw, Math.max(1, receiverMaxHp * MAX_HIT_PCT))

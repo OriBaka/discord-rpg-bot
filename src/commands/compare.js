@@ -4,6 +4,15 @@ const { getPlayer } = require('../game/player');
 const { getItem } = require('../game/items');
 const { tierInfo } = require('../game/tiers');
 const { getEquipped, SLOTS, isItemValidForSlot, findSlotForItem } = require('../game/slots');
+const { healText } = require('../game/item_display');
+
+// So sánh hồi máu: ưu tiên % max HP (đơn vị chung, so được giữa bình to/nhỏ),
+// nếu cả hai đều dùng số cố định thì so số cố định.
+function healDiff(a, b) {
+  const pa = Number(a.heal_pct) || 0, pb = Number(b.heal_pct) || 0;
+  if (pa || pb) return `${diff(pa, pb)} (${pa}% → ${pb}%)`;
+  return diff(a.heal, b.heal);
+}
 
 function diff(a, b) {
   const d = (b || 0) - (a || 0);
@@ -18,7 +27,10 @@ function itemFieldValue(it) {
   const stats = [];
   if (it.atk) stats.push(`⚔️ ${it.atk}`);
   if (it.def) stats.push(`🛡️ ${it.def}`);
-  if (it.heal) stats.push(`❤️ ${it.heal}`);
+  // Bình hồi theo % (heal_pct) không có `heal` — bản cũ bỏ qua nên mọi bình
+  // máu đều hiện như "không hồi gì" khi so sánh.
+  const h = healText(it);
+  if (h) stats.push(`❤️ ${h.replace('+', '')}`);
   if (it.min_level) stats.push(`🔒LV${it.min_level}`);
   if (it.class_req) stats.push(`[${it.class_req}]`);
   return `${t.emoji} **${it.name}**\n${stats.join(' • ') || '_(no stats)_'}\n💰 ${it.price || '?'} • sell ${it.sell || '?'}`;
@@ -53,8 +65,12 @@ module.exports = {
 
     const it1 = getItem(id1);
     if (!it1) return msg.reply(`❌ Item \`${id1}\` không tồn tại.`);
-    if (!['weapon', 'offhand', 'armor', 'accessory'].includes(it1.type)) {
-      return msg.reply(`❌ Chỉ so sánh được weapon/armor/accessory/offhand. Item \`${id1}\` là type=${it1.type}.`);
+    // Cho so cả consumable (bình máu/thức ăn) — chúng cũng có chỉ số để so
+    // (hồi bao nhiêu %), và bản cũ chặn nên người chơi không so được bình nào
+    // tốt hơn bình nào.
+    const COMPARABLE = ['weapon', 'offhand', 'armor', 'accessory', 'consumable'];
+    if (!COMPARABLE.includes(it1.type)) {
+      return msg.reply(`❌ Chỉ so sánh được ${COMPARABLE.join('/')}. Item \`${id1}\` là type=${it1.type}.`);
     }
 
     let it2 = null;
@@ -87,7 +103,7 @@ module.exports = {
         { name: '📈 Diff (item1 → item2)', value:
           `⚔️ ATK: ${diff(it1.atk, it2.atk)}\n` +
           `🛡️ DEF: ${diff(it1.def, it2.def)}\n` +
-          `❤️ Heal: ${diff(it1.heal, it2.heal)}\n` +
+          `❤️ Heal: ${healDiff(it1, it2)}\n` +
           `💰 Price: ${diff(it1.price, it2.price)}\n` +
           `🔒 Min LV: ${diff(it1.min_level, it2.min_level)}`
         },

@@ -1,7 +1,13 @@
-// Admin command để quản lý gather zones (mining/fishing)
+// Admin command để quản lý gather zones (mining/fishing/foraging).
+//
+// Danh sách nghề KHÔNG viết cứng ở đây: lấy từ jobs.JOB_TYPES (nguồn duy nhất).
+// Trước đây `job` bị chặn cứng ở mining|fishing nên admin không tạo được zone
+// cho nghề mới nếu không sửa code.
 const { EmbedBuilder } = require('discord.js');
 const { getItem } = require('../game/items');
 const gz = require('../game/gather_zones');
+const jobs = require('../game/jobs');
+const db = require('../db/database');
 const { getRestTokens, parseKV } = require('../game/argparse');
 
 function isAdmin(msg) {
@@ -24,8 +30,9 @@ module.exports = {
     if (!sub || sub === 'help') {
       return msg.reply({ embeds: [new EmbedBuilder().setColor(0xED4245).setTitle('🛠️ Gather Zone Admin')
         .setDescription([
-          `\`${prefix}gz list [mining|fishing]\` — list zones`,
-          `\`${prefix}gz create <id> job=mining name="..." icon="🪨" minlv=10 cd=30000 xp=20 desc="..."\``,
+          `\`${prefix}gz list [${jobs.GATHER_JOB_TYPES.join('|')}]\` — list zones`,
+          `\`${prefix}gz create <id> job=${jobs.GATHER_JOB_TYPES[0]} name="..." icon="🪨" minlv=10 cd=30000 xp=20 desc="..."\``,
+          `   job nhận: ${jobs.GATHER_JOB_TYPES.join(' / ')}`,
           `\`${prefix}gz delete <id>\``,
           `\`${prefix}gz drop <zone_id> <item_id> chance=0.5 qmin=1 qmax=3\``,
           `\`${prefix}gz undrop <zone_id> <item_id>\``,
@@ -36,9 +43,12 @@ module.exports = {
 
     if (sub === 'list') {
       const filter = args[1]?.toLowerCase();
-      const jobs = filter ? [filter] : ['mining', 'fishing'];
+      // Liệt kê theo loại zone ĐANG CÓ trong DB (admin tạo nghề mới là tự hiện),
+      // không dùng danh sách ['mining','fishing'] viết cứng.
+      const present = db.prepare('SELECT DISTINCT job_type FROM gather_zones ORDER BY job_type').all().map(r => r.job_type);
+      const jobTypes = filter ? [filter] : present;
       const embed = new EmbedBuilder().setColor(0xED4245).setTitle('🗺️ Gather Zones');
-      for (const jt of jobs) {
+      for (const jt of jobTypes) {
         const zones = gz.getZonesByJob(jt);
         if (zones.length === 0) continue;
         const lines = zones.map(z => `\`${z.id}\` ${z.icon} ${z.name} (lv${z.min_job_level}+, cd${z.cooldown_ms/1000}s, +${z.base_xp}xp)`);
@@ -53,8 +63,10 @@ module.exports = {
       if (!id) return msg.reply('❌ Thiếu id.');
       if (gz.getZone(id)) return msg.reply('❌ Id đã tồn tại.');
       const kv = parseKV(tokens.slice(1));
-      if (!kv.name || !kv.job) return msg.reply('❌ Cần `name="..."` và `job=mining|fishing`.');
-      if (!['mining', 'fishing'].includes(kv.job)) return msg.reply('❌ `job` phải là `mining` hoặc `fishing`.');
+      if (!kv.name || !kv.job) return msg.reply(`❌ Cần \`name="..."\` và \`job=${jobs.GATHER_JOB_TYPES.join('|')}\`.`);
+      if (!jobs.GATHER_JOB_TYPES.includes(kv.job)) {
+        return msg.reply(`❌ \`job\` phải là: ${jobs.GATHER_JOB_TYPES.map(j => `\`${j}\``).join(', ')}.`);
+      }
       const intOr = (v, d) => { const n = parseInt(v); return isNaN(n) ? d : n; };
       const z = gz.createZone({
         id, job_type: kv.job, name: kv.name, icon: kv.icon || '',

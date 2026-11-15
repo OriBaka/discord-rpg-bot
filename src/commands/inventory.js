@@ -3,6 +3,7 @@ const { getPlayer, getInventory } = require('../game/player');
 const { getItem } = require('../game/items');
 const { tierInfo } = require('../game/tiers');
 const { getEquipped } = require('../game/slots');
+const display = require('../game/item_display');
 
 // Map các filter alias
 // Trả về { types: [...], armorSlots: [...], accessoryTypes: [...], label: string }
@@ -102,35 +103,28 @@ module.exports = {
       return msg.reply(`📭 Không có item nào trong túi khớp filter **${filter.label}**.`);
     }
 
-    // Group: armor tách theo armor_slot, accessory tách theo accessory_type
+    // Group: armor tách theo armor_slot, accessory tách theo accessory_type.
+    //
+    // Bản cũ duyệt `groupOrder` viết cứng rồi `if (!groups[k]) continue` — nghĩa
+    // là nhóm nào KHÔNG có trong danh sách đó thì bị bỏ khỏi túi đồ, không báo
+    // gì. Item type lạ (vd lootbox do admin tạo) vì thế "biến mất" khỏi %inv
+    // dù vẫn nằm trong DB. Nay nhãn/thứ tự lấy từ item_display và nhóm lạ được
+    // xếp cuối, KHÔNG bị bỏ.
     const groups = {};
-    const groupOrder = [
-      'weapon', 'offhand',
-      'head', 'chest', 'legs', 'feet', 'hands',
-      'ring', 'necklace', 'special',
-      'consumable', 'material', 'pet',
-    ];
-    const groupLabel = {
-      weapon: '🗡️ Vũ khí', offhand: '🛡️ Tay phụ',
-      head: '⛑️ Đầu', chest: '👕 Thân', legs: '👖 Quần', feet: '👢 Giày', hands: '🧤 Găng',
-      ring: '💍 Nhẫn', necklace: '📿 Dây chuyền', special: '✨ Đặc biệt',
-      consumable: '🧪 Tiêu hao', material: '📦 Nguyên liệu', pet: '🐾 Pet',
-    };
-
+    const groupLabel = {};
     for (const it of enriched) {
-      let k;
-      if (it.type === 'armor') k = it.armor_slot || 'chest';
-      else if (it.type === 'accessory') k = it.accessory_type || 'special';
-      else k = it.type;
-      (groups[k] = groups[k] || []).push(it);
+      const g = display.groupOf(it);
+      groupLabel[g.key] = g.label;
+      (groups[g.key] = groups[g.key] || []).push(it);
     }
+    const orderedKeys = display.sortGroupKeys(Object.keys(groups));
 
     const embed = new EmbedBuilder()
       .setColor(0xFEE75C)
       .setTitle(`🎒 Túi đồ — ${filter.label}`)
       .setFooter({ text: `${prefix}equip <id> để mặc • ${prefix}use <id> dùng • ${prefix}sell <id> bán` });
 
-    for (const k of groupOrder) {
+    for (const k of orderedKeys) {
       if (!groups[k]) continue;
       groups[k].sort((a, b) => {
         const ta = tierInfo(a.tier).order, tb = tierInfo(b.tier).order;

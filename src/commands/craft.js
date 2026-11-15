@@ -33,15 +33,42 @@ function classifyRecipe(recipe) {
 }
 
 // Filter options cho craft (loại đa dạng)
-const CRAFT_FILTERS = [
-  { key: 'all',        label: 'All',        emoji: '📜' },
-  { key: 'material',   label: 'Ingot',      emoji: '📦' },
-  { key: 'weapon',     label: 'Weapon',     emoji: '⚔️' },
-  { key: 'armor',      label: 'Armor',      emoji: '🛡️' },
-  { key: 'tool',       label: 'Tool',       emoji: '⛏️' },
-];
+// Filter sinh TỪ DỮ LIỆU (xem blog lý do ở shop.js): bản cũ có 4 filter cố
+// định nên recipe ra 'accessory' hoặc 'other' chỉ hiện khi bấm All — thêm loại
+// sản phẩm mới là nó vô hình sau filter.
+const CRAFT_CATEGORY_META = {
+  material:   { label: 'Ingot',    emoji: '📦' },
+  weapon:     { label: 'Weapon',   emoji: '⚔️' },
+  armor:      { label: 'Armor',    emoji: '🛡️' },
+  accessory:  { label: 'Acc',      emoji: '✨' },
+  tool:       { label: 'Tool',     emoji: '⛏️' },
+  consumable: { label: 'Food',     emoji: '🍲' },
+  other:      { label: 'Khác',     emoji: '📦' },
+};
 
-// Filter options cho cook (chỉ có consumable, không cần filter → 1 nhóm All)
+function buildCraftFilters(all) {
+  const counts = new Map();
+  for (const r of all) {
+    const k = classifyRecipe(r);
+    counts.set(k, (counts.get(k) || 0) + 1);
+  }
+  const cats = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([key]) => ({ key, ...(CRAFT_CATEGORY_META[key] || { label: key, emoji: '📦' }) }));
+  return [{ key: 'all', label: 'All', emoji: '📜' }, ...cats];
+}
+
+// Mọi loại sản phẩm ĐANG CÓ (không giới hạn 4 nút) — dùng để validate tham số,
+// nhờ vậy `%craft list accessory` vẫn lọc được dù 'accessory' hiếm nên không
+// có nút riêng.
+function craftCategories(all) {
+  const set = new Set();
+  for (const r of all) set.add(classifyRecipe(r));
+  return set;
+}
+
+// Cook: mọi recipe đều ra consumable → chỉ cần All
 const COOK_FILTERS = [
   { key: 'all', label: 'All', emoji: '🍽️' },
 ];
@@ -64,20 +91,21 @@ function renderRecipesPage({ msg, userId, type, filter, page, jobLevel, replyFn 
   const jobType = type === 'craft' ? 'crafting' : 'cooking';
   const icon = type === 'craft' ? '⚒️' : '👨‍🍳';
   const color = type === 'craft' ? 0xE67E22 : 0xF1C40F;
-  const filterOpts = type === 'craft' ? CRAFT_FILTERS : COOK_FILTERS;
-
   const all = recipes.getRecipesByType(type);
-  const filtered = filter === 'all' ? all : all.filter(r => classifyRecipe(r) === filter);
+  const filterOpts = type === 'craft' ? buildCraftFilters(all) : COOK_FILTERS;
+  const valid = (f) => f === 'all' || craftCategories(all).has(f);
+  const active = valid(filter) ? filter : 'all';
+  const filtered = active === 'all' ? all : all.filter(r => classifyRecipe(r) === active);
   // Sort by min_job_level asc
   filtered.sort((a, b) => a.min_job_level - b.min_job_level || a.id.localeCompare(b.id));
 
   const prefix = require('../game/prefix').getPrefix();
-  const filterLabel = filterOpts.find(f => f.key === filter)?.label || 'All';
+  const filterLabel = active === 'all' ? 'All' : (CRAFT_CATEGORY_META[active]?.label || active);
   const { embed, components } = paginator.build({
     domain: type, // 'craft' or 'cook'
     userId,
     items: filtered,
-    filter,
+    filter: active,
     filterOptions: filterOpts,
     page,
     title: `${icon} ${type === 'craft' ? 'Crafting' : 'Cooking'} Recipes — ${filterLabel} — Lv.${jobLevel}`,
@@ -114,8 +142,8 @@ async function handleCommand(msg, args, type) {
   if (sub === 'list' || sub === 'recipes' || !sub) {
     // Có thể pass filter qua arg: %craft list weapon
     const filterArg = (args[1] || 'all').toLowerCase();
-    const filterOpts = type === 'craft' ? CRAFT_FILTERS : COOK_FILTERS;
-    const filter = filterOpts.find(f => f.key === filterArg) ? filterArg : 'all';
+    const allRecipes = recipes.getRecipesByType(type);
+    const filter = (filterArg === 'all' || craftCategories(allRecipes).has(filterArg)) ? filterArg : 'all';
     return renderRecipesPage({
       msg, userId: msg.author.id, type, filter, page: 0, jobLevel: job.level,
       replyFn: (opts) => msg.reply(opts),

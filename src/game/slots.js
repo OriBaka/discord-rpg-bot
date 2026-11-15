@@ -259,9 +259,34 @@ function clearEquipped(userId, slotPattern) {
 }
 
 // ===== Tính chỉ số hiệu lực =====
-function getTotalBonus(userId) {
+// Hệ số DEF của trang bị theo class — xem giải thích dài trong classes.js.
+// Chiến Binh 1.0 (mặc giáp nặng, ăn đủ DEF), Cung Thủ 0.72, Pháp Sư 0.5.
+// Mọi class dùng CHUNG một bảng giáp; khác biệt nằm ở hệ số này, không ở
+// việc khoá món đồ theo class (trước đây phần lớn giáp là class_req=melee
+// nên Pháp Sư/Cung Thủ chỉ mặc được đồ vải Lv.1 — xem CAN_BANG.md).
+function armorShareOf(player) {
+  try {
+    const { CLASSES } = require('./classes');
+    const cls = CLASSES[player && player.primary_class];
+    if (cls && typeof cls.armor_share === 'number') return cls.armor_share;
+  } catch { /* classes.js lỗi thì dùng 1.0 — không được làm sập combat */ }
+  return 1;
+}
+
+// Trần DEF cộng thêm từ trang bị.
+//
+// Hệ số theo class chỉ có nghĩa nếu DEF của món đồ KHÔNG bị nhân hai lần. Nếu
+// ai đó sau này lại cho class một trường `def` cộng dồn theo % giáp thì hệ số
+// này sẽ cộng hưởng và phá vỡ cân bằng. Chặn cứng ở đây để lỗi đó lộ ra ngay
+// trong test thay vì thành một class lặng lẽ mạnh hơn 40%.
+const MAX_GEAR_DEF = 500;
+
+// `player` là object player (cần primary_class). Không truyền thì giữ hành vi
+// cũ (hệ số 1) — dùng cho các lời gọi chỉ cần biết tổng ATK.
+function getTotalBonus(userId, player = null) {
   const equipped = getEquipped(userId);
   let atk = 0, def = 0, heal = 0;
+  const share = armorShareOf(player);
   // Cấp nâng cấp đọc 1 lần cho cả lượt — tránh 1 query mỗi slot.
   // Tra theo ITEM_ID (không theo slot): nâng cấp thuộc về loại vũ khí, nên
   // thay vũ khí khác vào slot không kế thừa cấp.
@@ -283,7 +308,7 @@ function getTotalBonus(userId) {
       } catch { /* bỏ qua nếu module lỗi — không được làm sập combat */ }
     }
   }
-  return { atk, def, heal };
+  return { atk, def: Math.min(MAX_GEAR_DEF, Math.round(def * share)), heal };
 }
 
 // ===== Tìm slot phù hợp để equip 1 item =====
@@ -331,6 +356,7 @@ function isItemValidForSlot(item, slotId) {
 }
 
 module.exports = {
+  MAX_GEAR_DEF,
   SLOTS, SLOT_ORDER,
   migrate,
   getEquipped, setEquipped, clearEquipped,

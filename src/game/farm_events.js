@@ -136,12 +136,43 @@ const TREASURES = {
   lake: ['gem_sapphire', 'fish_tuna'],
   ocean: ['fish_swordfish', 'diamond'],
   void_pool: ['void_essence', 'fish_void'],
+  // Foraging — toàn món ĐÃ CÓ nguồn khác (shop/khoáng), kho báu chỉ là đường tắt
+  sunlit_meadow: ['potion_s', 'leather_necklace'],
+  whisper_woods: ['potion_m', 'silver_ring'],
+  mossy_marsh: ['potion_percent', 'gem_sapphire'],
+  ancient_grove: ['potion_full', 'gold_ingot'],
+  world_tree_roots: ['potion_astral', 'mithril_ingot'],
 };
+
+// Pool dự phòng theo NGHỀ, cho các zone do admin tự tạo bằng `%gz create`.
+//
+// Trước đây zone không có tên trong bảng TREASURES thì `rollTreasure` trả null
+// vĩnh viễn — zone admin tạo ra là zone "kém" hơn zone seed ở một điểm mà không
+// ai biết. Fallback chỉ dùng món đã có nguồn khác, giữ nguyên tinh thần
+// "kho báu là đường tắt may mắn, không phải nguồn duy nhất".
+const DEFAULT_TREASURES_BY_JOB = {
+  mining:   ['iron_ingot', 'gem_sapphire'],
+  fishing:  ['fish_salmon', 'fish_golden'],
+  foraging: ['herb_rare', 'potion_m'],
+};
+
+function treasurePool(zoneId) {
+  const pool = TREASURES[zoneId];
+  if (pool && pool.length > 0) return pool;
+  // Zone lạ: tra job_type trong DB. Không có DB/không rõ nghề → không rơi.
+  try {
+    const row = db.prepare('SELECT job_type FROM gather_zones WHERE id = ?').get(zoneId);
+    const fallback = row && DEFAULT_TREASURES_BY_JOB[row.job_type];
+    return fallback && fallback.length > 0 ? fallback : null;
+  } catch {
+    return null;
+  }
+}
 
 function rollTreasure(zoneId, rng = Math.random) {
   if (rng() >= TREASURE_CHANCE) return null;
-  const pool = TREASURES[zoneId];
-  if (!pool || pool.length === 0) return null;
+  const pool = treasurePool(zoneId);
+  if (!pool) return null;
   const itemId = pool[Math.floor(rng() * pool.length)];
   const qty = 1;
   return { item_id: itemId, qty };
@@ -152,5 +183,5 @@ module.exports = {
   getStreak, bumpStreak, resetStreak, streakMult, streakLabel,
   STREAK_TIERS, STREAK_TIMEOUT_MS,
   rollVein, VEIN_CHANCE,
-  rollTreasure, TREASURES, TREASURE_CHANCE,
+  rollTreasure, treasurePool, TREASURES, DEFAULT_TREASURES_BY_JOB, TREASURE_CHANCE,
 };

@@ -24,7 +24,8 @@ module.exports = {
     if (!p) return msg.reply(`❌ Bạn chưa có nhân vật. Gõ \`${prefix}start\` để tạo!`);
 
     const eff = getEffectiveStats(p);
-    const bonus = getTotalBonus(msg.author.id);
+    // Truyền player để áp hệ số giáp theo class (xem classes.js).
+    const bonus = getTotalBonus(msg.author.id, p);
     const equipped = getEquipped(msg.author.id);
     const need = xpToNext(p.level);
     const cls = p.primary_class ? classInfo(p.primary_class) : null;

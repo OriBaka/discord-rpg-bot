@@ -31,7 +31,8 @@ module.exports = {
     }
 
     const equipped = getEquipped(target.id);
-    const bonus = getTotalBonus(target.id);
+    // Truyền player để áp hệ số giáp theo class (xem classes.js).
+    const bonus = getTotalBonus(target.id, p);
     const cls = p.primary_class ? classInfo(p.primary_class) : null;
 
     // Tạo dòng cho mỗi slot

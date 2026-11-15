@@ -219,7 +219,10 @@ async function handleAdmin(msg, args, prefix) {
         if (!p) return msg.reply(`❌ Pet \`${kv.target}\` không tồn tại!\n💡 Gõ \`${prefix}pet collection\` để xem.`);
       }
       if (kv.obj === 'pet_tier') {
-        const valid = ['common','rare','epic','legendary'];
+        // Danh sách tier lấy từ tiers.js (nguồn duy nhất). Viết cứng ở đây thì
+        // thêm tier mới vào TIERS vẫn bị lệnh từ chối.
+        const { TIERS } = require('../game/tiers');
+        const valid = Object.keys(TIERS);
         if (!valid.includes(kv.target)) return msg.reply(`❌ tier phải là: ${valid.join('/')}`);
       }
     } else if (['item_collect','kill_monster','pet_own','pet_tier'].includes(kv.obj)) {

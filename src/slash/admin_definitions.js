@@ -89,10 +89,14 @@ const QUEST_TYPE_CHOICES = [
   { name: 'Weekly', value: 'weekly' },
 ];
 
-const JOB_CHOICES = [
-  { name: 'Mining', value: 'mining' },
-  { name: 'Fishing', value: 'fishing' },
-];
+// Sinh từ jobs.js (nguồn duy nhất): thêm nghề thu hoạch mới là slash admin tự
+// có lựa chọn, không phải sửa file này (trước đây chỉ có mining/fishing nên
+// `/gzadm create job=foraging` không tồn tại).
+const jobsMeta = require('../game/jobs');
+const JOB_CHOICES = jobsMeta.GATHER_JOB_TYPES.map(t => ({
+  name: `${jobsMeta.JOB_INFO[t]?.icon || ''} ${jobsMeta.JOB_INFO[t]?.name || t}`.trim(),
+  value: t,
+}));
 
 // Helper: ẩn khỏi non-admin
 const ADMIN_ONLY = PermissionFlagsBits.Administrator;
@@ -138,7 +142,7 @@ const definitions = [
         .addStringOption(o => o.setName('text').setDescription('Nội dung').setRequired(true)))
       .addSubcommand(s => s.setName('cdlist').setDescription('Xem cooldown overrides'))
       .addSubcommand(s => s.setName('cdset').setDescription('Set cooldown override (ms)')
-        .addStringOption(o => o.setName('action').setDescription('hunt/heal/mining/fishing/mining_<zone>/...').setRequired(true))
+        .addStringOption(o => o.setName('action').setDescription('hunt/heal/mining/fishing/foraging/<job>_<zone>/...').setRequired(true))
         .addIntegerOption(o => o.setName('ms').setDescription('Milliseconds').setRequired(true).setMinValue(0)))
       .addSubcommand(s => s.setName('cdreset').setDescription('Reset 1 cooldown về default')
         .addStringOption(o => o.setName('action').setDescription('action key').setRequired(true)))
@@ -429,7 +433,7 @@ const definitions = [
   {
     data: new SlashCommandBuilder()
       .setName('gzadm')
-      .setDescription('Admin: quản lý mining/fishing zones')
+      .setDescription('Admin: quản lý zone mining/fishing/foraging')
       .addSubcommand(s => s.setName('create').setDescription('Tạo zone')
         .addStringOption(o => o.setName('id').setDescription('ID').setRequired(true))
         .addStringOption(o => o.setName('name').setDescription('Tên').setRequired(true))

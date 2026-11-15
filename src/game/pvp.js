@@ -1,5 +1,9 @@
 // PvP duel system
 const db = require('./../db/database');
+const { mitigation } = require('./mitigation');
+// KHÔNG require combat ở top-level: combat.js ↔ pvp.js tạo vòng require, và
+// test circular.test.js bắt được cảnh báo đó. Lấy hằng số crit bên trong hàm.
+const critOf = () => require('./combat');
 
 const DUEL_EXPIRE_MS = 60 * 1000;          // Lời mời expire sau 60s
 const DUEL_COOLDOWN_MS = 5 * 60 * 1000;    // 5 phút giữa các duel
@@ -105,27 +109,49 @@ function simulateDuel(p1, p2, stats1, stats2) {
   const log = [];
   let round = 0;
 
-  // Người có level cao hơn đánh trước; bằng nhau thì challenger trước
-  let p1First = (p1.level >= p2.level);
+  // Ai đánh trước: level cao hơn thì trước; BẰNG LEVEL thì tung đồng xu.
+  //
+  // Trước đây bằng level luôn cho challenger đánh trước, và vì sát thương
+  // không có crit/ngẫu nhiên nên trận đấu tất định: đo được 2000 trận, người
+  // đi trước thắng 100% ở mọi cấp (trận chỉ 3-5 hiệp). Như vậy PvP không đo
+  // thực lực mà đo thứ tự lượt — người được mời duel luôn thua.
+  let p1First = p1.level > p2.level ? true
+    : p1.level < p2.level ? false
+    : Math.random() < 0.5;
 
   while (hp1 > 0 && hp2 > 0 && round < 30) {
     round++;
     const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
 
+    // Sát thương = atk × (1 - giảm thương theo DEF), DÙNG CHUNG mitigation.js.
+    //
+    // Trước đây PvP trừ thẳng `atk - def`. Với thang chỉ số mới (DEF Lv.1 đã 41
+    // khi mặc đủ giáp, Lv.45 hàng trăm) thì atk - def ra số âm ở gần như mọi
+    // cặp đấu → mọi đòn đều bị kẹp về 1 sát thương, trận kéo 30 hiệp và người
+    // nhiều HP luôn thắng bất kể ATK. PvP phải dùng đúng công thức của PvE.
+    // Crit 15% × 1.6 như PvE (combat.js) — nếu không, PvP hoàn toàn tất định
+    // và kết quả chỉ phụ thuộc ai đi trước.
+    const { CRIT_CHANCE, CRIT_MULT } = critOf();
+    const hit = (a, d) => {
+      let dmg = Math.max(1, Math.round(a.atk * (1 - mitigation(d.def)) + rand(-3, 4)));
+      if (Math.random() < CRIT_CHANCE) dmg = Math.round(dmg * CRIT_MULT);
+      return dmg;
+    };
+
     if (p1First) {
-      const dmg = Math.max(1, stats1.atk - stats2.def + rand(-3, 4));
+      const dmg = hit(stats1, stats2);
       hp2 -= dmg;
       log.push(`⚔️ ${p1.name} → ${p2.name}: **${dmg}** dmg (HP ${Math.max(0, hp2)})`);
       if (hp2 <= 0) break;
-      const dmg2 = Math.max(1, stats2.atk - stats1.def + rand(-3, 4));
+      const dmg2 = hit(stats2, stats1);
       hp1 -= dmg2;
       log.push(`💥 ${p2.name} → ${p1.name}: **${dmg2}** dmg (HP ${Math.max(0, hp1)})`);
     } else {
-      const dmg = Math.max(1, stats2.atk - stats1.def + rand(-3, 4));
+      const dmg = hit(stats2, stats1);
       hp1 -= dmg;
       log.push(`⚔️ ${p2.name} → ${p1.name}: **${dmg}** dmg (HP ${Math.max(0, hp1)})`);
       if (hp1 <= 0) break;
-      const dmg2 = Math.max(1, stats1.atk - stats2.def + rand(-3, 4));
+      const dmg2 = hit(stats1, stats2);
       hp2 -= dmg2;
       log.push(`💥 ${p1.name} → ${p2.name}: **${dmg2}** dmg (HP ${Math.max(0, hp2)})`);
     }
