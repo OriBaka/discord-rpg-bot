@@ -300,3 +300,43 @@ test('nguyên liệu foraging không bán rẻ hơn bậc thang: zone cao hơn �
     for (const d of drops) assert.ok(order[d.tier] >= 1, `${d.id} tier lạ: ${d.tier}`);
   }
 });
+
+// ─────────────────────────────────────────────────────────────
+// 8. Kho báu: zone admin tự tạo không được "kém" hơn zone seed
+// ─────────────────────────────────────────────────────────────
+test('zone admin tạo (không có bảng kho báu riêng) vẫn có kho báu dự phòng', () => {
+  const farm = require(`${ROOT}/src/game/farm_events`);
+  const id = `t_forage_${++seq}`;
+  gz.createZone({ id, job_type: 'foraging', name: 'Fallback Zone', min_job_level: 1 });
+  try {
+    // Zone seed: pool riêng
+    const seeded = farm.treasurePool('sunlit_meadow');
+    assert.ok(seeded && seeded.length > 0, 'zone seed mất pool kho báu');
+
+    // Zone admin: trước đây trả null vĩnh viễn → không bao giờ rơi kho báu
+    const pool = farm.treasurePool(id);
+    assert.ok(pool && pool.length > 0, 'zone admin tạo không có kho báu dự phòng');
+    for (const itemId of pool) {
+      assert.ok(db.prepare('SELECT id FROM items WHERE id=?').get(itemId),
+        `kho báu dự phòng trỏ tới item không tồn tại: ${itemId}`);
+    }
+
+    // rng = 0 → chắc chắn trúng kho báu, món phải nằm trong pool
+    const drop = farm.rollTreasure(id, () => 0);
+    assert.ok(drop && pool.includes(drop.item_id), `rollTreasure sai: ${JSON.stringify(drop)}`);
+  } finally {
+    gz.deleteZone(id);
+  }
+});
+
+test('mọi zone seed đều có pool kho báu riêng, món nào cũng tồn tại', () => {
+  const farm = require(`${ROOT}/src/game/farm_events`);
+  const all = db.prepare('SELECT id FROM gather_zones').all();
+  for (const z of all) {
+    const pool = farm.treasurePool(z.id);
+    assert.ok(pool && pool.length > 0, `zone ${z.id} không có kho báu`);
+    for (const id of pool) {
+      assert.ok(db.prepare('SELECT id FROM items WHERE id=?').get(id), `${z.id}: kho báu ${id} không tồn tại`);
+    }
+  }
+});

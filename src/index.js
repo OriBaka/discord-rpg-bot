@@ -110,21 +110,12 @@ client.once('ready', async () => {
   setInterval(settleRaid, 60 * 60 * 1000);   // rồi mỗi giờ
 });
 
-client.on('messageCreate', async (msg) => {
-  if (msg.author.bot) return;
-  if (!msg.content.startsWith(PREFIX)) return;
+// Rate-limit cho phản hồi "không có lệnh này" (1 lần / 30s / người)
+const unknownCmdLimiter = require('./game/command_hint').createRateLimiter();
 
-  const args = msg.content.slice(PREFIX.length).trim().split(/\s+/);
-  const name = (args.shift() || '').toLowerCase();
-  const cmd = client.commands.get(name);
-  if (!cmd) return;
-
-  try {
-    await cmd.execute(msg, args);
-  } catch (err) {
-    console.error(err);
-    msg.reply('⚠️ Có lỗi xảy ra, kiểm tra log nhé.').catch(()=>{});
-  }
+client.on('messageCreate', (msg) => {
+  const { handleMessage } = require('./game/message_router');
+  return handleMessage(msg, { commands: client.commands, prefix: PREFIX, limiter: unknownCmdLimiter });
 });
 
 // ===== Interactions: Buttons + Slash + Autocomplete =====
