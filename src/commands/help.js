@@ -63,6 +63,8 @@ module.exports = {
           `\`${prefix}pet active <id>\` chọn pet đi theo\n` +
           `\`${prefix}pet shards\` xem mảnh pet\n` +
           `\`${prefix}pet combine <id>\` ghép mảnh thành pet\n` +
+          `\`${prefix}pet evolve [<id>]\` tiến hoá pet bằng mảnh\n` +
+          `\`${prefix}pet map\` pet sống theo vùng khí hậu nào\n` +
           `\`${prefix}pet collection\` xem tất cả pet có thể có` },
         { name: '🛠️ Nghề', value:
           `\`${prefix}job [@user]\` xem level các nghề\n` +

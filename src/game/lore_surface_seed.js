@@ -119,11 +119,22 @@ function migrate() {
   const updGather = db.prepare('UPDATE gather_zones SET desc = ? WHERE id = ?');
   for (const [id, d] of Object.entries(GATHER_ZONES)) gatherN += updGather.run(d, id).changes;
 
-  const updPet = db.prepare('UPDATE pets SET desc = ? WHERE id = ?');
-  for (const [id, d] of Object.entries(PETS)) petN += updPet.run(d, id).changes;
+  // Bảng `pets` do pets.migrate() tạo. Nếu module đó đang nạp dở (ai đó require
+  // `game/pets` TRƯỚC `db/database`), bảng chưa tồn tại → prepare() ném
+  // "no such table: pets" và cả quá trình khởi động chết. Bỏ qua êm, lần chạy
+  // sau pets.migrate() sẽ tự ghi lore (meta key chỉ chốt sau khi chạy xong).
+  const hasPets = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='pets'").get();
+  if (hasPets) {
+    const updPet = db.prepare('UPDATE pets SET desc = ? WHERE id = ?');
+    for (const [id, d] of Object.entries(PETS)) petN += updPet.run(d, id).changes;
+  }
 
-  db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)')
-    .run(META_KEY, String(Date.now()));
+  // Chỉ chốt meta key khi đã ghi được cả 3 bảng; thiếu `pets` thì lần khởi động
+  // sau sẽ thử lại (các UPDATE ở trên idempotent nên chạy lại vô hại).
+  if (hasPets) {
+    db.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)')
+      .run(META_KEY, String(Date.now()));
+  }
 
   if (achN + gatherN + petN > 0) {
     console.log(`📖 Lore bề mặt: ${achN} thành tựu, ${gatherN} khu khai thác, ${petN} thú nuôi`);
