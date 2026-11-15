@@ -41,9 +41,12 @@ module.exports = {
           `\`${prefix}upgrade list\` bảng chi phí nâng cấp\n` +
           `Slots: weapon, offhand, head, chest, legs, feet, hands, ring1, ring2, necklace, special` },
         { name: '🏪 Chợ', value:
-          `\`${prefix}shop\` xem cửa hàng\n` +
-          `\`${prefix}buy <id> [qty]\` mua đồ\n` +
-          `\`${prefix}sell <id> [qty]\` bán đồ` },
+          `\`${prefix}shop\` xem cửa hàng NPC\n` +
+          `\`${prefix}buy <id> [qty]\` mua ở shop\n` +
+          `\`${prefix}sell <id> [qty]\` bán cho NPC (giá cố định)\n` +
+          `\`${prefix}market\` chợ NGƯỜI CHƠI — bán nguyên liệu/đồ hiếm cho người khác\n` +
+          `\`${prefix}market sell <id> <giá> [qty]\` đăng bán • \`${prefix}market buy <#id>\` mua\n` +
+          `\`${prefix}market mine\` tin của bạn • \`${prefix}market recent\` giá gần đây` },
         { name: '📚 Tra cứu', value:
           `\`${prefix}info help\` xem các lệnh tra cứu\n` +
           `\`${prefix}info item <id>\` chi tiết item\n` +
