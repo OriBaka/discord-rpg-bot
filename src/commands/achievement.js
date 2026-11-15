@@ -91,7 +91,8 @@ module.exports = {
         { name: '📈 Stats', value:
           `🗡️ Total kills: **${stats.total_kills}**\n` +
           `💰 Total gold earned: **${stats.total_gold}**\n` +
-          `📜 Quests completed: **${stats.total_quests}**` },
+          `📜 Quests completed: **${stats.total_quests}**\n` +
+          `🛠️ Đã chế/nấu: **${stats.total_crafts || 0}** món` },
       );
 
     if (userAchs.length > 0) {
@@ -121,6 +122,7 @@ async function handleAdmin(msg, args, prefix) {
         'obj values:',
         '`kill_count` `kill_monster`(target=mob_id) `level_reach` `gold_total` `quest_complete`',
         '`item_collect`(target=item_id) `pet_count` `pet_tier`(target=tier) `pet_own`(target=pet_id)',
+        '`job_level`(target=nghề: mining/fishing/foraging/cooking/crafting) `job_all_level`(mọi nghề) `craft_total`(số món đã chế)',
         '',
         '⚠️ Reward + title sẽ tự cấp khi user unlock achievement (qua hunt/quest/addItem).',
       ].join('\n'));
@@ -199,7 +201,8 @@ async function handleAdmin(msg, args, prefix) {
     if (achievements.getAchievement(id)) return msg.reply('❌ Id đã tồn tại.');
     const kv = parseKV(tokens.slice(1));
     if (!kv.name || !kv.obj) return msg.reply('❌ Cần `name="..."` và `obj=...`.');
-    const allowedObj = ['kill_count','kill_monster','level_reach','gold_total','item_collect','quest_complete','pet_count','pet_tier','pet_own'];
+    const allowedObj = ['kill_count','kill_monster','level_reach','gold_total','item_collect','quest_complete','pet_count','pet_tier','pet_own',
+      'job_level','job_all_level','craft_total'];
     if (!allowedObj.includes(kv.obj)) return msg.reply(`❌ obj phải là: ${allowedObj.join('/')}`);
 
     // === Validate target tồn tại ===
@@ -218,6 +221,14 @@ async function handleAdmin(msg, args, prefix) {
         const p = db.prepare('SELECT id FROM pets WHERE id = ?').get(kv.target);
         if (!p) return msg.reply(`❌ Pet \`${kv.target}\` không tồn tại!\n💡 Gõ \`${prefix}pet collection\` để xem.`);
       }
+      if (kv.obj === 'job_level') {
+        // Nghề lấy từ JOB_INFO (nguồn duy nhất) — viết cứng ở đây thì thêm nghề
+        // mới vẫn bị lệnh từ chối.
+        const { JOB_INFO } = require('../game/jobs');
+        if (!JOB_INFO[kv.target]) {
+          return msg.reply(`❌ Nghề \`${kv.target}\` không tồn tại. Hợp lệ: ${Object.keys(JOB_INFO).join('/')}`);
+        }
+      }
       if (kv.obj === 'pet_tier') {
         // Danh sách tier lấy từ tiers.js (nguồn duy nhất). Viết cứng ở đây thì
         // thêm tier mới vào TIERS vẫn bị lệnh từ chối.
@@ -225,6 +236,8 @@ async function handleAdmin(msg, args, prefix) {
         const valid = Object.keys(TIERS);
         if (!valid.includes(kv.target)) return msg.reply(`❌ tier phải là: ${valid.join('/')}`);
       }
+    } else if (kv.obj === 'job_level') {
+      return msg.reply('❌ obj=job_level cần có `target=<nghề>`.');
     } else if (['item_collect','kill_monster','pet_own','pet_tier'].includes(kv.obj)) {
       return msg.reply(`❌ obj=${kv.obj} cần có \`target=<id>\`.`);
     }

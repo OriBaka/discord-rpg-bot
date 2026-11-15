@@ -18,12 +18,12 @@ Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, 
 | ⚔️ Chiến đấu | `hunt` (mô phỏng nhanh) và `battle` (turn-based có nút bấm, elite/boss) |
 | 🗺️ Khu vực | 5 zone mở theo level, 18 quái, 38 loại nguyên liệu |
 | 🧪 Vật phẩm | 133 item: 4 độ hiếm (common/rare/epic/legendary), shop mua bán |
-| 🛠️ Nghề & chế tạo | 5 nghề: mining, fishing, foraging, cooking, crafting + 27 recipe |
+| 🛠️ Nghề & chế tạo | 5 nghề: mining, fishing, foraging, cooking, crafting + 27 recipe + 14 thành tựu nghề |
 | 🐾 Pet | 13 pet, drop trực tiếp hoặc ghép từ mảnh, cộng chỉ số khi đi theo |
 | 🏰 Bang hội | Tạo bang, mời thành viên, kho chung, buff vàng/XP/drop, BXH bang |
 | 🐲 Boss tuần (raid) | Cả server đánh chung một thanh máu, 5 lượt/tuần/người, chia thưởng theo hạng sát thương |
 | ⚔️ PvP & Trade | Duel có cược vàng + rating; trade item/vàng 2 chiều có bước xác nhận |
-| 📜 Quest & Thành tựu | Quest daily tự sinh (săn quái / vàng / cấp / thu hoạch / chế tác / cấp nghề / boss), quest custom (admin), 25 thành tựu có điểm và title |
+| 📜 Quest & Thành tựu | Quest daily tự sinh (săn quái / vàng / cấp / thu hoạch / chế tác / cấp nghề / boss), quest custom (admin), 39 thành tựu có điểm và title (gồm mốc cấp cho cả 5 nghề) |
 | 🎁 Khác | Daily, lootbox, redeem code, ảnh cho item/quái/zone/pet |
 
 ---
@@ -88,7 +88,7 @@ npm start
 Kiểm tra nhanh logic mà không cần token:
 
 ```bash
-npm test        # 70 test: hồi quy + smoke toàn bộ lệnh + circular require
+npm test        # 271 test: cân bằng, hồi quy, smoke mọi lệnh, chống nội dung chết
 ```
 
 ### 3. Deploy 24/7
@@ -236,13 +236,25 @@ Các lệnh gốc bên dưới **vẫn dùng được** như trước — `%adm`
 npm test
 ```
 
-Ba bộ test, tất cả chạy offline (không cần token, dùng SQLite tạm):
+Toàn bộ chạy offline (không cần token, tự tạo SQLite tạm), và chạy tự động trên
+mỗi push/PR qua GitHub Actions (`.github/workflows/test.yml`):
 
-| File | Nội dung |
-|---|---|
-| `test/regressions.test.js` | 13 test khoá các bug đã sửa: hồi HP, chống dup khi bán/trade, alias |
-| `test/smoke.test.js` | 47 test chạy mọi lệnh để bắt lỗi dây chuyền |
-| `test/circular.test.js` | 10 test chống circular require + kiểm tra migrate không bị bỏ qua |
+| File | Test | Nội dung |
+|---|---|---|
+| `test/balance.test.js` | 40 | Cân bằng quái/trang bị/bình máu — chặn hồi quy chỉ số |
+| `test/smoke.test.js` | 47 | Chạy mọi lệnh để bắt lỗi dây chuyền |
+| `test/gather.test.js` | 23 | Nghề hái lượm: zone, drop, cooldown, chế tác từ nguyên liệu |
+| `test/raid.test.js` | 23 | Boss tuần: chia lượt, sát thương, thưởng theo hạng |
+| `test/quests.test.js` | 21 | 4 objective quest mới (gather/craft/job_level/boss) + hook |
+| `test/freshness.test.js` | 19 | Nội dung thêm sau phải hiện ngay trong lệnh tra cứu |
+| `test/daily.test.js` | 18 | Điểm danh, chuỗi ngày, thưởng |
+| `test/docs.test.js` | 18 | README / `.env.example` / `%help` khớp với code thật |
+| `test/achievements_jobs.test.js` | 17 | Thành tựu nghề: mốc cấp, mọi nghề, số món đã chế |
+| `test/regressions.test.js` | 13 | Khoá bug đã sửa: hồi HP, chống dup khi bán/trade, alias |
+| `test/circular.test.js` | 10 | Chống circular require + migrate không bị bỏ qua |
+| `test/command_hint.test.js` | 9 | Gợi ý khi gõ sai lệnh |
+| `test/dead_content.test.js` | 6 | Mọi item phải có nguồn — chặn "nội dung chết" |
+| `test/lore.test.js` | 6 | Mô tả tiếng Việt cho quái/item/zone |
 
 ---
 

@@ -74,6 +74,9 @@ const OBJECTIVE_CHOICES = [
   { name: 'Pet Count', value: 'pet_count' },
   { name: 'Pet Tier', value: 'pet_tier' },
   { name: 'Pet Own', value: 'pet_own' },
+  { name: 'Job Level (cấp 1 nghề)', value: 'job_level' },
+  { name: 'Job All Level (mọi nghề)', value: 'job_all_level' },
+  { name: 'Craft Total (số món đã chế)', value: 'craft_total' },
 ];
 
 const QUEST_OBJ_CHOICES = [
