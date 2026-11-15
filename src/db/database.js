@@ -325,6 +325,10 @@ runMigrate('../game/daily', 'migrateDaily');
 // Phải chạy SAU guilds (dùng guild_id) và SAU players (bảng xếp hạng join).
 runMigrate('../game/raid', 'migrateRaid');
 
+// Chợ người chơi: bán nguyên liệu / đồ / vật phẩm hiếm cho người chơi khác
+// (trước đây chỉ có %sell bán cho NPC với giá cố định).
+runMigrate('../game/market', 'migrateMarket');
+
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();

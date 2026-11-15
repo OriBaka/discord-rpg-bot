@@ -349,6 +349,16 @@ async function handle(interaction) {
         });
       }
 
+      if (decoded.domain === 'market') {
+        const marketCmd = require('./commands/market');
+        return await marketCmd.renderMarketPage({
+          userId: decoded.userId,
+          filter: decoded.filter,
+          page: decoded.page,
+          replyFn: (opts) => interaction.update(opts),
+        });
+      }
+
       if (decoded.domain === 'shop') {
         const shopCmd = require('./commands/shop');
         const p = getPlayer(decoded.userId);

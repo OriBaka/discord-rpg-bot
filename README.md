@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **44 lệnh** prefix + **49 slash command** (34 người chơi + 15 admin)
+- **45 lệnh** prefix + **49 slash command** (34 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -136,7 +136,8 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 | Lệnh | Mô tả |
 |---|---|
 | `%shop` | Xem cửa hàng |
-| `%buy <id> [qty]` / `%sell <id> [qty]` | Mua / bán (không bán được món đang mặc) |
+| `%buy <id> [qty]` / `%sell <id> [qty]` | Mua / bán cho NPC (không bán được món đang mặc) |
+| `%market` / `%market sell <id> <giá> [qty]` / `%market buy <#id>` | Chợ NGƯỜI CHƠI: đăng bán nguyên liệu, đồ ăn, vũ khí/giáp không soulbound, vật phẩm hiếm (`mine`, `cancel`, `search`, `recent`) |
 | `%mine [zone]` | Đào mỏ (alias: `%dao`) |
 | `%fish [zone]` | Câu cá (alias: `%cau`) |
 | `%gather [zone]` | Hái lượm gỗ/thảo dược (foraging, alias: `%forage`, `%hai`) |
