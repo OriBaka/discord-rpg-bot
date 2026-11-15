@@ -112,6 +112,8 @@ module.exports = {
 
       // === Hooks: quest + stats ===
       quests.onKillMonster(msg.author.id, monster.id);
+      // Elite/boss (elite_tier >= 1) mới tính cho quest 'boss'
+      quests.onKillBoss(msg.author.id, monster.id, monster.elite_tier || 0);
       quests.onEarnGold(msg.author.id, goldGain);
       const stats = achievements.getPlayerStats(msg.author.id);
       achievements.updatePlayerStats(msg.author.id, {

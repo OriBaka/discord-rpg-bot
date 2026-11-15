@@ -81,6 +81,10 @@ const QUEST_OBJ_CHOICES = [
   { name: 'Gold (kiếm vàng)', value: 'gold' },
   { name: 'Level (đạt level)', value: 'level' },
   { name: 'Item (sở hữu item)', value: 'item' },
+  { name: 'Gather (thu hoạch nguyên liệu)', value: 'gather' },
+  { name: 'Craft (chế/nấu)', value: 'craft' },
+  { name: 'Job level (cấp nghề)', value: 'job_level' },
+  { name: 'Boss (hạ elite/boss)', value: 'boss' },
 ];
 
 const QUEST_TYPE_CHOICES = [
@@ -325,7 +329,7 @@ const definitions = [
         .addStringOption(o => o.setName('obj').setDescription('Objective').setRequired(true).addChoices(...QUEST_OBJ_CHOICES))
         .addIntegerOption(o => o.setName('qty').setDescription('Target quantity').setRequired(true).setMinValue(1))
         .addStringOption(o => o.setName('type').setDescription('Loại').setRequired(false).addChoices(...QUEST_TYPE_CHOICES))
-        .addStringOption(o => o.setName('target').setDescription('Target ID (item/mob) — để trống = bất kỳ').setRequired(false))
+        .addStringOption(o => o.setName('target').setDescription('Target: monster/item/recipe id hoặc job (trống = bất kỳ, trừ job_level)').setRequired(false))
         .addIntegerOption(o => o.setName('gold').setDescription('Reward gold').setRequired(false).setMinValue(0))
         .addIntegerOption(o => o.setName('xp').setDescription('Reward XP').setRequired(false).setMinValue(0))
         .addStringOption(o => o.setName('item').setDescription('Reward items "id:qty,id:qty"').setRequired(false))

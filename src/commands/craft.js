@@ -181,6 +181,8 @@ async function handleCommand(msg, args, type) {
 
   // Produce output
   addItem(msg.author.id, recipe.output_id, recipe.output_qty);
+  // Quest 'craft': chế/nấu thành công, tính theo số món tạo ra
+  require('../game/quests').onCraft(msg.author.id, recipe.id, recipe.output_qty);
   const xpRes = jobs.addJobXp(msg.author.id, jobType, recipe.xp_gain);
 
   const out = getItem(recipe.output_id);

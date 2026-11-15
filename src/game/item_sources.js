@@ -96,6 +96,15 @@ const EXTRA_DROP_MOBS = {
   astral_ruins: ['star_devourer', 'astral_sentinel'],
 };
 
+// Consumable cần bán ở shop nhưng trước đây không có nguồn nào.
+//
+// `potion_balance.js` đặt giá 1400 vàng cho potion_astral (85% max HP) — nhưng
+// shop chỉ bán 6 bình (potion_s → potion_ancient), nên bình mạnh thứ nhì trong
+// thang potion KHÔNG mua được ở đâu. Đây là module "nguồn item", đúng chỗ để vá.
+const SHOP_CONSUMABLES = [
+  ['potion_astral', 1400],
+];
+
 // Tỉ lệ drop: cấp càng cao càng hiếm
 const CHANCE = {
   main: 0.08,    // bộ chính của zone (Lv.30 / Lv.40)
@@ -114,6 +123,17 @@ function migrate() {
     if (!itemExists.get(id)) continue;
     setPrice.run(price, id, 'material');       // chỉ áp cho trang bị
     shopAdded += insShop.run(id).changes;
+  }
+
+  // --- 1b) Consumable bán ở shop (idempotent) ---
+  // Ghi giá TRỰC TIẾP vào shop: insShop ở trên copy `items.price`, mà giá đó
+  // còn do potion_balance.js sửa sau (1600 → 1400). Nếu copy thì shop sẽ bán
+  // potion_astral 1600 trong khi bảng cân bằng ghi 1400 — lệch giá âm thầm.
+  const insShopPriced = db.prepare('INSERT OR IGNORE INTO shop (item_id, price) VALUES (?, ?)');
+  for (const [id, price] of SHOP_CONSUMABLES) {
+    if (!itemExists.get(id)) continue;
+    db.prepare('UPDATE items SET price = ? WHERE id = ? AND (price IS NULL OR price = 0)').run(price, id);
+    shopAdded += insShopPriced.run(id, price).changes;
   }
 
   // --- 2) Drop từ quái ---
@@ -143,4 +163,4 @@ function migrate() {
   if (dropsAdded > 0) console.log(`🎁 Item sources: +${dropsAdded} drop trang bị từ quái`);
 }
 
-module.exports = { migrate, SHOP_GEAR, ZONE_DROPS, HIGH_TIER_EXTRA };
+module.exports = { SHOP_CONSUMABLES, migrate, SHOP_GEAR, ZONE_DROPS, HIGH_TIER_EXTRA };

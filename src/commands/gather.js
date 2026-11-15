@@ -127,12 +127,15 @@ module.exports = {
       else if (streak >= 2) bonusText += `\n🔥 Chuỗi **${streak}**`;
     }
 
+    // Đếm tổng nguyên liệu nhận được để cộng tiến độ quest 'gather'
+    let gatherQty = 0;
     let dropText = '';
     if (drops.length === 0 && !treasure) {
       dropText = '*Không hái được gì...*';
     } else {
       for (const d of drops) {
         addItem(msg.author.id, d.item_id, d.qty);
+        gatherQty += d.qty;
         const it = getItem(d.item_id);
         const t = tierInfo(it?.tier || 'common');
         dropText += `${t.emoji} +${d.qty}× ${it?.name || d.item_id}\n`;
@@ -145,6 +148,9 @@ module.exports = {
       }
     }
     dropText += bonusText;
+
+    // Quest 'gather': tính theo SỐ NGUYÊN LIỆU, không phải số lần bấm lệnh
+    require('../game/quests').onGather(msg.author.id, JOB, gatherQty);
 
     const xpResult = jobs.addJobXp(msg.author.id, JOB, zone.base_xp);
     let lvlText = '';

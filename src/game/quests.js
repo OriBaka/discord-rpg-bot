@@ -8,7 +8,7 @@ function migrate() {
       type        TEXT NOT NULL,           -- daily | weekly | custom
       name        TEXT NOT NULL,
       desc        TEXT NOT NULL DEFAULT '',
-      objective   TEXT NOT NULL,           -- kill | gold | level | item
+      objective   TEXT NOT NULL,           -- kill | gold | level | item | gather | craft | job_level | boss
       target_id   TEXT NOT NULL DEFAULT '', -- monster_id, item_id hoặc '' (bất kỳ)
       target_qty  INTEGER NOT NULL DEFAULT 1,
       reward_gold INTEGER NOT NULL DEFAULT 0,
@@ -148,6 +148,77 @@ function onItemCollect(userId, itemId) {
   }
 }
 
+// === Objective mới: gather / craft / job_level / boss ===
+//
+// Trước đây quest chỉ có 4 loại (kill/gold/level/item), nên nội dung mới như
+// nghề hái lượm, chế tác, boss không bao giờ được quest "dạy" cho người chơi:
+// họ không có lý do nào để thử. Bốn loại dưới đây bám đúng vào các hành động
+// đã có sẵn, target_id dùng lại quy ước cũ:
+//   gather    : target_id = job (mining|fishing|foraging) hoặc '' = nghề nào cũng tính
+//   craft     : target_id = recipe_id hoặc '' = món nào cũng tính
+//   job_level : target_id = job (bắt buộc), target_qty = cấp nghề cần đạt
+//   boss      : target_id = monster_id hoặc '' = elite/boss nào cũng tính
+function bumpObjective(userId, objective, targetId, amount = 1) {
+  const rows = db.prepare(`SELECT pq.progress, pq.quest_id, q.target_id, q.target_qty
+    FROM player_quests pq JOIN quests q ON q.id = pq.quest_id
+    WHERE pq.user_id = ? AND q.objective = ? AND pq.claimed = 0`).all(userId, objective);
+  for (const r of rows) {
+    if (r.target_id && r.target_id !== targetId) continue;
+    const next = Math.min(r.progress + amount, r.target_qty);
+    if (next !== r.progress) updateProgress(userId, r.quest_id, next);
+  }
+}
+
+// Thu hoạch: mỗi nguyên liệu nhận được +1 (không phải mỗi lần bấm lệnh) — nhờ
+// vậy người chơi mở zone cao (rơi nhiều) sẽ xong quest nhanh hơn, đúng ý nghĩa
+// "thu hoạch nhiều nguyên liệu".
+function onGather(userId, jobType, amount = 1) {
+  if (amount > 0) bumpObjective(userId, 'gather', jobType, amount);
+}
+
+// Chế/nấu thành công: tính theo số món tạo ra.
+function onCraft(userId, recipeId, qty = 1) {
+  if (qty > 0) bumpObjective(userId, 'craft', recipeId, qty);
+}
+
+// Hạ elite/boss (elite_tier >= 1). Quái thường KHÔNG tính — nếu không thì quest
+// "hạ 1 boss" hoàn thành bằng cách đánh slime.
+function onKillBoss(userId, monsterId, eliteTier = 0) {
+  if (!eliteTier) return;
+  bumpObjective(userId, 'boss', monsterId, 1);
+}
+
+// Objective dạng TRẠNG THÁI (level / job_level / item) không cộng dồn được theo
+// sự kiện: người chơi đã Lv.20 rồi mới nhận quest "đạt Lv.10" thì sự kiện
+// onLevelUp đã trôi qua từ lâu, quest kẹt ở 0 vĩnh viễn. Tính lại từ dữ liệu
+// hiện tại mỗi lần xem/nhận quest.
+//
+// Đọc thẳng bảng `players` thay vì require('./player'): player.js require
+// quests.js ở top-level, require ngược lại sẽ tạo vòng lặp module.
+function refreshStateQuests(userId) {
+  const p = db.prepare('SELECT level FROM players WHERE user_id = ?').get(userId);
+  const jobLevels = new Map(db.prepare('SELECT job_type, level FROM player_jobs WHERE user_id = ?')
+    .all(userId).map(r => [r.job_type, r.level]));
+  const rows = db.prepare(`SELECT pq.progress, pq.quest_id, q.objective, q.target_id, q.target_qty
+    FROM player_quests pq JOIN quests q ON q.id = pq.quest_id
+    WHERE pq.user_id = ? AND pq.claimed = 0`).all(userId);
+
+  let changed = 0;
+  for (const r of rows) {
+    let value = null;
+    if (r.objective === 'level') value = p ? p.level : 0;
+    else if (r.objective === 'job_level') value = jobLevels.get(r.target_id) || 0;
+    else if (r.objective === 'item') {
+      const row = db.prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(userId, r.target_id);
+      value = row ? row.qty : 0;
+    }
+    if (value === null) continue;
+    const next = Math.min(value, r.target_qty);
+    if (next !== r.progress) { updateProgress(userId, r.quest_id, next); changed++; }
+  }
+  return changed;
+}
+
 // === Daily quest generation ===
 // Auto generate 3 quest random cho user (chạy khi user gõ #quest lần đầu/ngày mới)
 function generateDailyQuests(userId, level) {
@@ -178,6 +249,12 @@ function generateDailyQuests(userId, level) {
     { type: 'gold', target_qty: 200,  rg: 100, rx: 50, name: 'Kiếm tiền', desc: 'Kiếm 200 vàng' },
     { type: 'gold', target_qty: 500,  rg: 250, rx: 100, name: 'Phú nông', desc: 'Kiếm 500 vàng' },
     { type: 'gold', target_qty: 1000, rg: 500, rx: 200, name: 'Đại gia', desc: 'Kiếm 1000 vàng' },
+    // Nghề & chế tác — dẫn người chơi tới nội dung mới
+    { type: 'gather', target_qty: 20, rg: 150, rx: 80, name: 'Thu hoạch', desc: 'Đào/câu/hái 20 nguyên liệu' },
+    { type: 'craft',  target_qty: 2,  rg: 180, rx: 90, name: 'Thợ thủ công', desc: 'Chế hoặc nấu 2 món' },
+    // Boss — chỉ xuất hiện khi người chơi đủ cấp để đánh elite (elite Lv.1 mạnh
+    // hơn quái thường gấp nhiều lần), tránh phát quest bất khả thi cho người mới.
+    ...(level >= 15 ? [{ type: 'boss', target_qty: 1, rg: 700, rx: 450, name: 'Diệt boss', desc: 'Hạ 1 elite hoặc boss' }] : []),
     // Level quest (chỉ cho người chưa cao cấp)
     { type: 'level', target_qty: level + 1, rg: 300, rx: 500, name: 'Lên cấp', desc: `Đạt Lv.${level + 1}` },
   ];
@@ -219,6 +296,7 @@ module.exports = {
   getPlayerQuests, getPlayerQuest,
   assignQuest, updateProgress, markClaimed, removeQuestFromPlayer,
   onKillMonster, onEarnGold, onLevelUp, onItemCollect,
+  onGather, onCraft, onKillBoss, refreshStateQuests, bumpObjective,
   generateDailyQuests,
   isQuestComplete,
 }; 
