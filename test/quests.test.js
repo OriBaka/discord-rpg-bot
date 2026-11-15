@@ -317,17 +317,18 @@ test('%quest hiển thị tên nghề/recipe thay vì id thô', () => {
 // 6. Hook thật trong lệnh craft/gather (không chỉ unit-test hàm)
 // ─────────────────────────────────────────────────────────────
 test('%cook thật sự cộng tiến độ quest craft', async () => {
-  const uid = newPlayer();
+  const uid = newPlayer(50);
   const qid = customQuest('craft', '', 1);
   quests.assignQuest(uid, qid);
-  // Nguyên liệu cho herb_salve
-  const recipe = db.prepare("SELECT * FROM recipes WHERE id='herb_salve'").get();
-  if (!recipe) return; // seed khác thì bỏ qua, test khác đã phủ logic
+  // Lấy recipe COOK thật đầu tiên (id 'herb_salve' là ITEM, không phải recipe —
+  // bản trước lấy nhầm nên test này lặng lẽ bỏ qua qua nhánh `if (!recipe) return`)
+  const recipe = db.prepare("SELECT * FROM recipes WHERE type='cook' ORDER BY min_job_level LIMIT 1").get();
+  assert.ok(recipe, 'không có recipe cook nào để test');
   for (const inp of JSON.parse(recipe.inputs)) player.addItem(uid, inp.item_id, inp.qty);
 
   const msg = fakeMessage(uid);
-  await craft.cook(msg, ['herb_salve'], '%');
-  assert.strictEqual(progressOf(uid, qid), 1, '%cook không cộng quest craft');
+  await craft.cook.execute(msg, [recipe.id], '%');
+  assert.strictEqual(progressOf(uid, qid), recipe.output_qty, '%cook không cộng quest craft');
 });
 
 test('%gather thật sự cộng tiến độ quest gather (theo số nguyên liệu)', async () => {

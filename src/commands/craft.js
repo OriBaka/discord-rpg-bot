@@ -183,13 +183,24 @@ async function handleCommand(msg, args, type) {
   addItem(msg.author.id, recipe.output_id, recipe.output_qty);
   // Quest 'craft': chế/nấu thành công, tính theo số món tạo ra
   require('../game/quests').onCraft(msg.author.id, recipe.id, recipe.output_qty);
-  const xpRes = jobs.addJobXp(msg.author.id, jobType, recipe.xp_gain);
+  // Thành tựu craft_total: cộng bộ đếm TRƯỚC khi check, nếu không món thứ 100
+  // sẽ chỉ được tính ở lần chế thứ 101.
+  const achievements = require('../game/achievements');
+  achievements.trackCraft(msg.author.id, recipe.output_qty);
+  const achCtx = { client: msg.client, guildId: msg.guild?.id };
+  const xpRes = jobs.addJobXp(msg.author.id, jobType, recipe.xp_gain, achCtx);
+  // addJobXp chỉ check khi LÊN CẤP, còn craft_total phải mở đúng món thứ N dù
+  // không lên cấp → check thêm, rồi gộp danh sách để hiện một lần.
+  const newAchs = [...(xpRes.achievements || []), ...achievements.checkAndGrant(msg.author.id, achCtx)];
 
   const out = getItem(recipe.output_id);
   const t = tierInfo(out?.tier || 'common');
   let text = `${verbThe} **${recipe.output_qty}× ${t.emoji} ${out?.name || recipe.output_id}**!\n+${recipe.xp_gain} ${jobType} XP`;
   if (xpRes.levelsGained.length > 0) {
     text += `\n\n🎉 **${jobType} Lv.UP!** Đạt Lv.${xpRes.level}`;
+  }
+  if (newAchs.length > 0) {
+    text += `\n\n🏆 **Thành tựu mới**: ${newAchs.map(a => `${a.icon} ${a.name}`).join(', ')}`;
   }
 
   const embed = new EmbedBuilder().setColor(color)

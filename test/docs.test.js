@@ -242,3 +242,21 @@ test('adm: từ chối người không phải admin', async () => {
   if (saved !== undefined) process.env.ADMIN_IDS = saved; else delete process.env.ADMIN_IDS;
   assert.ok(/không có quyền/.test(msg._text()), `phải từ chối, nhận: ${msg._text()}`);
 });
+
+// ── CI ───────────────────────────────────────────────────────────────────────
+// Repo từng KHÔNG có workflow nào: 250+ test chỉ chạy khi có người nhớ gõ
+// `npm test`, nên một thay đổi làm vỡ cân bằng vẫn merge được. Test này giữ
+// workflow đó tồn tại và vẫn thật sự chạy test.
+test('CI chạy npm test trên push và pull_request', () => {
+  const ciPath = path.join(ROOT, '.github', 'workflows', 'test.yml');
+  assert.ok(fs.existsSync(ciPath), 'thiếu .github/workflows/test.yml — test không còn được chạy tự động');
+  const yml = fs.readFileSync(ciPath, 'utf8');
+  assert.match(yml, /npm test/, 'CI không chạy npm test');
+  assert.match(yml, /pull_request/, 'CI không chạy trên pull_request');
+  assert.match(yml, /push/, 'CI không chạy trên push');
+  // Không commit lockfile → lệnh cài đặt dạng ci sẽ fail ngay trên runner.
+  // Chỉ xét các dòng `run:` (bỏ qua chú thích trong YAML).
+  const runLines = yml.split('\n').filter(l => /^\s*-?\s*run:/.test(l)).join('\n');
+  assert.ok(!/npm ci\b/.test(runLines), 'CI dùng cài đặt kiểu ci nhưng repo không commit package-lock.json');
+  assert.match(runLines, /npm install/, 'CI không cài dependencies');
+});

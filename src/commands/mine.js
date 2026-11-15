@@ -174,10 +174,15 @@ module.exports = {
     require('../game/quests').onGather(msg.author.id, JOB, gatherQty);
 
     // Add XP
-    const xpResult = jobs.addJobXp(msg.author.id, JOB, zone.base_xp);
+    const xpResult = jobs.addJobXp(msg.author.id, JOB, zone.base_xp,
+      { client: msg.client, guildId: msg.guild?.id });
     let lvlText = '';
     if (xpResult.levelsGained.length > 0) {
       lvlText = `\n\n🎉 **Mining Lv.UP!** Đạt Lv.${xpResult.level}`;
+    }
+    // Thành tựu nghề mở đúng lúc lên cấp — hiện ngay trong phản hồi, không im lặng
+    if (xpResult.achievements && xpResult.achievements.length > 0) {
+      lvlText += `\n\n🏆 **Thành tựu mới**: ${xpResult.achievements.map(a => `${a.icon} ${a.name}`).join(', ')}`;
     }
 
     const embed = new EmbedBuilder().setColor(0x95A5A6)

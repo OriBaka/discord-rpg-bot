@@ -92,6 +92,29 @@ module.exports = {
         }
         break;
       }
+      case 'job_level': {
+        const jobRow = ach.target_id
+          ? db.prepare('SELECT level, xp FROM player_jobs WHERE user_id=? AND job_type=?').get(userId, ach.target_id)
+          : db.prepare('SELECT job_type, level, xp FROM player_jobs WHERE user_id=? ORDER BY level DESC').get(userId);
+        const lv = jobRow ? jobRow.level : 0;
+        detail = `Nghề ${ach.target_id || (jobRow ? jobRow.job_type : 'bất kỳ')}: **Lv.${lv}** / cần ${ach.target_qty}`;
+        conditionMet = lv >= ach.target_qty;
+        break;
+      }
+      case 'job_all_level': {
+        const { JOB_TYPES } = require('../game/jobs');
+        const rows = db.prepare('SELECT job_type, level FROM player_jobs WHERE user_id=?').all(userId);
+        const byJob = new Map(rows.map(r => [r.job_type, r.level]));
+        const parts = JOB_TYPES.map(j => `${j} ${byJob.get(j) || 0}`);
+        const minLv = Math.min(...JOB_TYPES.map(j => byJob.get(j) || 0));
+        detail = `Cấp nghề (${parts.join(', ')}): thấp nhất **Lv.${minLv}** / cần ${ach.target_qty}`;
+        conditionMet = minLv >= ach.target_qty;
+        break;
+      }
+      case 'craft_total':
+        detail = `Đã chế/nấu: **${stats.total_crafts || 0}** / cần ${ach.target_qty}`;
+        conditionMet = (stats.total_crafts || 0) >= ach.target_qty;
+        break;
       case 'pet_count': {
         const c = db.prepare('SELECT COUNT(*) c FROM player_pets WHERE user_id = ?').get(userId).c;
         detail = `Pet sở hữu: **${c}** / cần ${ach.target_qty}`;

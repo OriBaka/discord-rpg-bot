@@ -9,6 +9,7 @@ function migrate() {
       desc        TEXT NOT NULL DEFAULT '',
       icon        TEXT NOT NULL DEFAULT '🏆',
       objective   TEXT NOT NULL,           -- kill_count | level_reach | gold_total | item_collect | quest_complete
+                                           -- | job_level | job_all_level | craft_total | pet_* | guild_*
       target_id   TEXT NOT NULL DEFAULT '', -- monster_id/item_id hoặc rỗng
       target_qty  INTEGER NOT NULL DEFAULT 1,
       points      INTEGER NOT NULL DEFAULT 10,
@@ -44,6 +45,14 @@ function migrate() {
   if (!achCols.includes('hidden')) {
     db.exec(`ALTER TABLE achievements ADD COLUMN hidden INTEGER NOT NULL DEFAULT 0`);
     console.log('🔧 Migrated achievements: thêm hidden');
+  }
+
+  // Migration: đếm số món đã chế/nấu (cho thành tựu craft_total).
+  // Không suy ra được từ player_jobs (chỉ có xp/level), nên phải đếm riêng.
+  const statCols = db.prepare("PRAGMA table_info(player_stats)").all().map(c => c.name);
+  if (!statCols.includes('total_crafts')) {
+    db.exec(`ALTER TABLE player_stats ADD COLUMN total_crafts INTEGER NOT NULL DEFAULT 0`);
+    console.log('🔧 Migrated player_stats: thêm total_crafts');
   }
 
   // Seed achievements mặc định
@@ -109,6 +118,31 @@ function seedNewAchievements() {
     ['pet_legendary_3',     'Mythic Collector', 'Own 3 legendary pets',        '🌟', 'pet_tier',        'legendary', 3, 200, 15000, 0, '', 'Mythic Collector'],
     ['pet_own_dragonling',  'Dragon Friend',    'Own the Dragonling pet',      '🐉', 'pet_own',         'pet_dragonling', 1, 75, 2000, 0, '', 'Dragon Friend'],
     ['pet_own_void_cat',    'Void Whisperer',   'Own the Void Cat pet',        '🐈‍⬛', 'pet_own',        'pet_void_cat', 1, 150, 8000, 0, '', 'Void Whisperer'],
+
+    // === Nghề (thêm cùng đợt quest theo nghề) ===
+    // Trước đây 3 nghề mining/fishing/foraging + cooking/crafting không có một
+    // thành tựu nào: cày nghề chỉ để tăng số trong %job, không có mốc nào để
+    // hướng tới, và không ai biết nghề đã lên tới đâu so với người khác.
+    // Mốc 10 / 25 chọn theo nhịp XP thật: Lv.10 mất ~1 buổi chơi, Lv.25 là
+    // mục tiêu dài hạn (xem test/achievements_jobs.test.js).
+    // desc viết tiếng Việt như mọi mô tả khác trong game (tên vẫn English để
+    // khớp bộ thành tựu cũ). test/balance.test.js chặn desc không có dấu.
+    ['job_mining_10',   'Pit Boss',        'Đạt Mining Lv.10',            '⛏️', 'job_level', 'mining',   10, 20,  600,  200, '', ''],
+    ['job_mining_25',   'Deep Delver',     'Đạt Mining Lv.25',            '⛏️', 'job_level', 'mining',   25, 60,  3000, 1200,'', 'Deep Delver'],
+    ['job_fishing_10',  'River Regular',   'Đạt Fishing Lv.10',           '🎣', 'job_level', 'fishing',  10, 20,  600,  200, '', ''],
+    ['job_fishing_25',  'Tide Caller',     'Đạt Fishing Lv.25',           '🎣', 'job_level', 'fishing',  25, 60,  3000, 1200,'', 'Tide Caller'],
+    ['job_foraging_10', 'Green Thumb',     'Đạt Foraging Lv.10',          '🌿', 'job_level', 'foraging', 10, 20,  600,  200, '', ''],
+    ['job_foraging_25', 'Grove Warden',    'Đạt Foraging Lv.25',          '🌿', 'job_level', 'foraging', 25, 60,  3000, 1200,'', 'Grove Warden'],
+    ['job_cooking_10',  'Home Cook',       'Đạt Cooking Lv.10',           '👨‍🍳', 'job_level', 'cooking',  10, 20,  600,  200, '', ''],
+    ['job_cooking_25',  'Master Chef',     'Đạt Cooking Lv.25',           '👨‍🍳', 'job_level', 'cooking',  25, 60,  3000, 1200,'', 'Master Chef'],
+    ['job_crafting_10', 'Apprentice Smith', 'Đạt Crafting Lv.10',         '⚒️', 'job_level', 'crafting', 10, 20,  600,  200, '', ''],
+    ['job_crafting_25', 'Master Smith',    'Đạt Crafting Lv.25',          '⚒️', 'job_level', 'crafting', 25, 60,  3000, 1200,'', 'Master Smith'],
+
+    ['job_all_10',      'Jack of All Trades', 'Đưa cả 5 nghề lên Lv.10',     '🧰', 'job_all_level', '', 10, 100, 5000, 2000, '', 'Jack of All Trades'],
+    ['job_all_25',      'Fivefold Master',  'Đưa cả 5 nghề lên Lv.25',       '🏵️', 'job_all_level', '', 25, 250, 20000, 8000, '', 'Fivefold Master'],
+
+    ['craft_100',       'Artisan',         'Chế hoặc nấu 100 món',       '🔨', 'craft_total', '', 100, 40, 2000, 800, '', ''],
+    ['craft_500',       'Grand Artisan',   'Chế hoặc nấu 500 món',       '🛠️', 'craft_total', '', 500, 120, 10000, 4000, '', 'Grand Artisan'],
   ];
 
   const checkStmt = db.prepare('SELECT 1 FROM achievements WHERE id = ?');
@@ -272,6 +306,27 @@ function checkAndGrant(userId, context = null) {
         pass = row && row.level >= ach.target_qty;
         break;
       }
+      case 'job_level': {
+        // target_id = nghề cụ thể, rỗng = nghề nào cao nhất cũng được
+        const row = ach.target_id
+          ? db.prepare('SELECT level FROM player_jobs WHERE user_id=? AND job_type=?').get(userId, ach.target_id)
+          : db.prepare('SELECT MAX(level) l FROM player_jobs WHERE user_id=?').get(userId);
+        const lv = ach.target_id ? (row ? row.level : 0) : (row && row.l ? row.l : 0);
+        pass = lv >= ach.target_qty;
+        break;
+      }
+      case 'job_all_level': {
+        // MỌI nghề (kể cả nghề chưa từng chạm = Lv.0) phải đạt mốc
+        const { JOB_TYPES } = require('./jobs');
+        const rows = db.prepare('SELECT job_type, level FROM player_jobs WHERE user_id=?').all(userId);
+        const byJob = new Map(rows.map(r => [r.job_type, r.level]));
+        pass = JOB_TYPES.every(j => (byJob.get(j) || 0) >= ach.target_qty);
+        break;
+      }
+      case 'craft_total': {
+        pass = (stats.total_crafts || 0) >= ach.target_qty;
+        break;
+      }
       case 'guild_members': {
         const row = db.prepare(`SELECT COUNT(*) c FROM guild_members WHERE guild_id = (SELECT guild_id FROM guild_members WHERE user_id = ?)`).get(userId);
         pass = row && row.c >= ach.target_qty;
@@ -290,6 +345,15 @@ function checkAndGrant(userId, context = null) {
   }
 
   return unlocked;
+}
+
+// Hook: vừa chế/nấu xong `qty` món. Cộng bộ đếm rồi để caller tự gọi
+// checkAndGrant (caller có context để notify). Tách riêng khỏi checkAndGrant vì
+// bộ đếm phải được cộng TRƯỚC khi check, nếu không thành tựu sẽ trễ một lần chế.
+function trackCraft(userId, qty = 1) {
+  if (!qty || qty <= 0) return;
+  const stats = getPlayerStats(userId);
+  updatePlayerStats(userId, { total_crafts: (stats.total_crafts || 0) + qty });
 }
 
 // Hook đặc biệt cho kill_monster theo target_id
@@ -369,6 +433,6 @@ module.exports = {
   createAchievement, deleteAchievement,
   getPlayerStats, updatePlayerStats,
   getPlayerAchievements, hasUnlocked, grantAchievement,
-  checkAndGrant, checkKillMonster,
+  checkAndGrant, checkKillMonster, trackCraft,
   applyRewardsAndNotify,
 };

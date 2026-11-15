@@ -1,0 +1,35 @@
+name: test
+
+# Repo không có CI nào: 250+ test chỉ chạy khi ai đó nhớ gõ `npm test`, nên một
+# thay đổi làm vỡ cân bằng/nội dung vẫn merge được. Workflow này chặn điều đó.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Repo không commit package-lock.json, nên không dùng `npm ci` được —
+      # npm ci bắt buộc phải có lockfile khớp package.json.
+      - name: Cài dependencies
+        run: npm install --no-audit --no-fund
+
+      # Mỗi test tạo DB tạm riêng trong thư mục tmp (test/harness.js), nên
+      # không cần service container hay DB_PATH từ bên ngoài.
+      - name: Chạy test
+        run: npm test

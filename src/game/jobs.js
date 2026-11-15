@@ -82,7 +82,10 @@ function updateJob(userId, jobType, fields) {
 }
 
 // Cộng XP cho job, trả về { level, levelsGained, xp, xpToNext }
-function addJobXp(userId, jobType, xpGain) {
+// context (tuỳ chọn) = { client, guildId } để achievement vừa mở khoá hiện được
+// thông báo. Nghề lên cấp là mốc DUY NHẤT để mở thành tựu nghề (job_level /
+// job_all_level), nên phải check ở đây — không có sự kiện nào khác.
+function addJobXp(userId, jobType, xpGain, context = null) {
   const job = getJob(userId, jobType);
   let xp = job.xp + xpGain;
   let level = job.level;
@@ -95,7 +98,16 @@ function addJobXp(userId, jobType, xpGain) {
   }
 
   updateJob(userId, jobType, { xp, level });
-  return { level, levelsGained: lvlUps, xp, xpToNext: xpToNext(level) };
+
+  let achievements = [];
+  if (lvlUps.length > 0) {
+    try {
+      achievements = require('./achievements').checkAndGrant(userId, context);
+    } catch (e) {
+      console.error('[addJobXp hook achievements]', e.message);
+    }
+  }
+  return { level, levelsGained: lvlUps, xp, xpToNext: xpToNext(level), achievements };
 }
 
 function setCooldown(userId, jobType) {
