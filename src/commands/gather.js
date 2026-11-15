@@ -15,6 +15,7 @@ const gz = require('../game/gather_zones');
 const { tierInfo } = require('../game/tiers');
 const settings = require('../game/settings');
 const farmEvents = require('../game/farm_events');
+const jobTools = require('../game/job_tools');
 
 const JOB = 'foraging';
 
@@ -24,14 +25,8 @@ function resolveCd(zone) {
   return override ?? zone.cooldown_ms;
 }
 
-// Thưởng "hái khéo": không có dụng cụ để so tier (khác %mine có pickaxe), nên
-// phần thưởng gắn với VIỆC CHƠI LÂU: mỗi 10 cấp nghề vượt mốc của zone +5% số
-// lượng, tối đa +25%. Nhờ vậy zone cũ vẫn có ý nghĩa khi đã lên cấp, giống cách
-// pickaxe xịn làm cho mỏ cũ đỡ vô dụng.
-function levelBonusMult(jobLevel, zoneMinLevel) {
-  const steps = Math.floor(Math.max(0, jobLevel - zoneMinLevel) / 10);
-  return 1 + Math.min(0.25, steps * 0.05);
-}
+// Thưởng hái khéo giờ nằm trong gather_zones (dùng chung với công cụ đo)
+const levelBonusMult = gz.levelBonusMult;
 
 function formatTime(ms) {
   const s = Math.ceil(ms / 1000);
@@ -98,7 +93,10 @@ module.exports = {
     }
 
     jobs.setCooldown(msg.author.id, JOB);
-    const drops = gz.rollDrops(zoneId);
+    // Foraging KHÔNG bắt buộc công cụ (khác %mine/%fish) — giỏ hái chỉ là
+    // bổ trợ: có thì tăng cơ hội rơi, không có vẫn hái được.
+    const toolBonus = jobTools.bonus(msg.author.id, JOB, p.level);
+    const drops = gz.rollDrops(zoneId, { chanceMult: toolBonus.dropMult });
 
     // Chuỗi may mắn: chỉ tăng khi trúng, đứt khi trượt (giống mine/fish)
     const hit = drops.length > 0;
@@ -165,7 +163,9 @@ module.exports = {
 
     const embed = new EmbedBuilder().setColor(0x57F287)
       .setTitle(`🌿 Hái lượm tại ${zone.icon} ${zone.name}`)
-      .setDescription(dropText + lvlText)
+      .setDescription(dropText + lvlText + '\n\n' + (toolBonus.tool
+        ? `🧺 **${toolBonus.tool.name}** — ${jobTools.describe(toolBonus.tool)}`
+        : '🧺 *Chưa có giỏ hái — mua ở shop để tăng cơ hội rơi.*'))
       .setFooter({ text: `+${zone.base_xp} Foraging XP • Total Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
     return msg.reply({ embeds: [embed], components: [buildAgainRow('gather', msg.author.id, args)] });

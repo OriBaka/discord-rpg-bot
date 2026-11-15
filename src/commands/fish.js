@@ -6,6 +6,7 @@ const gz = require('../game/gather_zones');
 const { tierInfo } = require('../game/tiers');
 const settings = require('../game/settings');
 const farmEvents = require('../game/farm_events');
+const jobTools = require('../game/job_tools');
 
 const JOB = 'fishing';
 
@@ -90,14 +91,17 @@ module.exports = {
       const order = { legendary: 4, epic: 3, rare: 2, common: 1 };
       return (order[b.tier] || 0) - (order[a.tier] || 0);
     })[0];
-    const mult = tierBonusMult(bestRod.tier);
+    // Bonus công cụ đọc từ job_tools (mỗi cần câu một mức riêng)
+    const toolStat = jobTools.getTool(bestRod.id) || { drop_bonus: 0, qty_bonus: 0 };
+    const mult = 1 + (toolStat.qty_bonus || 0);
+    const dropMult = 1 + (toolStat.drop_bonus || 0);
 
     const cdMs = resolveFishCd(zone);
     const remain = jobs.getCooldownRemaining(msg.author.id, JOB, cdMs);
     if (remain > 0) return msg.reply(`⏳ Còn **${formatTime(remain)}** nữa mới câu tiếp được.`);
 
     jobs.setCooldown(msg.author.id, JOB);
-    const drops = gz.rollDrops(zoneId);
+    const drops = gz.rollDrops(zoneId, { chanceMult: dropMult });
     // --- Cơ chế vui (chuỗi / luồng cá / kho báu) ---
     // Chuỗi chỉ tăng khi TRÚNG, đứt khi TRƯỢT — nếu không nó là buff vĩnh viễn.
     const hit = drops.length > 0;
@@ -165,7 +169,7 @@ module.exports = {
 
     const embed = new EmbedBuilder().setColor(0x3498DB)
       .setTitle(`🎣 Câu tại ${zone.icon} ${zone.name}`)
-      .setDescription(dropText + lvlText)
+      .setDescription(dropText + lvlText + `\n\n🧰 **${bestRod.name}** — ${jobTools.describe(toolStat)}`)
       .setFooter({ text: `+${zone.base_xp} Fishing XP • Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
     return msg.reply({ embeds: [embed], components: [buildAgainRow('fish', msg.author.id, args)] });

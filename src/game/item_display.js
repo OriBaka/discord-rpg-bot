@@ -17,6 +17,7 @@ const TYPE_LABELS = {
   accessory: '✨ Phụ kiện',
   consumable: '🧪 Tiêu hao',
   material: '📦 Nguyên liệu',
+  tool: '🧰 Công cụ nghề',
   pet: '🐾 Pet',
   lootbox: '🎁 Hộp quà',
 };
@@ -36,7 +37,7 @@ const GROUP_ORDER = [
   'weapon', 'offhand',
   'armor:head', 'armor:chest', 'armor:legs', 'armor:feet', 'armor:hands',
   'accessory:ring', 'accessory:necklace', 'accessory:special',
-  'consumable', 'material', 'pet', 'lootbox',
+  'consumable', 'material', 'tool', 'pet', 'lootbox',
 ];
 
 function typeLabel(type) {
@@ -117,6 +118,14 @@ function statPairs(it) {
     out.push({ name: label, value: fmt(v, it) });
   }
   if (it.image_url) out.push({ name: '🖼️ Ảnh', value: 'đã gắn' });
+
+  // Công dụng nghề (bảng job_tools): đọc từ DB nên công cụ thêm sau tự hiện ở
+  // %info / %inv mà không phải sửa lệnh. Trước đây %info pick_iron chỉ hiện
+  // ATK + giá, không nói gì về việc nó đào được nhiều hơn.
+  try {
+    const jt = require('./job_tools').getTool(it.id);
+    if (jt) out.push({ name: '🧰 Công dụng nghề', value: `${jt.job} — ${require('./job_tools').describe(jt)}` });
+  } catch { /* module chưa migrate (test riêng lẻ) — bỏ qua */ }
 
   // Field lạ → vẫn hiện
   for (const [key, v] of Object.entries(it)) {

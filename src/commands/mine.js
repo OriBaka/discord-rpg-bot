@@ -6,6 +6,7 @@ const gz = require('../game/gather_zones');
 const { tierInfo } = require('../game/tiers');
 const settings = require('../game/settings');
 const farmEvents = require('../game/farm_events');
+const jobTools = require('../game/job_tools');
 
 const JOB = 'mining';
 
@@ -102,7 +103,11 @@ module.exports = {
       const order = { legendary: 4, epic: 3, rare: 2, common: 1 };
       return (order[b.tier] || 0) - (order[a.tier] || 0);
     })[0];
-    const mult = tierBonusMult(bestPick.tier);
+    // Bonus của công cụ: đọc từ bảng job_tools (mỗi món một mức riêng), không
+    // còn suy theo tier — trước đây nâng cấp trong cùng tier là 0% cải thiện.
+    const toolStat = jobTools.getTool(bestPick.id) || { drop_bonus: 0, qty_bonus: 0 };
+    const mult = 1 + (toolStat.qty_bonus || 0);
+    const dropMult = 1 + (toolStat.drop_bonus || 0);
 
     // Check cooldown
     const cdMs = resolveMineCd(zone);
@@ -113,7 +118,7 @@ module.exports = {
 
     // Set cooldown & roll drops
     jobs.setCooldown(msg.author.id, JOB);
-    const drops = gz.rollDrops(zoneId);
+    const drops = gz.rollDrops(zoneId, { chanceMult: dropMult });
 
     // --- Cơ chế vui (chuỗi / mạch khoáng / kho báu) ---
     // Chuỗi chỉ tăng khi TRÚNG, đứt khi TRƯỢT — nếu không nó là buff vĩnh viễn.
@@ -185,9 +190,13 @@ module.exports = {
       lvlText += `\n\n🏆 **Thành tựu mới**: ${xpResult.achievements.map(a => `${a.icon} ${a.name}`).join(', ')}`;
     }
 
+    // Công cụ + thông số hiện trong DESCRIPTION (footer bị Discord thu nhỏ và
+    // cắt, mà đây là thông tin người chơi cần thấy để biết mình nên nâng cấp gì)
+    const toolText = `\n\n🧰 **${bestPick.name}** — ${jobTools.describe(toolStat)}`;
+
     const embed = new EmbedBuilder().setColor(0x95A5A6)
       .setTitle(`⛏️ Đào tại ${zone.icon} ${zone.name}`)
-      .setDescription(dropText + lvlText)
+      .setDescription(dropText + lvlText + toolText)
       .setFooter({ text: `+${zone.base_xp} Mining XP • Total Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
     return msg.reply({ embeds: [embed], components: [buildAgainRow('mine', msg.author.id, args)] });

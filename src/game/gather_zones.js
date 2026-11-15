@@ -254,11 +254,25 @@ function getDrops(zoneId) {
   return db.prepare('SELECT * FROM gather_drops WHERE zone_id = ?').all(zoneId);
 }
 
-function rollDrops(zoneId) {
+// opts.chanceMult: hệ số nhân cơ hội rơi từ công cụ (1 = không đổi).
+// Chặn ở 1.0 — công cụ không thể đẩy một drop 90% lên 120%.
+// Thưởng "hái khéo": foraging không có công cụ bắt buộc để so tier (khác %mine
+// có pickaxe), nên phần thưởng gắn với việc chơi lâu: mỗi 10 cấp nghề vượt mốc
+// của zone +5% số lượng, tối đa +25%. Nhờ vậy zone cũ vẫn có ý nghĩa khi đã
+// lên cấp. Đặt ở đây (không phải trong command) để tools/measure_jobs.js đo
+// được đúng công thức mà không phải require một file lệnh.
+function levelBonusMult(jobLevel, zoneMinLevel) {
+  const steps = Math.floor(Math.max(0, jobLevel - zoneMinLevel) / 10);
+  return 1 + Math.min(0.25, steps * 0.05);
+}
+
+function rollDrops(zoneId, opts = {}) {
+  const chanceMult = Math.max(0, opts.chanceMult || 1);
   const drops = getDrops(zoneId);
   const result = [];
   for (const d of drops) {
-    if (Math.random() < d.chance) {
+    const chance = Math.min(1, d.chance * chanceMult);
+    if (Math.random() < chance) {
       const qty = d.qty_min + Math.floor(Math.random() * (d.qty_max - d.qty_min + 1));
       result.push({ item_id: d.item_id, qty });
     }
@@ -293,6 +307,7 @@ function removeDrop(zoneId, itemId) {
 }
 
 module.exports = {
+  levelBonusMult,
   migrate,
   getZone, getZonesByJob, getDrops, rollDrops,
   createZone, deleteZone, addDrop, removeDrop,
