@@ -16,6 +16,7 @@ const { tierInfo } = require('../game/tiers');
 const settings = require('../game/settings');
 const farmEvents = require('../game/farm_events');
 const jobTools = require('../game/job_tools');
+const jobBuffs = require('../game/job_buffs');
 
 const JOB = 'foraging';
 
@@ -95,7 +96,7 @@ module.exports = {
     jobs.setCooldown(msg.author.id, JOB);
     // Foraging KHÔNG bắt buộc công cụ (khác %mine/%fish) — giỏ hái chỉ là
     // bổ trợ: có thì tăng cơ hội rơi, không có vẫn hái được.
-    const toolBonus = jobTools.bonus(msg.author.id, JOB, p.level);
+    const toolBonus = jobBuffs.bonus(msg.author.id, JOB, p.level);
     const drops = gz.rollDrops(zoneId, { chanceMult: toolBonus.dropMult });
 
     // Chuỗi may mắn: chỉ tăng khi trúng, đứt khi trượt (giống mine/fish)
@@ -161,11 +162,17 @@ module.exports = {
       lvlText += `\n\n🏆 **Thành tựu mới**: ${xpResult.achievements.map(a => `${a.icon} ${a.name}`).join(', ')}`;
     }
 
+    let buffText = '';
+    if (toolBonus.buff) {
+      const left = jobBuffs.consume(msg.author.id, JOB);
+      buffText = '\n' + jobBuffs.describeActive(toolBonus.buff) + (left === 0 ? ' — **vừa hết lượt**' : '');
+    }
+
     const embed = new EmbedBuilder().setColor(0x57F287)
       .setTitle(`🌿 Hái lượm tại ${zone.icon} ${zone.name}`)
       .setDescription(dropText + lvlText + '\n\n' + (toolBonus.tool
         ? `🧺 **${toolBonus.tool.name}** — ${jobTools.describe(toolBonus.tool)}`
-        : '🧺 *Chưa có giỏ hái — mua ở shop để tăng cơ hội rơi.*'))
+        : '🧺 *Chưa có giỏ hái — mua ở shop để tăng cơ hội rơi.*') + buffText)
       .setFooter({ text: `+${zone.base_xp} Foraging XP • Total Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
     return msg.reply({ embeds: [embed], components: [buildAgainRow('gather', msg.author.id, args)] });

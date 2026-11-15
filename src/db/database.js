@@ -296,6 +296,11 @@ runMigrate('../game/farm_tools_seed', 'migrateFarmTools');
 // job_tools chỉ gắn thông số cho item đã tồn tại.
 runMigrate('../game/job_tools', 'migrateJobTools');
 
+// Vật phẩm bổ trợ dùng một lần (đuốc / mồi câu / bó thảo mộc / gia vị / dầu
+// tôi): buff trong N lượt cho một nghề. PHẢI chạy SAU job_tools vì cách tính
+// bonus của nghề là tool + buff (job_buffs.bonus gọi job_tools.bonus).
+runMigrate('../game/job_buffs', 'migrateJobBuffs');
+
 // Nối nguyên liệu farm vào chuỗi chế tác. PHẢI chạy SAU `recipes` (bảng phải
 // tồn tại) và SAU `economy_seed` (giá bán của vật phẩm mới). `recipes.js` chỉ
 // seed khi bảng rỗng nên recipe thêm sau này buộc phải ở migration riêng.

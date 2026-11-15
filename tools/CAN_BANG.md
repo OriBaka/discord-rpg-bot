@@ -413,3 +413,67 @@ foraging  world_tree_roots          333             383        15%
   trước khi thêm (mining 372 / fishing 307 / foraging 333), nên công cụ không
   làm lệch thêm.
 - Cân bằng chiến đấu không đổi: TB 69.8%, 9/9 zone trong 65–75%.
+
+---
+
+## Vật phẩm bổ trợ dùng một lần (2026-11)
+
+Công cụ chỉ có 1 trục tiến bộ (mua đắt hơn = mạnh hơn), nên sau khi có công cụ
+tốt nhất thì không còn gì để tiêu vàng cho nghề, và người chơi không có cách
+"dồn lực" cho một mục tiêu cụ thể (vd cần mithril ore). Buff ngắn hạn giải
+quyết cả hai.
+
+10 vật phẩm (2 bậc/nghề, dùng `%use`), mỗi cái có N lượt:
+
+| Nghề | Bậc 1 (Lv.10, 12g, 3 lượt) | Bậc 2 (Lv.25, 80g, 5 lượt) | Hiệu ứng |
+|---|---|---|---|
+| mining | Pitch Torch | Oil Lantern | +25% / +50% cơ hội rơi |
+| fishing | Worm Bait | Glow Bait | +25% / +50% cơ hội rơi |
+| foraging | Herb Bundle | Nightbloom Bundle | +25% / +50% cơ hội rơi |
+| cooking | Rock Salt | Saffron Thread | +10% / +20% ra thêm 1 phần |
+| crafting | Quenching Oil | Master Flux Oil | +10% / +20% không tiêu NL |
+
+**Cộng dồn với công cụ nhưng có TRẦN**: drop ≤ +60%, qty ≤ +60%, extra/save
+≤ +40%. Nhờ trần, `pick_mithril` (+15%) + `torch_oil` (+50%) ra 1.60× chứ không
+phải 1.65×, và một buff thêm sau này không thể tự đẩy drop 60% lên 100%.
+
+### Giá: lần đầu đặt SAI, đo mới biết
+
+Bản nháp đầu để **150 vàng (3 lượt) / 600 vàng (5 lượt)** — nhìn "hợp lý" cho
+một món buff mạnh. Đo bằng `node tools/measure_jobs.js <lv>` thì:
+
+```
+Lv.1   mining torch_pitch   giá/lượt 50   lời/lượt  2   → lỗ 48
+Lv.10  mining torch_oil     giá/lượt 120  lời/lượt 13   → lỗ 107
+Lv.35  mining torch_oil     giá/lượt 120  lời/lượt 71   → lỗ 49
+Lv.50  mining torch_oil     giá/lượt 120  lời/lượt 167  → lãi 47
+```
+
+Tức ở mọi cấp dưới 50, mua buff xong người chơi **nghèo đi** — một cái bẫy giá
+cho người mới, mà chỉ đọc số thì không thấy.
+
+Cách sửa: neo giá vào gain đo được ở ĐÚNG cấp mở khoá của món đó, lấy mốc thấp
+nhất trong 3 nghề (fishing) để nghề nào cũng dương:
+
+```
+bậc 1 — mở Lv.10: 12 vàng / 3 lượt = 4/lượt   (gain đo được  4–7/lượt)
+bậc 2 — mở Lv.25: 80 vàng / 5 lượt = 16/lượt  (gain đo được 22–41/lượt)
+```
+
+Sau khi sửa:
+
+```
+Lv.10  mining +3  fishing +0  foraging +3   (vàng/lượt, ròng)
+Lv.25  mining +25 fishing +6  foraging +12
+Lv.50  mining +151 fishing +122 foraging +129
+```
+
+Lưu ý trung thực: vì buff là %-theo-sản-lượng mà sản lượng tăng ~20× từ Lv.1
+tới Lv.50, một mức giá cố định sẽ **rẻ tương đối** ở cuối game (16 vàng/lượt so
+với 167 vàng tạo thêm). Đây là đánh đổi có ý thức: buff giữ vai trò "công cụ
+săn nguyên liệu hiếm" chứ không phải máy in vàng, và nếu sau này muốn nó vẫn
+là khoản chi đáng kể ở endgame thì phải làm giá theo cấp (hoặc thu % loot),
+không phải chỉnh tay con số.
+
+`test/job_buffs.test.js` khoá lại: ở cấp mở khoá của MỌI món buff, lời/lượt
+phải ≥ giá/lượt (dùng lại đúng công thức của `tools/measure_jobs.js`).

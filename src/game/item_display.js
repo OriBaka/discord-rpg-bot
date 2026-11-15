@@ -125,6 +125,8 @@ function statPairs(it) {
   try {
     const jt = require('./job_tools').getTool(it.id);
     if (jt) out.push({ name: '🧰 Công dụng nghề', value: `${jt.job} — ${require('./job_tools').describe(jt)}` });
+    const jb = require('./job_buffs').getBuffItem(it.id);
+    if (jb) out.push({ name: '⚗️ Dùng cho nghề', value: `${jb.job} — ${require('./job_buffs').describeItem(jb)}` });
   } catch { /* module chưa migrate (test riêng lẻ) — bỏ qua */ }
 
   // Field lạ → vẫn hiện

@@ -18,7 +18,7 @@ Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, 
 | ⚔️ Chiến đấu | `hunt` (mô phỏng nhanh) và `battle` (turn-based có nút bấm, elite/boss) |
 | 🗺️ Khu vực | 5 zone mở theo level, 18 quái, 38 loại nguyên liệu |
 | 🧪 Vật phẩm | 133 item: 4 độ hiếm (common/rare/epic/legendary), shop mua bán |
-| 🛠️ Nghề & chế tạo | 5 nghề: mining, fishing, foraging, cooking, crafting + 27 recipe + 21 công cụ bổ trợ (cơ hội rơi / số lượng / thêm món / tiết kiệm nguyên liệu) + 14 thành tựu nghề |
+| 🛠️ Nghề & chế tạo | 5 nghề: mining, fishing, foraging, cooking, crafting + 27 recipe + 21 công cụ vĩnh viễn + 10 vật phẩm bổ trợ dùng một lần (buff theo lượt) + 14 thành tựu nghề |
 | 🐾 Pet | 13 pet, drop trực tiếp hoặc ghép từ mảnh, cộng chỉ số khi đi theo |
 | 🏰 Bang hội | Tạo bang, mời thành viên, kho chung, buff vàng/XP/drop, BXH bang |
 | 🐲 Boss tuần (raid) | Cả server đánh chung một thanh máu, 5 lượt/tuần/người, chia thưởng theo hạng sát thương |
@@ -88,7 +88,7 @@ npm start
 Kiểm tra nhanh logic mà không cần token:
 
 ```bash
-npm test        # 294 test: cân bằng, hồi quy, smoke mọi lệnh, chống nội dung chết
+npm test        # 314 test: cân bằng, hồi quy, smoke mọi lệnh, chống nội dung chết
 ```
 
 ### 3. Deploy 24/7
@@ -244,7 +244,8 @@ mỗi push/PR qua GitHub Actions (`.github/workflows/test.yml`):
 | `test/balance.test.js` | 40 | Cân bằng quái/trang bị/bình máu — chặn hồi quy chỉ số |
 | `test/smoke.test.js` | 47 | Chạy mọi lệnh để bắt lỗi dây chuyền |
 | `test/gather.test.js` | 23 | Nghề hái lượm: zone, drop, cooldown, chế tác từ nguyên liệu |
-| `test/job_tools.test.js` | 23 | Công cụ bổ trợ nghề: thông số riêng từng món, trần bonus, dao bếp / búa thợ |
+| `test/job_tools.test.js` | 23 | Công cụ nghề: thông số riêng từng món, trần bonus, dao bếp / búa thợ |
+| `test/job_buffs.test.js` | 20 | Vật phẩm bổ trợ dùng một lần: số lượt, cộng dồn với công cụ, thay thế / song song |
 | `test/raid.test.js` | 23 | Boss tuần: chia lượt, sát thương, thưởng theo hạng |
 | `test/quests.test.js` | 21 | 4 objective quest mới (gather/craft/job_level/boss) + hook |
 | `test/freshness.test.js` | 19 | Nội dung thêm sau phải hiện ngay trong lệnh tra cứu |
