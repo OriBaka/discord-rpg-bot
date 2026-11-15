@@ -19,7 +19,7 @@ Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, 
 | 🗺️ Khu vực | 5 zone mở theo level, 18 quái, 38 loại nguyên liệu |
 | 🧪 Vật phẩm | 133 item: 4 độ hiếm (common/rare/epic/legendary), shop mua bán |
 | 🛠️ Nghề & chế tạo | 5 nghề: mining, fishing, foraging, cooking, crafting + 27 recipe + 21 công cụ vĩnh viễn + 10 vật phẩm bổ trợ dùng một lần (buff theo lượt) + 14 thành tựu nghề |
-| 🐾 Pet | 13 pet, drop trực tiếp hoặc ghép từ mảnh, cộng chỉ số khi đi theo |
+| 🐾 Pet | 28 pet sống theo 9 vùng khí hậu, rơi trực tiếp / ghép mảnh / tiến hoá, cộng chỉ số khi đi theo |
 | 🏰 Bang hội | Tạo bang, mời thành viên, kho chung, buff vàng/XP/drop, BXH bang |
 | 🐲 Boss tuần (raid) | Cả server đánh chung một thanh máu, 5 lượt/tuần/người, chia thưởng theo hạng sát thương |
 | ⚔️ PvP & Trade | Duel có cược vàng + rating; trade item/vàng 2 chiều có bước xác nhận |
@@ -152,7 +152,7 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 | `%guild` | Bang hội: `create`, `invite`, `vault`, `deposit`, `withdraw`, `buff`, `top` |
 | `%duel @user [gold]` | PvP có cược, `%duel accept/decline/top` |
 | `%trade @user` | Mở phiên trade, `%trade add/remove/ready/confirm` |
-| `%pet` | Pet: `active`, `shards`, `combine`, `collection` |
+| `%pet` | Pet: `active`, `shards`, `combine`, `evolve`, `map`, `collection` |
 | `%raid` | Boss tuần: `danh` (đánh), `top` (BXH sát thương), `bang` (BXH bang), `thuong` (nhận thưởng) |
 | `%redeem <code>` | Nhập code nhận thưởng |
 
@@ -191,7 +191,7 @@ Các lệnh gốc bên dưới **vẫn dùng được** như trước — `%adm`
 | `%item help` | Tạo/sửa/xoá item, gán ảnh |
 | `%mob help` | Tạo/sửa quái & zone, thêm drop |
 | `%shop add/remove/setprice` | Chỉnh cửa hàng |
-| `%quest admin` / `%ach admin` / `%pet admin` | Tạo/sửa quest, thành tựu, pet & drop |
+| `%quest admin` / `%ach admin` / `%pet admin` | Tạo/sửa quest, thành tựu, pet, khí hậu, drop & công thức tiến hoá |
 | `%craft admin` / `%cook admin` | Tạo/sửa recipe |
 | `%upgrade admin` | Chỉnh nguyên liệu/vàng nâng cấp theo mốc (`set`/`tier`/`gold`/`reset`) |
 | `%gatherzone` (`%gz`) | Quản lý zone mining/fishing/foraging |
