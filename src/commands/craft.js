@@ -5,6 +5,7 @@ const { getPlayer, addItem, removeItem, hasItem } = require('../game/player');
 const { getItem } = require('../game/items');
 const recipes = require('../game/recipes');
 const jobTools = require('../game/job_tools');
+const jobBuffs = require('../game/job_buffs');
 const jobs = require('../game/jobs');
 const { tierInfo } = require('../game/tiers');
 const { getRestTokens, parseKV } = require('../game/argparse');
@@ -178,21 +179,30 @@ async function handleCommand(msg, args, type) {
   // === Công cụ bổ trợ (dao bếp / búa thợ) ===
   // save_chance : cơ hội KHÔNG tiêu nguyên liệu (búa thợ)
   // extra_chance: cơ hội ra thêm 1 món (dao bếp)
-  const toolBonus = jobTools.bonus(msg.author.id, jobType, p.level);
+  const toolBonus = jobBuffs.bonus(msg.author.id, jobType, p.level);
   let toolText = '';
+  // Nguồn của hiệu ứng có thể là công cụ (búa/dao) hoặc buff consumable —
+  // trước đây lấy thẳng toolBonus.tool.name nên crash khi chỉ có buff.
+  const effectSource = () => toolBonus.tool ? toolBonus.tool.name : 'Vật phẩm bổ trợ';
   const savedInputs = toolBonus.saveChance > 0 && Math.random() < toolBonus.saveChance;
 
   if (savedInputs) {
-    toolText += `\n${toolBonus.tool.name}: **không tiêu nguyên liệu** ✨`;
+    toolText += `\n${effectSource()}: **không tiêu nguyên liệu** ✨`;
   } else {
     for (const inp of inputs) {
       removeItem(msg.author.id, inp.item_id, inp.qty);
     }
   }
 
+  // Buff tạm thời có hiệu lực cho ĐÚNG lần chế này rồi trừ 1 lượt
+  if (toolBonus.buff) {
+    const left = jobBuffs.consume(msg.author.id, jobType);
+    toolText += `\n${jobBuffs.describeActive(toolBonus.buff)}` + (left === 0 ? ' — **vừa hết lượt**' : '');
+  }
+
   const bonusQty = toolBonus.extraChance > 0 && Math.random() < toolBonus.extraChance ? 1 : 0;
   const totalOut = recipe.output_qty + bonusQty;
-  if (bonusQty > 0) toolText += `\n${toolBonus.tool.name}: **+1 món** ✨`;
+  if (bonusQty > 0) toolText += `\n${effectSource()}: **+1 món** ✨`;
 
   // Produce output
   addItem(msg.author.id, recipe.output_id, totalOut);

@@ -2,6 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 const { getPlayer } = require('../game/player');
 const jobs = require('../game/jobs');
 const jobTools = require('../game/job_tools');
+const jobBuffs = require('../game/job_buffs');
 
 function resolveTarget(msg, arg) {
   if (!arg) return msg.author;
@@ -64,10 +65,12 @@ module.exports = {
     // Không có dòng này thì người chơi mua công cụ xong không biết nó có tác
     // dụng gì, và cũng không biết nghề nào còn thiếu công cụ.
     const toolLines = jobs.JOB_TYPES.map(jt => {
-      const b = jobTools.bonus(target.id, jt, p.level);
+      const b = jobBuffs.bonus(target.id, jt, p.level);
       const weak = b.tool ? '' : ' *(chưa có — mua ở shop)*';
-      return `${jobs.JOB_INFO[jt].icon} **${jt}**: ${b.tool ? b.tool.name : '—'}${weak}` +
+      let line = `${jobs.JOB_INFO[jt].icon} **${jt}**: ${b.tool ? b.tool.name : '—'}${weak}` +
         (b.tool ? ` — ${jobTools.describe(b.tool)}` : '');
+      if (b.buff) line += `\n   ${jobBuffs.describeActive(b.buff)}`;
+      return line;
     });
 
     const embed = new EmbedBuilder().setColor(0x5865F2)

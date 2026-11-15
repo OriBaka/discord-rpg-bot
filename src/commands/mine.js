@@ -7,6 +7,7 @@ const { tierInfo } = require('../game/tiers');
 const settings = require('../game/settings');
 const farmEvents = require('../game/farm_events');
 const jobTools = require('../game/job_tools');
+const jobBuffs = require('../game/job_buffs');
 
 const JOB = 'mining';
 
@@ -103,11 +104,12 @@ module.exports = {
       const order = { legendary: 4, epic: 3, rare: 2, common: 1 };
       return (order[b.tier] || 0) - (order[a.tier] || 0);
     })[0];
-    // Bonus của công cụ: đọc từ bảng job_tools (mỗi món một mức riêng), không
-    // còn suy theo tier — trước đây nâng cấp trong cùng tier là 0% cải thiện.
+    // Bonus = công cụ (vĩnh viễn) + buff consumable (tạm thời), có trần.
+    // Lấy qua jobBuffs.bonus để mọi lệnh dùng đúng một công thức.
     const toolStat = jobTools.getTool(bestPick.id) || { drop_bonus: 0, qty_bonus: 0 };
-    const mult = 1 + (toolStat.qty_bonus || 0);
-    const dropMult = 1 + (toolStat.drop_bonus || 0);
+    const tb = jobBuffs.bonus(msg.author.id, JOB, p.level);
+    const mult = tb.qtyMult;
+    const dropMult = tb.dropMult;
 
     // Check cooldown
     const cdMs = resolveMineCd(zone);
@@ -192,7 +194,11 @@ module.exports = {
 
     // Công cụ + thông số hiện trong DESCRIPTION (footer bị Discord thu nhỏ và
     // cắt, mà đây là thông tin người chơi cần thấy để biết mình nên nâng cấp gì)
-    const toolText = `\n\n🧰 **${bestPick.name}** — ${jobTools.describe(toolStat)}`;
+    let toolText = `\n\n🧰 **${bestPick.name}** — ${jobTools.describe(toolStat)}`;
+    if (tb.buff) {
+      const left = jobBuffs.consume(msg.author.id, JOB);
+      toolText += `\n${jobBuffs.describeActive(tb.buff)}` + (left === 0 ? ' — **vừa hết lượt**' : '');
+    }
 
     const embed = new EmbedBuilder().setColor(0x95A5A6)
       .setTitle(`⛏️ Đào tại ${zone.icon} ${zone.name}`)

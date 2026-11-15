@@ -7,6 +7,7 @@ const { tierInfo } = require('../game/tiers');
 const settings = require('../game/settings');
 const farmEvents = require('../game/farm_events');
 const jobTools = require('../game/job_tools');
+const jobBuffs = require('../game/job_buffs');
 
 const JOB = 'fishing';
 
@@ -91,10 +92,11 @@ module.exports = {
       const order = { legendary: 4, epic: 3, rare: 2, common: 1 };
       return (order[b.tier] || 0) - (order[a.tier] || 0);
     })[0];
-    // Bonus công cụ đọc từ job_tools (mỗi cần câu một mức riêng)
+    // Bonus = công cụ (vĩnh viễn) + buff consumable (tạm thời), có trần
     const toolStat = jobTools.getTool(bestRod.id) || { drop_bonus: 0, qty_bonus: 0 };
-    const mult = 1 + (toolStat.qty_bonus || 0);
-    const dropMult = 1 + (toolStat.drop_bonus || 0);
+    const tb = jobBuffs.bonus(msg.author.id, JOB, p.level);
+    const mult = tb.qtyMult;
+    const dropMult = tb.dropMult;
 
     const cdMs = resolveFishCd(zone);
     const remain = jobs.getCooldownRemaining(msg.author.id, JOB, cdMs);
@@ -167,9 +169,15 @@ module.exports = {
       lvlText += `\n\n🏆 **Thành tựu mới**: ${xpResult.achievements.map(a => `${a.icon} ${a.name}`).join(', ')}`;
     }
 
+    let buffText = '';
+    if (tb.buff) {
+      const left = jobBuffs.consume(msg.author.id, JOB);
+      buffText = `\n${jobBuffs.describeActive(tb.buff)}` + (left === 0 ? ' — **vừa hết lượt**' : '');
+    }
+
     const embed = new EmbedBuilder().setColor(0x3498DB)
       .setTitle(`🎣 Câu tại ${zone.icon} ${zone.name}`)
-      .setDescription(dropText + lvlText + `\n\n🧰 **${bestRod.name}** — ${jobTools.describe(toolStat)}`)
+      .setDescription(dropText + lvlText + `\n\n🧰 **${bestRod.name}** — ${jobTools.describe(toolStat)}` + buffText)
       .setFooter({ text: `+${zone.base_xp} Fishing XP • Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
     return msg.reply({ embeds: [embed], components: [buildAgainRow('fish', msg.author.id, args)] });

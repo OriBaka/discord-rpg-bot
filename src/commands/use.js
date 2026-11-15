@@ -2,6 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 const { getPlayer, updatePlayer, addItem, removeItem, hasItem } = require('../game/player');
 const { ITEMS } = require('../game/items');
 const lootbox = require('../game/lootbox');
+const jobBuffs = require('../game/job_buffs');
 
 module.exports = {
   name: 'use',
@@ -44,6 +45,33 @@ module.exports = {
       if (it.image_url) embed.setThumbnail(it.image_url);
       const { buildAgainRow } = require('../game/again_button');
       return msg.reply({ embeds: [embed], components: [buildAgainRow('use', msg.author.id, [id, String(qty)])] });
+    }
+
+    // ===== BUFF NGHỀ (đuốc / mồi câu / gia vị / dầu tôi) =====
+    // Kiểm tra TRƯỚC khi trừ item: sai cấp hay sai loại thì không được mất đồ.
+    const buffStat = jobBuffs.getBuffItem(id);
+    if (buffStat) {
+      if (qty > 1) return msg.reply('💡 Vật phẩm bổ trợ chỉ dùng 1 cái mỗi lần.');
+      const res = jobBuffs.activate(msg.author.id, id, p.level);
+      if (!res.ok) {
+        if (res.error === 'level') {
+          return msg.reply(`🔒 **${res.item.name}** cần Lv.${res.item.min_level} (bạn Lv.${p.level}).`);
+        }
+        return msg.reply('❌ Không dùng được vật phẩm này.');
+      }
+      removeItem(msg.author.id, id, 1);
+      const b = res.buff;
+      const lines = [
+        `✅ Dùng **${it.name}** — buff cho nghề **${buffStat.job}** trong **${b.charges} lượt**.`,
+        `Hiệu lực: ${jobBuffs.describeItem(buffStat)}`,
+      ];
+      if (res.replaced) {
+        const oldItem = ITEMS[res.replaced.item_id];
+        lines.push(`♻️ Thay buff cũ (${oldItem?.name || res.replaced.item_id}, còn ${res.replaced.charges} lượt cùng nghề).`);
+      }
+      lines.push(`💡 Mỗi lần dùng lệnh nghề tốn 1 lượt; khác nghề thì buff chạy song song được.`);
+      const { buildAgainRow } = require('../game/again_button');
+      return msg.reply({ content: lines.join('\n'), components: [buildAgainRow('use', msg.author.id, [id])] });
     }
 
     // ===== CONSUMABLE thường =====
