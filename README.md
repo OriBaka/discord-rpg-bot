@@ -23,7 +23,7 @@ Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, 
 | 🏰 Bang hội | Tạo bang, mời thành viên, kho chung, buff vàng/XP/drop, BXH bang |
 | 🐲 Boss tuần (raid) | Cả server đánh chung một thanh máu, 5 lượt/tuần/người, chia thưởng theo hạng sát thương |
 | ⚔️ PvP & Trade | Duel có cược vàng + rating; trade item/vàng 2 chiều có bước xác nhận |
-| 📜 Quest & Thành tựu | Quest daily tự sinh, quest custom (admin), 25 thành tựu có điểm và title |
+| 📜 Quest & Thành tựu | Quest daily tự sinh (săn quái / vàng / cấp / thu hoạch / chế tác / cấp nghề / boss), quest custom (admin), 25 thành tựu có điểm và title |
 | 🎁 Khác | Daily, lootbox, redeem code, ảnh cho item/quái/zone/pet |
 
 ---
@@ -114,7 +114,7 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 | `%unequip <slot\|all>` | Tháo trang bị |
 | `%upgrade` / `%upgrade <id>` / `%upgrade list` | Nâng cấp vũ khí +1..+5 (nguyên liệu tăng dần theo cấp và phẩm chất) |
 | `%compare <id1> [id2]` | So sánh 2 món, hoặc so với món đang mặc cùng slot |
-| `%class` | Xem class hiện tại, `%class pick/switch/unlock <id>` |
+| `%class` | Xem class hiện tại, `%class pick/switch/unlock <id>` — mở class thứ 2 cần 1 Huy Hiệu (rơi 15% từ 3 boss cuối) |
 | `%top` | BXH level, `%top guild` BXH bang |
 
 ### Chiến đấu

@@ -3,6 +3,7 @@ const db = require('../db/database');
 const { getPlayer, updatePlayer, addItem, addXpAndLevel } = require('../game/player');
 const { getItem } = require('../game/items');
 const quests = require('../game/quests');
+const jobs = require('../game/jobs');
 const achievements = require('../game/achievements');
 const channels = require('../game/channels');
 const { getRestTokens, parseKV } = require('../game/argparse');
@@ -27,6 +28,25 @@ function formatObjective(q) {
     case 'gold':  return `Kiếm ${q.target_qty} 💰`;
     case 'level': return `Đạt Lv.${q.target_qty}`;
     case 'item':  return `Sở hữu ${q.target_qty}x ${q.target_id}`;
+
+    // === 4 loại mới: nghề / chế tác / cấp nghề / boss ===
+    case 'gather': {
+      const j = q.target_id ? (jobs.JOB_INFO[q.target_id] || null) : null;
+      const what = j ? `${j.icon} ${j.name}` : 'nguyên liệu (nghề nào cũng tính)';
+      return `Thu hoạch ${q.target_qty} ${what}`;
+    }
+    case 'craft': {
+      const r = q.target_id ? db.prepare('SELECT name FROM recipes WHERE id=?').get(q.target_id) : null;
+      return r ? `Chế/nấu ${q.target_qty}× ${r.name}` : `Chế hoặc nấu ${q.target_qty} món`;
+    }
+    case 'job_level': {
+      const j = jobs.JOB_INFO[q.target_id];
+      return `Đạt ${j ? j.icon + ' ' + j.name : q.target_id} Lv.${q.target_qty}`;
+    }
+    case 'boss': {
+      const m = q.target_id ? db.prepare('SELECT name FROM monsters WHERE id=?').get(q.target_id) : null;
+      return m ? `Hạ ${q.target_qty}× ${m.name}` : `Hạ ${q.target_qty} elite/boss`;
+    }
     default:      return q.desc || 'Mục tiêu lạ';
   }
 }
@@ -71,8 +91,12 @@ module.exports = {
       if (pq.claimed) return msg.reply('💡 Bạn đã nhận thưởng quest này rồi.');
       const q = quests.getQuest(qid);
       if (!q) return msg.reply('❌ Quest không tồn tại.');
-      if (pq.progress < q.target_qty) {
-        return msg.reply(`⏳ Quest chưa hoàn thành: ${pq.progress}/${q.target_qty}`);
+      // Quest dạng trạng thái (level / job_level / item) có thể đã đủ điều kiện
+      // TRƯỚC khi nhận quest → tính lại, nếu không sẽ kẹt ở 0 vĩnh viễn.
+      quests.refreshStateQuests(msg.author.id);
+      const pqNow = quests.getPlayerQuest(msg.author.id, qid);
+      if (pqNow.progress < q.target_qty) {
+        return msg.reply(`⏳ Quest chưa hoàn thành: ${pqNow.progress}/${q.target_qty}`);
       }
 
       // Grant reward
@@ -130,6 +154,9 @@ module.exports = {
     // ====== Default: xem quest đang nhận ======
     // Tự generate daily nếu chưa có
     quests.generateDailyQuests(msg.author.id, p.level);
+    // Quest kiểu trạng thái (level / job_level / item) phải được tính lại mỗi
+    // lần xem, nếu không tiến độ hiện 0/… dù điều kiện đã đạt từ trước.
+    quests.refreshStateQuests(msg.author.id);
 
     const playerQuests = quests.getPlayerQuests(msg.author.id);
     if (playerQuests.length === 0) {
@@ -178,8 +205,12 @@ async function handleAdmin(msg, args, prefix) {
         `\`${prefix}quest admin assign @user <quest_id>\` — giao quest cho user`,
         `\`${prefix}quest admin list\` — list tất cả quest`,
         '',
-        'Field obj: `kill | gold | level | item`',
-        'Field target: monster_id / item_id (rỗng = bất kỳ với kill)',
+        'Field obj: `kill | gold | level | item | gather | craft | jnlevel | boss`'.replace('jnlevel', 'job_level'),
+        'Field target: monster_id / item_id / recipe_id / job (rỗng = bất kỳ, trừ job_level)',
+        '   gather    → target = mining | fishing | foraging (rỗng = nghề nào cũng tính)',
+        '   craft     → target = recipe_id (rỗng = món nào cũng tính)',
+        '   job_level → target = job BẮT BUỘC, qty = cấp nghề cần đạt',
+        '   boss      → target = monster_id (rỗng = elite/boss nào cũng tính)',
         'Field item reward: format `id:qty,id:qty`',
       ].join('\n'));
     return msg.reply({ embeds: [embed] });
@@ -220,8 +251,8 @@ async function handleAdmin(msg, args, prefix) {
     if (!id) return msg.reply('❌ Thiếu quest id.');
     if (quests.getQuest(id)) return msg.reply('❌ Quest id đã tồn tại.');
     const kv = parseKV(tokens.slice(1));
-    if (!kv.name || !kv.obj) return msg.reply('❌ Cần `name="..."` và `obj=kill|gold|level|item`.');
-    const allowedObj = ['kill','gold','level','item'];
+    const allowedObj = ['kill','gold','level','item','gather','craft','job_level','boss'];
+    if (!kv.name || !kv.obj) return msg.reply(`❌ Cần \`name="..."\` và \`obj=${allowedObj.join('|')}\`.`);
     if (!allowedObj.includes(kv.obj)) return msg.reply(`❌ obj phải là: ${allowedObj.join('/')}`);
     const type = kv.type || 'custom';
     if (!['custom','daily','weekly'].includes(type)) return msg.reply('❌ type phải là custom/daily/weekly.');

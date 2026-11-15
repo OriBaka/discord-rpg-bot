@@ -33,6 +33,15 @@ async function finalizeBattle(interaction, battleRow, log) {
       const xpGained = Math.floor(mob.xp * eliteMult * (1 + (guildBonus.xp_pct || 0) / 100));
       const xpRes = addXpAndLevel(battleRow.user_a, xpGained);
 
+      // Quest hooks — trước đây đánh thắng trong %battle KHÔNG cộng tiến độ quest
+      // nào (chỉ %hunt có), nên người chơi chọn lối chơi turn-based bị thiệt.
+      try {
+        const quests = require('./game/quests');
+        quests.onKillMonster(battleRow.user_a, battleRow.monster_id);
+        quests.onKillBoss(battleRow.user_a, battleRow.monster_id, battleRow.is_elite || 0);
+        quests.onEarnGold(battleRow.user_a, gold);
+      } catch (e) { console.error('[battle quest hook]', e.message); }
+
       summary.push(`🏆 **VICTORY!**`);
       summary.push(`💰 +${gold} gold • ✨ +${xpGained} XP`);
       if (guildBonus.gold_pct || guildBonus.xp_pct) {
@@ -504,4 +513,6 @@ async function handle(interaction) {
   return interaction.reply({ content: '❌ Action không xác định: ' + customId, ephemeral: true });
 }
 
-module.exports = { handle };
+// finalizeBattle export để test được nhánh thắng PvE (quest/loot/XP) mà không
+// phải dựng cả một interaction flow.
+module.exports = { handle, finalizeBattle };

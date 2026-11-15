@@ -274,6 +274,14 @@ runMigrate('../game/lore_seed', 'migrateLoreSeed');
 // rồi tới các bảng phụ.
 runMigrate('../game/lore_surface_seed', 'migrateLoreSurfaceSeed');
 
+// Nguồn cho 3 Huy Hiệu class (class_token_*) — trước đây KHÔNG có nguồn nào,
+// nên `%class unlock` (mở class thứ 2) chỉ dùng được nếu admin tự đưa item.
+// Gắn vào boss cuối game; module này cũng seed mob elite/boss luôn, thay vì đợi
+// lần đầu ai đó gõ `%battle`.
+// PHẢI chạy SAU lore_seed: cột `monsters.desc` do lore_seed ALTER thêm (bảng
+// gốc không có cột này), mà seed mob elite/boss ở đây cần ghi cả mô tả.
+runMigrate('../game/class_token_sources', 'migrateClassTokenSources');
+
 // Công cụ farm (pickaxe + cần câu). Trước đây công cụ chỉ có trong seeder
 // admin-gated → !mine và !fish báo "mua ở shop" nhưng shop không bán gì,
 // khiến hai kỹ năng farm hoàn toàn không dùng được.
