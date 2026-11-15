@@ -4,6 +4,7 @@ const db = require('../db/database');
 const { getPlayer, addItem, removeItem, hasItem } = require('../game/player');
 const { getItem } = require('../game/items');
 const recipes = require('../game/recipes');
+const jobTools = require('../game/job_tools');
 const jobs = require('../game/jobs');
 const { tierInfo } = require('../game/tiers');
 const { getRestTokens, parseKV } = require('../game/argparse');
@@ -174,19 +175,33 @@ async function handleCommand(msg, args, type) {
     }
   }
 
-  // Consume inputs
-  for (const inp of inputs) {
-    removeItem(msg.author.id, inp.item_id, inp.qty);
+  // === Công cụ bổ trợ (dao bếp / búa thợ) ===
+  // save_chance : cơ hội KHÔNG tiêu nguyên liệu (búa thợ)
+  // extra_chance: cơ hội ra thêm 1 món (dao bếp)
+  const toolBonus = jobTools.bonus(msg.author.id, jobType, p.level);
+  let toolText = '';
+  const savedInputs = toolBonus.saveChance > 0 && Math.random() < toolBonus.saveChance;
+
+  if (savedInputs) {
+    toolText += `\n${toolBonus.tool.name}: **không tiêu nguyên liệu** ✨`;
+  } else {
+    for (const inp of inputs) {
+      removeItem(msg.author.id, inp.item_id, inp.qty);
+    }
   }
 
+  const bonusQty = toolBonus.extraChance > 0 && Math.random() < toolBonus.extraChance ? 1 : 0;
+  const totalOut = recipe.output_qty + bonusQty;
+  if (bonusQty > 0) toolText += `\n${toolBonus.tool.name}: **+1 món** ✨`;
+
   // Produce output
-  addItem(msg.author.id, recipe.output_id, recipe.output_qty);
+  addItem(msg.author.id, recipe.output_id, totalOut);
   // Quest 'craft': chế/nấu thành công, tính theo số món tạo ra
-  require('../game/quests').onCraft(msg.author.id, recipe.id, recipe.output_qty);
+  require('../game/quests').onCraft(msg.author.id, recipe.id, totalOut);
   // Thành tựu craft_total: cộng bộ đếm TRƯỚC khi check, nếu không món thứ 100
   // sẽ chỉ được tính ở lần chế thứ 101.
   const achievements = require('../game/achievements');
-  achievements.trackCraft(msg.author.id, recipe.output_qty);
+  achievements.trackCraft(msg.author.id, totalOut);
   const achCtx = { client: msg.client, guildId: msg.guild?.id };
   const xpRes = jobs.addJobXp(msg.author.id, jobType, recipe.xp_gain, achCtx);
   // addJobXp chỉ check khi LÊN CẤP, còn craft_total phải mở đúng món thứ N dù
@@ -195,7 +210,8 @@ async function handleCommand(msg, args, type) {
 
   const out = getItem(recipe.output_id);
   const t = tierInfo(out?.tier || 'common');
-  let text = `${verbThe} **${recipe.output_qty}× ${t.emoji} ${out?.name || recipe.output_id}**!\n+${recipe.xp_gain} ${jobType} XP`;
+  let text = `${verbThe} **${totalOut}× ${t.emoji} ${out?.name || recipe.output_id}**!\n+${recipe.xp_gain} ${jobType} XP`;
+  if (toolText) text += toolText;
   if (xpRes.levelsGained.length > 0) {
     text += `\n\n🎉 **${jobType} Lv.UP!** Đạt Lv.${xpRes.level}`;
   }

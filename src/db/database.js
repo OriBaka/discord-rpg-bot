@@ -289,6 +289,13 @@ runMigrate('../game/class_token_sources', 'migrateClassTokenSources');
 // (chúng không phải vũ khí chiến đấu), nên giá công cụ do module này quyết.
 runMigrate('../game/farm_tools_seed', 'migrateFarmTools');
 
+// Công cụ bổ trợ nghề: thông số riêng cho từng món (cơ hội rơi / số lượng /
+// ra thêm món / tiết kiệm nguyên liệu) + 3 bộ công cụ mới cho foraging,
+// cooking, crafting.
+// PHẢI chạy SAU farm_tools_seed: module đó là bên tạo pickaxe & cần câu, mà
+// job_tools chỉ gắn thông số cho item đã tồn tại.
+runMigrate('../game/job_tools', 'migrateJobTools');
+
 // Nối nguyên liệu farm vào chuỗi chế tác. PHẢI chạy SAU `recipes` (bảng phải
 // tồn tại) và SAU `economy_seed` (giá bán của vật phẩm mới). `recipes.js` chỉ
 // seed khi bảng rỗng nên recipe thêm sau này buộc phải ở migration riêng.

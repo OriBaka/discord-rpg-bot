@@ -371,3 +371,45 @@ bằng level thì luôn challenger đánh trước).
 sát thương **thấp hơn thực tế 30%** ở Lv.25–40 → HP boss bị đặt thấp. Nay lấy
 ATK từ `classes.statsAtLevel` + vũ khí/tay phụ/phụ kiện tốt nhất trong bảng
 items: lệch **0–3%** so với người chơi thật ở cả 4 boss.
+
+---
+
+## Công cụ bổ trợ nghề (2026-11)
+
+**Bonus tính theo TIER, không theo món** — SAI, đã sửa. `%mine`/`%fish` lấy
+`tierBonusMult(tier)` với `common 1.00 · rare 1.15 · epic 1.30`, mà bảng công cụ
+chỉ có 3 tier đó. Hệ quả đo được: `pick_iron` (2000g) và `pick_silver` (4200g)
+đều ×1.15; `pick_gold` (12250g) và `pick_mithril` (26000g) đều ×1.30 — trả thêm
+4200 vàng để nhận **0%** cải thiện. Ngoài ra bonus chỉ nhân SỐ LƯỢNG, không
+đụng tới cơ hội rơi, nên công cụ xịn không giúp trúng drop khó.
+
+**Thiếu công cụ cho 3/5 nghề** — foraging (nghề có yield cao nhất), cooking và
+crafting không có món nào để mua sau khi mở nghề.
+
+Nay mỗi công cụ có thông số riêng trong bảng `job_tools`:
+
+| Cột | Ý nghĩa | Trần |
+|---|---|---|
+| `drop_bonus` | +% cơ hội rơi (chance × (1+x), chặn 100%) | +15% |
+| `qty_bonus` | +% số lượng (giữ nguyên mức tier cũ → không nerf) | +30% |
+| `extra_chance` | cooking: cơ hội ra thêm 1 món | 20% |
+| `save_chance` | crafting: cơ hội không tiêu nguyên liệu | 20% |
+
+Đo bằng `node tools/measure_jobs.js 50` (gold/phút, Lv.50, chưa tính chuỗi /
+mạch / kho báu — chúng nhân như nhau cho mọi nghề):
+
+```
+nghề      zone               không công cụ   có công cụ tốt   tăng
+mining    dragon_mine               286             428        49%
+fishing   void_pool                 236             352        49%
+foraging  world_tree_roots          333             383        15%
+```
+
+- mining/fishing +49% vì cộng cả cơ hội rơi (+15%) lẫn số lượng (đã có từ trước,
+  +30%) — tức phần QR *thêm* đúng bằng +15%, không phải ×1.49 mới.
+- Foraging cố tình **không** có `qty_bonus`: base của nó (333) đã cao hơn mining
+  (286) và fishing (236), nhân thêm số lượng sẽ nới rộng khoảng cách.
+- Chênh lệch cao nhất/thấp nhất sau khi có công cụ: **1.21×** — đúng bằng mức
+  trước khi thêm (mining 372 / fishing 307 / foraging 333), nên công cụ không
+  làm lệch thêm.
+- Cân bằng chiến đấu không đổi: TB 69.8%, 9/9 zone trong 65–75%.

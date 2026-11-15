@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { getPlayer } = require('../game/player');
 const jobs = require('../game/jobs');
+const jobTools = require('../game/job_tools');
 
 function resolveTarget(msg, arg) {
   if (!arg) return msg.author;
@@ -59,10 +60,21 @@ module.exports = {
       };
     });
 
+    // === Công cụ đang dùng cho từng nghề ===
+    // Không có dòng này thì người chơi mua công cụ xong không biết nó có tác
+    // dụng gì, và cũng không biết nghề nào còn thiếu công cụ.
+    const toolLines = jobs.JOB_TYPES.map(jt => {
+      const b = jobTools.bonus(target.id, jt, p.level);
+      const weak = b.tool ? '' : ' *(chưa có — mua ở shop)*';
+      return `${jobs.JOB_INFO[jt].icon} **${jt}**: ${b.tool ? b.tool.name : '—'}${weak}` +
+        (b.tool ? ` — ${jobTools.describe(b.tool)}` : '');
+    });
+
     const embed = new EmbedBuilder().setColor(0x5865F2)
       .setTitle(`🛠️ Nghề của ${p.name}`)
       .addFields(fields)
-      .setFooter({ text: `${prefix}job top <type> xem BXH` });
+      .addFields({ name: '🧰 Công cụ bổ trợ', value: toolLines.join('\n').slice(0, 1024) })
+      .setFooter({ text: `${prefix}job top <type> xem BXH • công cụ mua ở ${prefix}shop` });
     return msg.reply({ embeds: [embed] });
   },
 }; 
