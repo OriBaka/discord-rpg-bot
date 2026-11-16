@@ -359,6 +359,19 @@ async function handle(interaction) {
         });
       }
 
+      if (decoded.domain === 'inv') {
+        const invCmd = require('./commands/inventory');
+        const pl = getPlayer(decoded.userId);
+        return await invCmd.renderInventoryPage({
+          userId: decoded.userId,
+          filter: decoded.filter === 'all' ? undefined : decoded.filter,
+          sort: decoded.sort || 'default',
+          page: decoded.page,
+          playerLevel: pl?.level || 1,
+          replyFn: (opts) => interaction.update(opts),
+        });
+      }
+
       if (decoded.domain === 'shop') {
         const shopCmd = require('./commands/shop');
         const p = getPlayer(decoded.userId);

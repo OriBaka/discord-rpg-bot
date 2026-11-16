@@ -68,7 +68,7 @@ function formatReward(q) {
 module.exports = {
   name: 'quest',
   aliases: ['quests', 'q', 'nv2'],
-  description: 'Hệ thống nhiệm vụ. !quest, !quest claim <id>',
+  description: 'Hệ thống nhiệm vụ. !quest, !quest claim <id> | !quest claim all',
   async execute(msg, args) {
     const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
@@ -85,7 +85,84 @@ module.exports = {
     // ====== claim ======
     if (sub === 'claim') {
       const qid = args[1];
-      if (!qid) return msg.reply(`❌ Cú pháp: \`${prefix}quest claim <quest_id>\``);
+      if (!qid) return msg.reply(`❌ Cú pháp: \`${prefix}quest claim <quest_id>\` — hoặc \`${prefix}quest claim all\``);
+
+      // ── claim all ──────────────────────────────────────────────────────
+      if (qid.toLowerCase() === 'all' || qid.toLowerCase() === 'het') {
+        // Quest dạng trạng thái có thể đã đủ điều kiện từ lâu → refresh 1 lần
+        // cho cả lô, thay vì refresh N lần.
+        quests.refreshStateQuests(msg.author.id);
+        const mine = quests.getPlayerQuests(msg.author.id);
+        const todo = mine.filter(pq => !pq.claimed);
+        if (todo.length === 0) {
+          return msg.reply(`💡 Không có quest nào để nhận. Xem: \`${prefix}quest\``);
+        }
+
+        const claimed = [], notReady = [], broken = [];
+        let gold = 0, xp = 0;
+        const items = [];
+        const newAchs = [];
+        const seenAch = new Set();
+        for (const pq of todo) {
+          const q = quests.getQuest(pq.quest_id);
+          if (!q) { broken.push(pq.quest_id); continue; }
+          const fresh = quests.getPlayerQuest(msg.author.id, pq.quest_id);
+          if (!fresh || fresh.claimed) continue;
+          if (fresh.progress < q.target_qty) { notReady.push(q); continue; }
+
+          if (q.reward_gold) { gold += q.reward_gold; }
+          if (q.reward_xp) { xp += q.reward_xp; }
+          if (q.reward_item) {
+            for (const part of q.reward_item.split(',')) {
+              const [iid, qty] = part.split(':');
+              if (iid && getItem(iid)) items.push({ iid, qty: parseInt(qty) || 1 });
+            }
+          }
+          quests.markClaimed(msg.author.id, pq.quest_id);
+          claimed.push(q);
+          const stats = achievements.getPlayerStats(msg.author.id);
+          achievements.updatePlayerStats(msg.author.id, { total_quests: stats.total_quests + 1 });
+        }
+
+        if (claimed.length === 0) {
+          const lines = [`⏳ **Chưa có quest nào đủ điều kiện** (${notReady.length} quest đang làm).`];
+          lines.push(...notReady.slice(0, 8).map(q => `• ${q.name} — chưa xong`));
+          if (notReady.length > 8) lines.push(`… và ${notReady.length - 8} quest khác`);
+          return msg.reply(lines.join('\n'));
+        }
+
+        // Cộng thưởng MỘT lần (tránh N lần đọc/ghi gold)
+        const cur = getPlayer(msg.author.id);
+        if (gold) updatePlayer(msg.author.id, { gold: cur.gold + gold });
+        if (xp) addXpAndLevel(msg.author.id, xp);
+        for (const { iid, qty } of items) addItem(msg.author.id, iid, qty);
+
+        const ctx = { client: msg.client, guildId: msg.guild?.id };
+        for (const a of achievements.checkAndGrant(msg.author.id, ctx)) {
+          const k = a.id || a.name;
+          if (!seenAch.has(k)) { seenAch.add(k); newAchs.push(a); }
+        }
+
+        const rewards = [];
+        if (gold) rewards.push(`💰 ${gold}`);
+        if (xp) rewards.push(`✨ ${xp} XP`);
+        if (items.length) {
+          const agg = new Map();
+          for (const { iid, qty } of items) agg.set(iid, (agg.get(iid) || 0) + qty);
+          for (const [iid, qty] of agg) rewards.push(`📦 ${qty}× ${getItem(iid).name}`);
+        }
+
+        let txt = `🎉 Nhận thưởng **${claimed.length} quest**:\n` +
+          claimed.slice(0, 10).map(q => `• ${q.name}`).join('\n');
+        if (claimed.length > 10) txt += `\n… và ${claimed.length - 10} quest khác`;
+        txt += `\n\n**Tổng thưởng**: ${rewards.join(' • ') || '—'}`;
+        if (notReady.length) txt += `\n⏳ Còn ${notReady.length} quest chưa xong.`;
+        if (newAchs.length > 0) {
+          txt += `\n\n🏆 **Thành tựu mới**: ${newAchs.map(a => `${a.icon} ${a.name}`).join(', ')}`;
+        }
+        return msg.reply(txt);
+      }
+
       const pq = quests.getPlayerQuest(msg.author.id, qid);
       if (!pq) return msg.reply('❌ Bạn không có quest này.');
       if (pq.claimed) return msg.reply('💡 Bạn đã nhận thưởng quest này rồi.');
@@ -100,7 +177,7 @@ module.exports = {
       }
 
       // Grant reward
-      if (q.reward_gold) updatePlayer(msg.author.id, { gold: p.gold + q.reward_gold });
+      if (q.reward_gold) { const cur = getPlayer(msg.author.id); updatePlayer(msg.author.id, { gold: cur.gold + q.reward_gold }); }
       if (q.reward_xp)   addXpAndLevel(msg.author.id, q.reward_xp);
       if (q.reward_item) {
         for (const part of q.reward_item.split(',')) {

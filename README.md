@@ -108,7 +108,7 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 |---|---|
 | `%start` | Tạo nhân vật mới |
 | `%me [@user]` | Xem hồ sơ: level, HP, chỉ số, vàng |
-| `%inv [filter]` | Xem túi đồ, lọc theo loại (vd `%inv weapon`, `%inv ring`) |
+| `%inv [filter] [sort]` | Xem túi đồ — phân trang, nút lọc, tổng giá trị. vd `%inv weapon`, `%inv value` (đắt trước), `%inv qty` |
 | `%gear [@user]` | Xem trang bị đang mặc + tổng bonus |
 | `%equip <id> [slot]` | Mặc đồ (tự chọn slot, hoặc chỉ định ring2, offhand…) |
 | `%unequip <slot\|all>` | Tháo trang bị |
@@ -136,12 +136,12 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 | Lệnh | Mô tả |
 |---|---|
 | `%shop` | Xem cửa hàng |
-| `%buy <id> [qty]` / `%sell <id> [qty]` | Mua / bán cho NPC (không bán được món đang mặc) |
+| `%buy <id> [qty]` / `%sell <id> [qty]` | Mua / bán cho NPC (không bán được món đang mặc). Hàng loạt: `%sell all [filter]`, `%sell junk` |
 | `%market` / `%market sell <id> <giá> [qty]` / `%market buy <#id>` | Chợ NGƯỜI CHƠI: đăng bán nguyên liệu, đồ ăn, vũ khí/giáp không soulbound, vật phẩm hiếm (`mine`, `cancel`, `search`, `recent`) |
 | `%mine [zone]` | Đào mỏ (alias: `%dao`) |
 | `%fish [zone]` | Câu cá (alias: `%cau`) |
 | `%gather [zone]` | Hái lượm gỗ/thảo dược (foraging, alias: `%forage`, `%hai`) |
-| `%craft list` / `%craft <id>` | Chế tạo |
+| `%craft list` / `%craft <id> [xN]` | Chế tạo, lặp N lần vd `%craft iron_ingot x10` (dừng khi hết nguyên liệu) |
 | `%cook list` / `%cook <id>` | Nấu ăn |
 | `%job [@user]` | Xem level các nghề, `%job top <type>` |
 

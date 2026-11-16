@@ -199,6 +199,58 @@ module.exports.buy = {
   },
 };
 
+// ===== bán hàng loạt =====
+// `%sell all [filter]` và `%sell junk`.
+//
+// Vì sao: đo trên nhân vật 257 loại item, mỗi stack 99 — bán tay = 257 lệnh.
+// Luật an toàn (giữ nguyên tinh thần guard của %sell lẻ):
+//   • món đang TRANG BỊ không bán (equip không lấy item khỏi túi → bán = dup buff+golds)
+//   • món soulbound không bán
+//   • `junk` chỉ bán tier common (⚪) và chỉ nguyên liệu/tiêu hao/hộp quà,
+//     nên đồ hiếm (rare+) và trang bị luôn được giữ lại
+function bulkSellable(userId, opts = {}) {
+  const { getEquippedCount } = require('../game/slots');
+  const rows = db.prepare('SELECT item_id, qty FROM inventory WHERE user_id = ?').all(userId);
+  const plans = [];
+  const skipped = { equipped: [], soulbound: [], noMatch: 0 };
+  for (const row of rows) {
+    const it = getItem(row.item_id);
+    if (!it || row.qty <= 0) continue;
+    if (opts.filter && !opts.filter(it)) { skipped.noMatch++; continue; }
+    if (it.soulbound) { skipped.soulbound.push(it); continue; }
+    const equippedQty = getEquippedCount(userId, it.id);
+    const qty = row.qty - equippedQty;
+    if (qty <= 0) { if (equippedQty > 0) skipped.equipped.push(it); continue; }
+    if (equippedQty > 0) skipped.equipped.push(it);
+    const unit = it.sell || Math.floor((it.price || 0) / 3) || 0;
+    plans.push({ it, qty, gain: unit * qty, equippedQty });
+  }
+  return { plans, skipped };
+}
+
+function bulkSellReply(prefix, { plans, skipped }, label) {
+  if (plans.length === 0) {
+    const lines = [`🧺 Không có món nào bán được trong nhóm **${label}**.`];
+    if (skipped.equipped.length) lines.push(`🟢 Đang mặc (không bán): ${skipped.equipped.map(i => i.name).slice(0, 5).join(', ')}${skipped.equipped.length > 5 ? '…' : ''}`);
+    if (skipped.soulbound.length) lines.push(`🔗 Soulbound: ${skipped.soulbound.length} món`);
+    lines.push(`💡 Xem túi: \`${prefix}inv\``);
+    return lines.join('\n');
+  }
+  const total = plans.reduce((n, p) => n + p.gain, 0);
+  const shown = plans.slice(0, 12)
+    .map(p => `• ${p.it.name} ×${p.qty} → ${p.gain}💰`)
+    .join('\n');
+  const more = plans.length > 12 ? `\n… và **${plans.length - 12}** món khác` : '';
+  const skipNote = [];
+  if (skipped.equipped.length) skipNote.push(`🟢 giữ lại ${skipped.equipped.length} món đang mặc`);
+  if (skipped.soulbound.length) skipNote.push(`🔗 ${skipped.soulbound.length} món soulbound`);
+  return (
+    `✅ Đã bán **${plans.reduce((n, p) => n + p.qty, 0)}** món (${plans.length} loại) — thu **${total}** 💰\n` +
+    shown + more +
+    (skipNote.length ? `\n_(${skipNote.join(' • ')})_` : '')
+  );
+}
+
 // ===== sell =====
 module.exports.sell = {
   name: 'sell',
@@ -209,7 +261,46 @@ module.exports.sell = {
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
     const id = args[0]; const qty = Math.max(1, parseInt(args[1]) || 1);
-    if (!id) return msg.reply(`❌ Cú pháp: \`${prefix}sell <id> [qty]\``);
+    if (!id) return msg.reply(`❌ Cú pháp: \`${prefix}sell <id> [qty]\` — hoặc \`${prefix}sell all\`, \`${prefix}sell junk\``);
+
+    // ── bán hàng loạt ────────────────────────────────────────────────────
+    const bulkKind = String(id).toLowerCase();
+    if (bulkKind === 'all' || bulkKind === 'het' || bulkKind === 'junk' || bulkKind === 'rac') {
+      const invCmd = require('./inventory');
+      const isJunk = bulkKind === 'junk' || bulkKind === 'rac';
+      const filterArg = isJunk ? null : args[1];
+      const filterDef = filterArg ? invCmd.parseFilter(filterArg) : null;
+      if (filterDef && filterDef.key === 'custom') {
+        return msg.reply(`❓ Không hiểu filter \`${filterArg}\`. Dùng: all, mat, potion, weapon, armor, acc, offhand, tool, lootbox`);
+      }
+      const result = bulkSellable(msg.author.id, {
+        filter: (it) => {
+          if (isJunk) {
+            // tiers.js: common=1, rare=2, epic=3, legendary=4
+            if (tierInfo(it.tier).order > 1) return false;
+            return ['material', 'consumable', 'lootbox'].includes(it.type);
+          }
+          if (!filterDef) return true;
+          if (filterDef.types && !filterDef.types.includes(it.type)) return false;
+          if (filterDef.armorSlots && !filterDef.armorSlots.includes(it.armor_slot)) return false;
+          if (filterDef.accessoryTypes && !filterDef.accessoryTypes.includes(it.accessory_type)) return false;
+          return true;
+        },
+      });
+      // Bán thật
+      let gold = 0;
+      for (const p of result.plans) {
+        removeItem(msg.author.id, p.it.id, p.qty);
+        gold += p.gain;
+      }
+      if (gold > 0) {
+        const fresh = getPlayer(msg.author.id);
+        updatePlayer(msg.author.id, { gold: fresh.gold + gold });
+      }
+      const label = isJunk ? 'rác (tier common)' : (filterDef ? filterDef.label : 'tất cả');
+      return msg.reply(bulkSellReply(prefix, result, label));
+    }
+
     const it = getItem(id);
     if (!it) return msg.reply('❌ Sai ID vật phẩm.');
 

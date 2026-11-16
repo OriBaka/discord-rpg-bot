@@ -4,157 +4,246 @@ const { getItem } = require('../game/items');
 const { tierInfo } = require('../game/tiers');
 const { getEquipped } = require('../game/slots');
 const display = require('../game/item_display');
+const paginator = require('../game/paginator');
 
 // Map các filter alias
 // Trả về { types: [...], armorSlots: [...], accessoryTypes: [...], label: string }
 function parseFilter(arg) {
-  if (!arg) return { types: null, armorSlots: null, accessoryTypes: null, label: 'Tất cả' };
+  if (!arg) return { key: 'all', types: null, armorSlots: null, accessoryTypes: null, label: 'Tất cả' };
   const a = arg.toLowerCase();
   const filters = {
     // Type chính
-    weapon:     { types: ['weapon'],   label: '🗡️ Vũ khí' },
-    wp:         { types: ['weapon'],   label: '🗡️ Vũ khí' },
-    vk:         { types: ['weapon'],   label: '🗡️ Vũ khí' },
-    offhand:    { types: ['offhand'],  label: '🛡️ Tay phụ' },
-    oh:         { types: ['offhand'],  label: '🛡️ Tay phụ' },
-    'tay phụ':  { types: ['offhand'],  label: '🛡️ Tay phụ' },
-    shield:     { types: ['offhand'],  label: '🛡️ Tay phụ' },
-    armor:      { types: ['armor'],    label: '🦺 Giáp (tất cả)' },
-    ar:         { types: ['armor'],    label: '🦺 Giáp (tất cả)' },
-    giap:       { types: ['armor'],    label: '🦺 Giáp (tất cả)' },
-    'giáp':     { types: ['armor'],    label: '🦺 Giáp (tất cả)' },
+    weapon:     { key: 'weapon', types: ['weapon'],   label: '🗡️ Vũ khí' },
+    wp:         { key: 'weapon', types: ['weapon'],   label: '🗡️ Vũ khí' },
+    vk:         { key: 'weapon', types: ['weapon'],   label: '🗡️ Vũ khí' },
+    offhand:    { key: 'offhand', types: ['offhand'],  label: '🛡️ Tay phụ' },
+    oh:         { key: 'offhand', types: ['offhand'],  label: '🛡️ Tay phụ' },
+    'tay phụ':  { key: 'offhand', types: ['offhand'],  label: '🛡️ Tay phụ' },
+    shield:     { key: 'offhand', types: ['offhand'],  label: '🛡️ Tay phụ' },
+    armor:      { key: 'armor', types: ['armor'],    label: '🦺 Giáp (tất cả)' },
+    ar:         { key: 'armor', types: ['armor'],    label: '🦺 Giáp (tất cả)' },
+    giap:       { key: 'armor', types: ['armor'],    label: '🦺 Giáp (tất cả)' },
+    'giáp':     { key: 'armor', types: ['armor'],    label: '🦺 Giáp (tất cả)' },
 
     // Theo armor_slot cụ thể
-    head:       { types: ['armor'], armorSlots: ['head'],  label: '⛑️ Đồ đầu' },
-    mu:         { types: ['armor'], armorSlots: ['head'],  label: '⛑️ Đồ đầu' },
-    'mũ':       { types: ['armor'], armorSlots: ['head'],  label: '⛑️ Đồ đầu' },
-    chest:      { types: ['armor'], armorSlots: ['chest'], label: '👕 Đồ thân' },
-    than:       { types: ['armor'], armorSlots: ['chest'], label: '👕 Đồ thân' },
-    'thân':     { types: ['armor'], armorSlots: ['chest'], label: '👕 Đồ thân' },
-    legs:       { types: ['armor'], armorSlots: ['legs'],  label: '👖 Quần' },
-    quan:       { types: ['armor'], armorSlots: ['legs'],  label: '👖 Quần' },
-    'quần':     { types: ['armor'], armorSlots: ['legs'],  label: '👖 Quần' },
-    feet:       { types: ['armor'], armorSlots: ['feet'],  label: '👢 Giày' },
-    boot:       { types: ['armor'], armorSlots: ['feet'],  label: '👢 Giày' },
-    giay:       { types: ['armor'], armorSlots: ['feet'],  label: '👢 Giày' },
-    'giày':     { types: ['armor'], armorSlots: ['feet'],  label: '👢 Giày' },
-    hands:      { types: ['armor'], armorSlots: ['hands'], label: '🧤 Găng tay' },
-    glove:      { types: ['armor'], armorSlots: ['hands'], label: '🧤 Găng tay' },
-    gang:       { types: ['armor'], armorSlots: ['hands'], label: '🧤 Găng tay' },
-    'găng':     { types: ['armor'], armorSlots: ['hands'], label: '🧤 Găng tay' },
+    head:       { key: 'armor', types: ['armor'], armorSlots: ['head'],  label: '⛑️ Đồ đầu' },
+    mu:         { key: 'armor', types: ['armor'], armorSlots: ['head'],  label: '⛑️ Đồ đầu' },
+    'mũ':       { key: 'armor', types: ['armor'], armorSlots: ['head'],  label: '⛑️ Đồ đầu' },
+    chest:      { key: 'armor', types: ['armor'], armorSlots: ['chest'], label: '👕 Đồ thân' },
+    than:       { key: 'armor', types: ['armor'], armorSlots: ['chest'], label: '👕 Đồ thân' },
+    'thân':     { key: 'armor', types: ['armor'], armorSlots: ['chest'], label: '👕 Đồ thân' },
+    legs:       { key: 'armor', types: ['armor'], armorSlots: ['legs'],  label: '👖 Quần' },
+    quan:       { key: 'armor', types: ['armor'], armorSlots: ['legs'],  label: '👖 Quần' },
+    'quần':     { key: 'armor', types: ['armor'], armorSlots: ['legs'],  label: '👖 Quần' },
+    feet:       { key: 'armor', types: ['armor'], armorSlots: ['feet'],  label: '👢 Giày' },
+    boot:       { key: 'armor', types: ['armor'], armorSlots: ['feet'],  label: '👢 Giày' },
+    giay:       { key: 'armor', types: ['armor'], armorSlots: ['feet'],  label: '👢 Giày' },
+    'giày':     { key: 'armor', types: ['armor'], armorSlots: ['feet'],  label: '👢 Giày' },
+    hands:      { key: 'armor', types: ['armor'], armorSlots: ['hands'], label: '🧤 Găng tay' },
+    glove:      { key: 'armor', types: ['armor'], armorSlots: ['hands'], label: '🧤 Găng tay' },
+    gang:       { key: 'armor', types: ['armor'], armorSlots: ['hands'], label: '🧤 Găng tay' },
+    'găng':     { key: 'armor', types: ['armor'], armorSlots: ['hands'], label: '🧤 Găng tay' },
 
     // Accessory
-    accessory:  { types: ['accessory'], label: '✨ Phụ kiện' },
-    acc:        { types: ['accessory'], label: '✨ Phụ kiện' },
-    'phụ kiện': { types: ['accessory'], label: '✨ Phụ kiện' },
-    ring:       { types: ['accessory'], accessoryTypes: ['ring'],     label: '💍 Nhẫn' },
-    nhan:       { types: ['accessory'], accessoryTypes: ['ring'],     label: '💍 Nhẫn' },
-    'nhẫn':     { types: ['accessory'], accessoryTypes: ['ring'],     label: '💍 Nhẫn' },
-    necklace:   { types: ['accessory'], accessoryTypes: ['necklace'], label: '📿 Dây chuyền' },
-    dc:         { types: ['accessory'], accessoryTypes: ['necklace'], label: '📿 Dây chuyền' },
-    special:    { types: ['accessory'], accessoryTypes: ['special'],  label: '✨ Đặc biệt' },
-    sp:         { types: ['accessory'], accessoryTypes: ['special'],  label: '✨ Đặc biệt' },
+    accessory:  { key: 'accessory', types: ['accessory'], label: '✨ Phụ kiện' },
+    acc:        { key: 'accessory', types: ['accessory'], label: '✨ Phụ kiện' },
+    'phụ kiện': { key: 'accessory', types: ['accessory'], label: '✨ Phụ kiện' },
+    ring:       { key: 'accessory', types: ['accessory'], accessoryTypes: ['ring'],     label: '💍 Nhẫn' },
+    nhan:       { key: 'accessory', types: ['accessory'], accessoryTypes: ['ring'],     label: '💍 Nhẫn' },
+    'nhẫn':     { key: 'accessory', types: ['accessory'], accessoryTypes: ['ring'],     label: '💍 Nhẫn' },
+    necklace:   { key: 'accessory', types: ['accessory'], accessoryTypes: ['necklace'], label: '📿 Dây chuyền' },
+    dc:         { key: 'accessory', types: ['accessory'], accessoryTypes: ['necklace'], label: '📿 Dây chuyền' },
+    special:    { key: 'accessory', types: ['accessory'], accessoryTypes: ['special'],  label: '✨ Đặc biệt' },
+    sp:         { key: 'accessory', types: ['accessory'], accessoryTypes: ['special'],  label: '✨ Đặc biệt' },
 
     // Khác
-    consumable: { types: ['consumable'], label: '🧪 Tiêu hao' },
-    potion:     { types: ['consumable'], label: '🧪 Tiêu hao' },
-    binh:       { types: ['consumable'], label: '🧪 Tiêu hao' },
-    'bình':     { types: ['consumable'], label: '🧪 Tiêu hao' },
-    material:   { types: ['material'],   label: '📦 Nguyên liệu' },
-    mat:        { types: ['material'],   label: '📦 Nguyên liệu' },
-    nl:         { types: ['material'],   label: '📦 Nguyên liệu' },
-    pet:        { types: ['pet'],        label: '🐾 Pet' },
-    all:        { types: null,           label: 'Tất cả' },
-    het:        { types: null,           label: 'Tất cả' },
+    consumable: { key: 'consumable', types: ['consumable'], label: '🧪 Tiêu hao' },
+    potion:     { key: 'consumable', types: ['consumable'], label: '🧪 Tiêu hao' },
+    binh:       { key: 'consumable', types: ['consumable'], label: '🧪 Tiêu hao' },
+    'bình':     { key: 'consumable', types: ['consumable'], label: '🧪 Tiêu hao' },
+    material:   { key: 'material', types: ['material'],   label: '📦 Nguyên liệu' },
+    mat:        { key: 'material', types: ['material'],   label: '📦 Nguyên liệu' },
+    nl:         { key: 'material', types: ['material'],   label: '📦 Nguyên liệu' },
+    pet:        { key: 'pet', types: ['pet'],        label: '🐾 Pet' },
+    all:        { key: 'all', types: null,           label: 'Tất cả' },
+    het:        { key: 'all', types: null,           label: 'Tất cả' },
   };
-  return filters[a] || { types: null, label: `Filter: ${arg}` };
+  // Công cụ nghề / hộp quà: trước đây không có alias nên `%inv tool` rơi vào
+  // nhánh "Filter: tool" và trả về TẤT CẢ item (không lọc gì).
+  if (a === 'tool' || a === 'congcu' || a === 'công cụ') {
+    return { key: 'tool', types: ['tool'], label: '🧰 Công cụ' };
+  }
+  if (a === 'lootbox' || a === 'box' || a === 'hopqua') {
+    return { key: 'lootbox', types: ['lootbox'], label: '🎁 Hộp quà' };
+  }
+  return filters[a] || { key: 'custom', types: null, label: `❓ ${arg}` };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RENDER TÚI ĐỒ (phân trang)
+//
+// Vì sao phải phân trang: đo trên DB thật, `%inv` cũ dài 5,130 ký tự với 120 loại
+// item, 5,971 với 140 loại, và 6,840 với 160 loại — Discord chặn embed > 6,000
+// ký tự, nên người chơi tích đồ (game có 257 loại) KHÔNG mở được túi nữa.
+// ─────────────────────────────────────────────────────────────────────────────
+const ITEMS_PER_PAGE = 12;
+
+// Giá bán cho NPC — cùng công thức với %sell, để footer "bán hết được bao nhiêu"
+// không nói dối.
+function sellPriceOf(it) {
+  return it.sell || Math.floor((it.price || 0) / 3) || 0;
+}
+
+function enrichInventory(userId) {
+  const equipped = getEquipped(userId);
+  const equippedIds = new Set(Object.values(equipped).filter(Boolean));
+  const rows = getInventory(userId);
+  const out = [];
+  for (const row of rows) {
+    const it = getItem(row.item_id);
+    if (!it) continue;
+    const equippedQty = equippedIds.has(it.id) ? 1 : 0;
+    out.push({
+      ...it,
+      qty: row.qty,
+      equipped: equippedQty > 0,
+      free: Math.max(0, row.qty - equippedQty),
+      sellPrice: sellPriceOf(it),
+    });
+  }
+  return out;
+}
+
+function matchesFilter(it, filter) {
+  if (filter.types && !filter.types.includes(it.type)) return false;
+  if (filter.armorSlots && !filter.armorSlots.includes(it.armor_slot)) return false;
+  if (filter.accessoryTypes && !filter.accessoryTypes.includes(it.accessory_type)) return false;
+  return true;
+}
+
+// Sắp xếp: mặc định theo nhóm → tier → tên (giống bản cũ); 'value' theo tổng giá
+// trị bán được; 'qty' theo số lượng.
+function sortItems(items, sortBy) {
+  if (sortBy === 'value') {
+    return items.sort((a, b) => (b.free * b.sellPrice) - (a.free * a.sellPrice) || b.qty - a.qty || a.name.localeCompare(b.name));
+  }
+  if (sortBy === 'qty') {
+    return items.sort((a, b) => b.qty - a.qty || a.name.localeCompare(b.name));
+  }
+  return items.sort((a, b) => {
+    const ga = display.groupOf(a).key, gb = display.groupOf(b).key;
+    const ka = display.sortGroupKeys([ga, gb]);
+    if (ka[0] !== ka[1]) return ka[0] === ga ? -1 : 1;
+    const ta = tierInfo(a.tier).order, tb = tierInfo(b.tier).order;
+    if (tb !== ta) return tb - ta;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+const FILTER_BUTTON_PRIORITY = [
+  { key: 'mat', label: 'Nguyên liệu', emoji: '📦', test: (it) => it.type === 'material' },
+  { key: 'potion', label: 'Tiêu hao', emoji: '🧪', test: (it) => it.type === 'consumable' },
+  { key: 'weapon', label: 'Vũ khí', emoji: '🗡️', test: (it) => it.type === 'weapon' },
+  { key: 'armor', label: 'Giáp', emoji: '🦺', test: (it) => it.type === 'armor' },
+  { key: 'acc', label: 'Phụ kiện', emoji: '✨', test: (it) => it.type === 'accessory' },
+  { key: 'offhand', label: 'Tay phụ', emoji: '🛡️', test: (it) => it.type === 'offhand' },
+  { key: 'tool', label: 'Công cụ', emoji: '🧰', test: (it) => it.type === 'tool' },
+  { key: 'lootbox', label: 'Hộp quà', emoji: '🎁', test: (it) => it.type === 'lootbox' },
+];
+
+function renderInventoryPage({ userId, filter, sort = 'default', page = 0, playerLevel = 1, replyFn }) {
+  const prefix = require('../game/prefix').getPrefix();
+  const all = enrichInventory(userId);
+  const filterDef = parseFilter(filter);
+  const filtered = sortItems(all.filter(it => matchesFilter(it, filterDef)), sort);
+
+  // Nút lọc: chỉ hiện loại đang CÓ trong túi (tối đa 4 + All = 5 nút/row).
+  const present = FILTER_BUTTON_PRIORITY.filter(f => all.some(f.test)).slice(0, 4)
+    .map(f => ({ key: f.key, label: f.label, emoji: f.emoji }));
+  const filterOptions = [{ key: 'all', label: 'Tất cả', emoji: '🎒' }, ...present];
+
+  const totalValue = all.reduce((n, it) => n + (it.soulbound ? 0 : it.free * it.sellPrice), 0);
+  const totalTypes = all.length;
+
+  const { embed, components } = paginator.build({
+    domain: 'inv',
+    userId,
+    items: filtered,
+    filter: filterDef.key,
+    filterOptions,
+    page,
+    sort,
+    perPage: ITEMS_PER_PAGE,
+    title: `🎒 Túi đồ — ${filterDef.label}${sort === 'value' ? ' (đắt trước)' : sort === 'qty' ? ' (nhiều trước)' : ''}`,
+    color: 0xFEE75C,
+    formatItem: (it, idx) => {
+      // Chèn tiêu đề nhóm ở món đầu tiên của nhóm (khi sắp theo nhóm) để vẫn
+      // đọc được như bản cũ, mà không cần mỗi nhóm một field.
+      const g = display.groupOf(it);
+      const prev = idx > 0 ? display.groupOf(filtered[idx - 1]) : null;
+      const header = (sort === 'default' && (!prev || prev.key !== g.key)) ? `**${g.label}**\n` : '';
+      const t = tierInfo(it.tier);
+      const eq = it.equipped ? ' 🟢' : '';
+      const sb = it.soulbound ? ' 🔗' : '';
+      const lvReq = it.min_level || 0;
+      const lvLock = (lvReq > 0 && playerLevel < lvReq) ? ` 🔒LV${lvReq}` : '';
+      const val = sort === 'value' ? ` — ${it.free * it.sellPrice}💰` : '';
+      return `${header}${t.emoji} ${it.name} ×${it.qty} \`${it.id}\`${eq}${sb}${lvLock}${val}`;
+    },
+    footer: `💰 Bán hết được ${totalValue} vàng • ${prefix}sell all để bán • ${prefix}inv value (đắt trước)`,
+  });
+
+  // Filter lạ (vd `%inv vukhi`) trước đây lặng lẽ trả về CẢ túi — nay nói rõ.
+  if (filterDef.key === 'custom') {
+    embed.setDescription(
+      `❓ Không hiểu filter \`${filter}\`.\n` +
+      `Dùng: ${['all', 'mat', 'potion', 'weapon', 'armor', 'acc', 'offhand', 'tool', 'lootbox'].map(k => `\`${prefix}inv ${k}\``).join(', ')}\n` +
+      `Sắp xếp: \`${prefix}inv value\` (đắt trước), \`${prefix}inv qty\` (nhiều trước)`
+    );
+    return replyFn({ embeds: [embed], components });
+  }
+
+  if (filtered.length === 0) {
+    embed.setDescription(
+      totalTypes === 0
+        ? `*Túi trống.* Đi \`${prefix}hunt\` để nhặt loot.`
+        : `*Không có món nào khớp **${filterDef.label}**.*\n💡 Bỏ lọc: \`${prefix}inv\``
+    );
+  }
+  return replyFn({ embeds: [embed], components });
 }
 
 module.exports = {
   name: 'inv',
   aliases: ['bag', 'inventory', 'tui', 'tuido'],
-  description: 'Xem túi đồ. Có filter: !inv weapon | armor | head | ring | mat ...',
+  description: 'Xem túi đồ (phân trang). Filter: !inv weapon | armor | mat ... • sort: !inv all value | qty',
   async execute(msg, args) {
     const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước nhé!`);
 
-    const filter = parseFilter(args[0]);
-    const equipped = getEquipped(msg.author.id);
-    const equippedIds = new Set(Object.values(equipped));
+    const a0 = (args[0] || '').toLowerCase();
+    // `%inv value` / `%inv qty` (không kèm filter) cũng hiểu là sắp xếp.
+    let filter = args[0];
+    let sort = 'default';
+    if (a0 === 'value' || a0 === 'gia' || a0 === 'giatri') { filter = undefined; sort = 'value'; }
+    else if (a0 === 'qty' || a0 === 'sl' || a0 === 'soluong') { filter = undefined; sort = 'qty'; }
+    else {
+      const a1 = (args[1] || '').toLowerCase();
+      if (['value', 'gia', 'giatri'].includes(a1)) sort = 'value';
+      else if (['qty', 'sl', 'soluong'].includes(a1)) sort = 'qty';
+    }
 
-    let items = getInventory(msg.author.id);
-    if (items.length === 0) {
+    if (getInventory(msg.author.id).length === 0) {
       return msg.reply(`🎒 Túi đồ trống trơn! Đi \`${prefix}hunt\` để nhặt loot nào.`);
     }
-
-    // Enrich + filter
-    const enriched = [];
-    for (const row of items) {
-      const it = getItem(row.item_id);
-      if (!it) continue;
-      if (filter.types && !filter.types.includes(it.type)) continue;
-      if (filter.armorSlots && !filter.armorSlots.includes(it.armor_slot)) continue;
-      if (filter.accessoryTypes && !filter.accessoryTypes.includes(it.accessory_type)) continue;
-      enriched.push({ ...it, qty: row.qty });
-    }
-
-    if (enriched.length === 0) {
-      return msg.reply(`📭 Không có item nào trong túi khớp filter **${filter.label}**.`);
-    }
-
-    // Group: armor tách theo armor_slot, accessory tách theo accessory_type.
-    //
-    // Bản cũ duyệt `groupOrder` viết cứng rồi `if (!groups[k]) continue` — nghĩa
-    // là nhóm nào KHÔNG có trong danh sách đó thì bị bỏ khỏi túi đồ, không báo
-    // gì. Item type lạ (vd lootbox do admin tạo) vì thế "biến mất" khỏi %inv
-    // dù vẫn nằm trong DB. Nay nhãn/thứ tự lấy từ item_display và nhóm lạ được
-    // xếp cuối, KHÔNG bị bỏ.
-    const groups = {};
-    const groupLabel = {};
-    for (const it of enriched) {
-      const g = display.groupOf(it);
-      groupLabel[g.key] = g.label;
-      (groups[g.key] = groups[g.key] || []).push(it);
-    }
-    const orderedKeys = display.sortGroupKeys(Object.keys(groups));
-
-    const embed = new EmbedBuilder()
-      .setColor(0xFEE75C)
-      .setTitle(`🎒 Túi đồ — ${filter.label}`)
-      .setFooter({ text: `${prefix}equip <id> để mặc • ${prefix}use <id> dùng • ${prefix}sell <id> bán` });
-
-    for (const k of orderedKeys) {
-      if (!groups[k]) continue;
-      groups[k].sort((a, b) => {
-        const ta = tierInfo(a.tier).order, tb = tierInfo(b.tier).order;
-        if (tb !== ta) return tb - ta;
-        return a.name.localeCompare(b.name);
-      });
-      const lines = groups[k].map(it => {
-        const t = tierInfo(it.tier);
-        const eq = equippedIds.has(it.id) ? ' 🟢' : '';
-        const sb = it.soulbound ? ' 🔗' : '';
-        const lvReq = it.min_level || 0;
-        const lvLock = (lvReq > 0 && p.level < lvReq) ? ` 🔒LV${lvReq}` : '';
-        return `${t.emoji} ${it.name} ×${it.qty} \`${it.id}\`${eq}${sb}${lvLock}`;
-      });
-      const text = lines.join('\n');
-      if (text.length <= 1024) {
-        embed.addFields({ name: groupLabel[k] || k, value: text });
-      } else {
-        let chunk = '', idx = 1;
-        for (const ln of lines) {
-          if (chunk.length + ln.length + 1 > 1024) {
-            embed.addFields({ name: `${groupLabel[k] || k} (phần ${idx})`, value: chunk });
-            chunk = ''; idx++;
-          }
-          chunk += (chunk ? '\n' : '') + ln;
-        }
-        if (chunk) embed.addFields({ name: `${groupLabel[k] || k} (phần ${idx})`, value: chunk });
-      }
-    }
-
-    return msg.reply({ embeds: [embed] });
+    return renderInventoryPage({
+      userId: msg.author.id,
+      filter, sort, page: 0, playerLevel: p.level,
+      replyFn: (opts) => msg.reply(opts),
+    });
   },
+  // Dùng bởi buttons.js (phân trang) và shop.js (%sell dùng lại bộ lọc)
+  renderInventoryPage,
+  parseFilter,
 };
