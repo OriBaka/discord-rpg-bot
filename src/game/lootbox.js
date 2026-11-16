@@ -70,7 +70,9 @@ function itemSources(itemId) {
   if (db.prepare('SELECT 1 FROM monster_drops WHERE item_id=?').get(itemId)) src.push('quái');
   if (db.prepare('SELECT 1 FROM gather_drops WHERE item_id=?').get(itemId)) src.push('khai thác');
   if (db.prepare('SELECT 1 FROM recipes WHERE output_id=?').get(itemId)) src.push('chế tạo');
-  if (db.prepare('SELECT 1 FROM redeem_rewards WHERE reward_type=? AND reward_id=?').get('item', itemId)) src.push('redeem');
+  // redeem_rewards lưu reward_type riêng ('item' hoặc 'lootbox') → không lọc
+  // theo type, nếu không hộp quà phát qua code sẽ bị báo "không có nguồn".
+  if (db.prepare('SELECT 1 FROM redeem_rewards WHERE reward_id=? AND reward_type IN (?,?)').get(itemId, 'item', 'lootbox')) src.push('redeem');
   try {
     const q = db.prepare('SELECT 1 FROM quests WHERE reward_item LIKE ?').get(`%${itemId}%`);
     if (q) src.push('quest');

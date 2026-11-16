@@ -75,6 +75,39 @@ test('create shop=1500 bán luôn trong shop (một bước là dùng được)'
   assert.ok(r.text.includes('shop'), r.text);
 });
 
+test('create không có shop= thì KHÔNG bán ở shop, và gợi ý đủ 3 cách phát hộp', async () => {
+  const r = await run(['create', 'lb_test_noshop', 'name="Hộp Không Shop"'],
+    '%lootbox create lb_test_noshop name="Hộp Không Shop"');
+  assert.strictEqual(db.prepare("SELECT 1 FROM shop WHERE item_id='lb_test_noshop'").get(), undefined,
+    'không được thêm vào shop khi không có shop=');
+  assert.ok(r.text.includes('mob drop'), `phải gợi ý drop:\n${r.text}`);
+  assert.ok(r.text.includes('redeem addreward'), `phải gợi ý redeem:\n${r.text}`);
+  assert.ok(r.text.includes('shop add'), `phải gợi ý shop:\n${r.text}`);
+});
+
+test('list nhận ra nguồn: quái / shop / redeem (hộp phát qua code không bị báo thiếu nguồn)', async () => {
+  await run(['create', 'lb_test_src1', 'name="Hộp Drop"'], '%lootbox create lb_test_src1 name=\"Hộp Drop\"');
+  await run(['add', 'lb_test_src1', 'item', 'potion_s', 'w=100']);
+  db.prepare('INSERT OR REPLACE INTO monster_drops (monster_id, item_id, chance, qty) VALUES (?,?,?,?)')
+    .run('wolf', 'lb_test_src1', 0.05, 1);
+
+  await run(['create', 'lb_test_src2', 'name="Hộp Code"'], '%lootbox create lb_test_src2 name=\"Hộp Code\"');
+  await run(['add', 'lb_test_src2', 'item', 'potion_s', 'w=100']);
+  db.prepare("INSERT OR IGNORE INTO redeem_codes (code, max_uses, description) VALUES ('LBTEST', 10, 'test')").run();
+  db.prepare("INSERT INTO redeem_rewards (code, reward_type, reward_id, qty) VALUES ('LBTEST','lootbox',?,1)").run('lb_test_src2');
+
+  const m = admin();
+  let payload = null;
+  m.reply = async (p) => { payload = p; return { id: 'R' }; };
+  await lbCmd.execute(m, ['list']);
+  const d = payload.embeds[0].data || payload.embeds[0];
+  const text = (d.fields || []).map(f => f.value).join('\n');
+  const line1 = text.split('\n').filter(l => l.includes('lb_test_src1') || l.includes('nguồn:')).join('\n');
+  assert.ok(/nguồn: [^\n]*quái/.test(text), `hộp drop quái phải có nguồn:\n${text}`);
+  assert.ok(/nguồn: [^\n]*redeem/.test(text), `hộp phát qua code phải có nguồn:\n${text}`);
+  assert.ok(line1.length >= 0);
+});
+
 test('create: thiếu name / trùng id / sai tier đều báo rõ', async () => {
   const noName = await run(['create', 'lb_no_name'], '%lootbox create lb_no_name');
   assert.ok(noName.text.includes('Thiếu tên'), noName.text);

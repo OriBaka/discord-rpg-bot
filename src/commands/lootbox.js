@@ -351,7 +351,13 @@ module.exports = {
             '',
             shopPrice && shopPrice > 0
               ? `✅ Đã bán trong shop với giá **${shopPrice} vàng** — người chơi mua được ngay.`
-              : `⚠️ Hộp này **chưa có nguồn kiếm**. Thêm \`shop=${price || 500}\` khi tạo, hoặc \`${prefix}shop add ${id} ${price || 500}\`.`,
+              : [
+                '⚠️ Hộp này **chưa có nguồn kiếm** (người chơi không lấy được). Chọn 1:',
+                `• Bán ở shop: \`${prefix}shop add ${id} ${price || 1500}\``,
+                `• Rơi từ quái: \`${prefix}mob drop <mob_id> ${id} 0.05 1\``,
+                `• Code sự kiện: \`${prefix}redeem addreward <CODE> lootbox ${id} 1\``,
+                `\`${prefix}lootbox list\` sẽ nhắc tới khi hộp vẫn chưa có nguồn.`,
+              ].join('\n'),
           ].join('\n'),
         });
       return msg.reply({ embeds: [embed] });
