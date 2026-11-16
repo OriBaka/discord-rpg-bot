@@ -160,7 +160,7 @@ const GROUPS = {
   },
   // %adm lootbox ...
   lootbox: {
-    desc: 'Quản lý hộp quà sự kiện',
+    desc: 'Tạo & quản lý hộp quà',
     to: 'lootbox',
     args: (sub, rest) => [...(sub ? [sub] : []), ...rest],
     danger: [],
@@ -207,7 +207,7 @@ function renderHelp(prefix, msg) {
   lines.push(`\`${prefix}adm quest admin\` — nhiệm vụ`);
   lines.push(`\`${prefix}adm ach admin\` — thành tựu`);
   lines.push(`\`${prefix}adm pet admin\` — pet`);
-  lines.push(`\`${prefix}adm lootbox\` — hộp quà sự kiện`);
+  lines.push(`\`${prefix}adm lootbox\` — tạo & quản lý hộp quà`);
   lines.push(`\`${prefix}adm redeem\` — code sự kiện`);
   lines.push('');
 
