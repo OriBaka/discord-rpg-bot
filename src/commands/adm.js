@@ -166,6 +166,7 @@ const GROUPS = {
     danger: [],
   },
   // Các lệnh admin một lần / debug
+  backup: { desc: 'Backup toàn bộ DB (chỉ ADMIN_IDS)', to: 'admin', args: (s, r) => ['backup', ...(s ? [s] : []), ...r], danger: [] },
   stats: { desc: 'Thống kê server', to: 'admin', args: () => ['stats'], danger: [] },
   announce: { desc: 'Gửi thông báo tới kênh', to: 'admin', args: (s, r) => ['announce', ...r], danger: [] },
   seed: { desc: 'Seed dữ liệu (battle mobs, high tier, shop)', to: 'admin', args: (s, r) => [s === 'seed' ? 'hightierseed' : s, ...r], danger: [] },
@@ -212,6 +213,7 @@ function renderHelp(prefix, msg) {
   lines.push('');
 
   lines.push('**⚙️ Hệ thống**');
+  lines.push(`\`${prefix}adm backup\` — backup DB (chỉ ADMIN_IDS)`);
   lines.push(`\`${prefix}adm stats\` — thống kê server`);
   lines.push(`\`${prefix}adm announce <text>\` — thông báo`);
   lines.push(`\`${prefix}adm channel <set|unset|list>\` — kênh notify`);

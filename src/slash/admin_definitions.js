@@ -144,6 +144,7 @@ const definitions = [
         .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
       .addSubcommand(s => s.setName('look').setDescription('Xem chi tiết nhân vật')
         .addUserOption(o => o.setName('user').setDescription('User').setRequired(true)))
+      .addSubcommand(s => s.setName('backup').setDescription('Backup DB toàn bot (chỉ ADMIN_IDS)'))
       .addSubcommand(s => s.setName('stats').setDescription('Thống kê server'))
       .addSubcommand(s => s.setName('announce').setDescription('Gửi thông báo (vào kênh notify hoặc kênh hiện tại)')
         .addStringOption(o => o.setName('text').setDescription('Nội dung').setRequired(true)))
