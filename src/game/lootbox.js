@@ -24,6 +24,66 @@ function getLootTable(lootboxId) {
   return db.prepare('SELECT * FROM loot_tables WHERE lootbox_id = ?').all(lootboxId);
 }
 
+// Sửa một entry đã có (admin không phải xoá rồi thêm lại).
+// fields: { qty_min, qty_max, weight, guaranteed } — bỏ trống thì giữ nguyên.
+function updateLootEntry(lootboxId, rewardType, rewardId, fields = {}) {
+  const db = getDb();
+  const cur = db.prepare(`SELECT * FROM loot_tables
+    WHERE lootbox_id=? AND reward_type=? AND reward_id=?`).get(lootboxId, rewardType, rewardId || '');
+  if (!cur) return null;
+  const next = {
+    qty_min: fields.qty_min != null ? fields.qty_min : cur.qty_min,
+    qty_max: fields.qty_max != null ? fields.qty_max : cur.qty_max,
+    weight: fields.weight != null ? fields.weight : cur.weight,
+    guaranteed: fields.guaranteed != null ? (fields.guaranteed ? 1 : 0) : cur.guaranteed,
+  };
+  if (next.qty_max < next.qty_min) next.qty_max = next.qty_min;
+  db.prepare(`UPDATE loot_tables SET qty_min=?, qty_max=?, weight=?, guaranteed=?
+    WHERE lootbox_id=? AND reward_type=? AND reward_id=?`)
+    .run(next.qty_min, next.qty_max, next.weight, next.guaranteed, lootboxId, rewardType, rewardId || '');
+  return db.prepare(`SELECT * FROM loot_tables
+    WHERE lootbox_id=? AND reward_type=? AND reward_id=?`).get(lootboxId, rewardType, rewardId || '');
+}
+
+// Toàn bộ lootbox đang có (item type=lootbox), kèm thống kê nhanh.
+function getAllLootboxes() {
+  const db = getDb();
+  const items = db.prepare("SELECT * FROM items WHERE type='lootbox' ORDER BY tier, name").all();
+  return items.map(it => {
+    const entries = getLootTable(it.id);
+    const pool = entries.filter(e => e.guaranteed === 0);
+    return {
+      item: it,
+      entries,
+      pool_count: pool.length,
+      guaranteed_count: entries.length - pool.length,
+      total_weight: pool.reduce((s, e) => s + e.weight, 0),
+    };
+  });
+}
+
+// Nguồn kiếm một item (để phát hiện hộp quà không ai lấy được).
+function itemSources(itemId) {
+  const db = getDb();
+  const src = [];
+  if (db.prepare('SELECT 1 FROM shop WHERE item_id=?').get(itemId)) src.push('shop');
+  if (db.prepare('SELECT 1 FROM monster_drops WHERE item_id=?').get(itemId)) src.push('quái');
+  if (db.prepare('SELECT 1 FROM gather_drops WHERE item_id=?').get(itemId)) src.push('khai thác');
+  if (db.prepare('SELECT 1 FROM recipes WHERE output_id=?').get(itemId)) src.push('chế tạo');
+  if (db.prepare('SELECT 1 FROM redeem_rewards WHERE reward_type=? AND reward_id=?').get('item', itemId)) src.push('redeem');
+  try {
+    const q = db.prepare('SELECT 1 FROM quests WHERE reward_item LIKE ?').get(`%${itemId}%`);
+    if (q) src.push('quest');
+  } catch { /* bảng quests có thể chưa có */ }
+  try {
+    const a = db.prepare('SELECT 1 FROM achievements WHERE reward_item=?').get(itemId);
+    if (a) src.push('thành tựu');
+  } catch { /* ignore */ }
+  // Lootbox lồng nhau
+  if (db.prepare("SELECT 1 FROM loot_tables WHERE reward_type='item' AND reward_id=?").get(itemId)) src.push('lootbox khác');
+  return src;
+}
+
 function addLootEntry(lootboxId, entry) {
   const db = getDb();
   db.prepare(`INSERT OR REPLACE INTO loot_tables
@@ -128,6 +188,7 @@ function applyRewards(userId, rewards, context = null) {
 
 module.exports = {
   migrate,
-  getLootTable, addLootEntry, removeLootEntry, clearLootTable,
+  getLootTable, addLootEntry, updateLootEntry, removeLootEntry, clearLootTable,
+  getAllLootboxes, itemSources,
   openLootbox, applyRewards,
 }; 

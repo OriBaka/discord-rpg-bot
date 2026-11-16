@@ -115,7 +115,7 @@ module.exports = {
           `\`${prefix}upgrade admin\` chỉnh nguyên liệu nâng cấp theo mốc\n` +
           `\`${prefix}shop add/remove/setprice\` chỉnh shop\n` +
           `\`${prefix}setimage <type> <id> <url>\` gán ảnh\n` +
-          `\`${prefix}lootbox\` quản lý hộp quà event\n` +
+          `\`${prefix}lootbox\` tạo & quản lý hộp quà (help có hướng dẫn)\n` +
           `\`${prefix}redeem admin\` tạo/quản lý code\n` +
           `\`${prefix}slashadmin\` (hoặc \`${prefix}sla\`) quản lý slash commands\n` +
           `\`${prefix}petrestore\` khôi phục pet bị thiếu (dùng 1 lần)\n` +
