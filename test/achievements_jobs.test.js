@@ -228,12 +228,21 @@ test('%ach list có thành tựu nghề và trạng thái mở khoá', () => {
   setJobLevel(uid, 'mining', 10);
   ach.checkAndGrant(uid);
 
-  const m = fakeMessage(uid);
-  achCmd.execute(m, ['list'], '%');
-  const t = out(m);
-  assert.match(t, /Pit Boss/, 'không thấy thành tựu nghề trong %ach list');
-  assert.match(t, /Deep Delver/);
-  assert.match(t, /Grand Artisan/);
+  // %ach list nay phân trang → quét MỌI trang (yêu cầu: không mất thành tựu nào)
+  const all = require(`${ROOT}/src/game/achievements`).getAllAchievements();
+  const userAch = new Set(require(`${ROOT}/src/game/achievements`).getPlayerAchievements(uid).map(a => a.id));
+  let text = '';
+  for (let page = 0; page < 20; page++) {
+    let payload = null;
+    achCmd.renderAchList({ userId: uid, page, all, userAch, hiddenCount: 0, replyFn: (p) => { payload = p; } });
+    const d = payload.embeds[0].data;
+    text += (d.description || '') + '\n';
+    const m = /Trang (\d+)\/(\d+)/.exec(d.footer?.text || '');
+    if (!m || Number(m[1]) >= Number(m[2])) break;
+  }
+  assert.match(text, /Pit Boss/, 'không thấy thành tựu nghề trong %ach list');
+  assert.match(text, /Deep Delver/);
+  assert.match(text, /Grand Artisan/);
 });
 
 test('%achdebug giải thích được vì sao thành tựu nghề chưa mở', () => {

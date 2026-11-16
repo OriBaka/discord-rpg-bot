@@ -10,6 +10,7 @@ const jobs = require('../game/jobs');
 const { tierInfo } = require('../game/tiers');
 const { getRestTokens, parseKV } = require('../game/argparse');
 const paginator = require('../game/paginator');
+const { clipLines } = require('../game/list_text');
 
 function isAdmin(msg) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim());
@@ -309,7 +310,7 @@ async function handleAdmin(msg, args, prefix, type) {
     });
     return msg.reply({ embeds: [new EmbedBuilder().setColor(0xED4245)
       .setTitle(`🛠️ All ${type} recipes (${all.length})`)
-      .setDescription(lines.join('\n').slice(0, 4000) || '(empty)')] });
+      .setDescription(clipLines(lines) || '(empty)')] });
   }
 
   if (sub === 'delete' || sub === 'del') {
