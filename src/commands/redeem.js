@@ -2,6 +2,7 @@
 // Player: %redeem <code>
 // Admin: %redeem create/delete/list/view/addreward/clearrewards
 const { EmbedBuilder } = require('discord.js');
+const { clipLines } = require('../game/list_text');
 const redeem = require('../game/redeem');
 
 function isAdmin(msg) {
@@ -103,7 +104,7 @@ async function handleAdmin(msg, sub, args, prefix) {
       return `\`${c.code}\` — ${uses} lượt • ${rewardCount} rewards${c.description ? ` • ${c.description}` : ''}`;
     });
     const embed = new EmbedBuilder().setColor(0x00AE86).setTitle(`🎁 Redeem Codes (${codes.length})`)
-      .setDescription(lines.join('\n').slice(0, 4000));
+      .setDescription(clipLines(lines));
     return msg.reply({ embeds: [embed] });
   }
 

@@ -9,6 +9,7 @@
 const { EmbedBuilder } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
+const paginator = require('../game/paginator');
 
 // Bỏ dấu tiếng Việt để người chơi gõ không dấu vẫn tìm được ("cho" → "chợ").
 function fold(s) {
@@ -79,6 +80,7 @@ function buildSections(prefix) {
         `\`${prefix}shop\` xem cửa hàng NPC`,
         `\`${prefix}buy <id> [qty]\` mua ở shop`,
         `\`${prefix}sell <id> [qty]\` bán cho NPC • \`${prefix}sell all [filter]\` • \`${prefix}sell junk\` (tier common)`,
+        `*Bán từ 1,000 vàng trở lên phải gõ thêm \`confirm\` — chống mất đồ do gõ nhầm*`,
         `\`${prefix}market\` chợ NGƯỜI CHƠI — bán nguyên liệu/đồ hiếm cho người khác (bấm nút 🛒 để mua)`,
         `\`${prefix}market sell\` xem món bán được + giá gợi ý • \`${prefix}market sell <id> <giá> [qty]\` đăng bán`,
         `\`${prefix}market mine\` tin của bạn • \`${prefix}market recent\` giá gần đây`,
@@ -289,11 +291,46 @@ function searchHelp(msg, term, opts = {}) {
   return { embed };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Trần an toàn: help đầy đủ đã 3,920 ký tự, và test tài liệu BUỘC mỗi lệnh mới
+// phải được nhắc trong help → nó chỉ dài thêm. Vượt ngưỡng thì chia trang thay
+// vì để Discord từ chối cả tin nhắn.
+// ─────────────────────────────────────────────────────────────────────────────
+const HELP_SAFE_CHARS = 5500;
+const HELP_PER_PAGE = 4;
+
+function helpEmbedSize(sections, title = '📖 Hướng dẫn lệnh', description = '') {
+  return title.length + description.length +
+    sections.reduce((n, s) => n + s.name.length + s.lines.join('\n').length, 0);
+}
+
+function renderHelpPage({ userId, page = 0, replyFn, admin = false }) {
+  const prefix = require('../game/prefix').getPrefix();
+  const sections = buildSections(prefix);
+  if (admin) sections.push(adminSection(prefix));
+  const { embed, components } = paginator.build({
+    domain: 'help',
+    userId,
+    items: sections,
+    filter: 'all',
+    page,
+    perPage: HELP_PER_PAGE,
+    title: '📖 Hướng dẫn lệnh',
+    color: 0x5865F2,
+    formatItem: (s) => `**${s.name}**\n${s.lines.join('\n')}`,
+    footer: `${prefix}help <từ khoá> để tra cứu nhanh (vd ${prefix}help market)`,
+  });
+  return replyFn({ embeds: [embed], components });
+}
+
 module.exports = {
   name: 'help',
   aliases: ['h', 'giup'],
   description: 'Danh sách lệnh. Tra cứu nhanh: !help <từ khoá>',
   searchHelp,
+  renderHelpPage,
+  helpEmbedSize,
+  HELP_SAFE_CHARS,
   // Dùng bởi test + lệnh khác (giữ khả năng tái sử dụng phần tra cứu)
   fold,
   async execute(msg, args = []) {
@@ -313,6 +350,11 @@ module.exports = {
     // ===== danh sách đầy đủ =====
     const sections = buildSections(prefix);
     if (showAdmin) sections.push(adminSection(prefix));
+
+    // Quá dài → chia trang (giữ nguyên nội dung, chỉ đổi cách trình bày)
+    if (helpEmbedSize(sections) > HELP_SAFE_CHARS) {
+      return renderHelpPage({ userId: msg.author.id, page: 0, admin: showAdmin, replyFn: (opts) => msg.reply(opts) });
+    }
 
     const embed = new EmbedBuilder()
       .setColor(0x5865F2)

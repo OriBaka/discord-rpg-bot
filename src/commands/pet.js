@@ -4,12 +4,186 @@ const { getPlayer } = require('../game/player');
 const pets = require('../game/pets');
 const { tierInfo } = require('../game/tiers');
 const { getRestTokens, parseKV } = require('../game/argparse');
+const paginator = require('../game/paginator');
+const { clipLines } = require('../game/list_text');
 
 function isAdmin(msg) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim());
   return adminIds.includes(msg.author.id)
       || (msg.guild && msg.guild.ownerId === msg.author.id)
       || (msg.member && msg.member.permissions?.has('Administrator'));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// %pet collection — sưu tầm theo khí hậu
+//
+// Pet do admin tạo được LÚC CHẠY (yêu cầu bắt buộc của game), nên danh sách này
+// dài ra theo thời gian: đo trên DB hiện tại (28 pet) embed đã 4,285 ký tự.
+// Vượt ngưỡng an toàn thì tự chuyển sang phân trang thay vì để Discord từ chối
+// hoặc cắt bớt pet một cách im lặng.
+const COLLECTION_SAFE_CHARS = 5500;
+const COLLECTION_PER_PAGE = 6;
+
+function buildCollectionData(userId) {
+  const prefix = require('../game/prefix').getPrefix();
+  const all = pets.getAllPets();
+  const ownedPets = pets.getPlayerPets(userId);
+  const owned = new Set(ownedPets.map(p => p.id));
+  const visible = all.filter(p => !p.hidden || owned.has(p.id));
+  const me = db.prepare('SELECT level FROM players WHERE user_id=?').get(userId)?.level || 1;
+
+  const dropRows = db.prepare('SELECT pet_id, monster_id, chance FROM pet_drops WHERE pet_id IS NOT NULL').all();
+  const directDrop = {};
+  for (const r of dropRows) directDrop[r.pet_id] = r;
+  const evoRows = pets.getAllEvolutions();
+  const evoFrom = {}; // to_pet_id → [recipe]
+  for (const r of evoRows) (evoFrom[r.to_pet_id] = evoFrom[r.to_pet_id] || []).push(r);
+
+  const mobName = (id) => db.prepare('SELECT name FROM monsters WHERE id=?').get(id)?.name || id;
+  const buffOf = (p) => {
+    const b = [];
+    if (p.atk_bonus) b.push(`+${p.atk_bonus} ATK`);
+    if (p.def_bonus) b.push(`+${p.def_bonus} DEF`);
+    if (p.hp_bonus)  b.push(`+${p.hp_bonus} HP`);
+    if (p.gold_bonus_pct) b.push(`+${p.gold_bonus_pct}% gold`);
+    if (p.xp_bonus_pct)   b.push(`+${p.xp_bonus_pct}% XP`);
+    if (p.drop_bonus_pct) b.push(`+${p.drop_bonus_pct}% drop`);
+    return b.length ? b.join(', ') : 'cosmetic';
+  };
+  const sourceOf = (p) => {
+    const parts = [];
+    const d = directDrop[p.id];
+    if (d) parts.push(`💀 ${mobName(d.monster_id)} (${(d.chance * 100).toFixed(1)}%)`);
+    if (p.shard_id && p.shard_qty > 0) {
+      const have = pets.getShard(userId, p.shard_id);
+      const src = db.prepare('SELECT monster_id FROM pet_drops WHERE shard_id=?').get(p.shard_id);
+      parts.push(`🧩 ${p.shard_qty}× ${pets.shardName(p.shard_id)} \`${p.shard_id}\` (có ${have})${src ? ` từ ${mobName(src.monster_id)}` : ''}`);
+    }
+    for (const e of evoFrom[p.id] || []) {
+      const have = pets.getShard(userId, e.shard_id);
+      const shardSrc = db.prepare('SELECT monster_id FROM pet_drops WHERE shard_id=?').get(e.shard_id);
+      const where = shardSrc ? ` từ ${mobName(shardSrc.monster_id)}` : '';
+      parts.push(`🧬 từ ${e.from_icon || ''} ${e.from_name} — ${e.shard_qty}× ${pets.shardName(e.shard_id)}\`${e.shard_id}\`${where} (có ${have}), ${e.gold_cost}💰, Lv.${e.min_level}`);
+    }
+    if (p.hidden) parts.push('🕵️ hidden');
+    return parts.length ? parts.join(' • ') : '🎁 event/admin';
+  };
+  const evoOutOf = (p) => pets.evolutionsFrom(p.id).map(r =>
+    ` → ${r.to_icon} ${r.to_name}${me < r.min_level ? ` (Lv.${r.min_level})` : ''}`).join(',');
+
+  return { prefix, all, owned, visible, buffOf, sourceOf, evoOutOf };
+}
+
+function habitatFilterOptions(visible) {
+  const seen = [];
+  for (const p of visible) {
+    const key = p.habitat || '';
+    if (!seen.includes(key)) seen.push(key);
+  }
+  const opts = seen.slice(0, 4).map((key) => {
+    const info = key ? pets.habitatInfo(key) : { emoji: '❔', label: 'Không rõ vùng' };
+    return { key: key || 'none', label: info.label.slice(0, 20), emoji: info.emoji };
+  });
+  return [{ key: 'all', label: 'Tất cả', emoji: '🐾' }, ...opts];
+}
+
+function collectionEntry(data, p) {
+  const { owned, buffOf, sourceOf, evoOutOf } = data;
+  const t = tierInfo(p.tier);
+  const mark = owned.has(p.id) ? '✅' : '❌';
+  const evo = evoOutOf(p);
+  const lore = owned.has(p.id) && p.desc ? `\n    📖 *${p.desc}*` : '';
+  return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`\n    *${buffOf(p)}*` +
+    (evo ? `\n    🧬${evo}` : '') + `\n    ${sourceOf(p)}${lore}`;
+}
+
+function renderCollection({ userId, habitat, page, replyFn }) {
+  const data = buildCollectionData(userId);
+  const { prefix, all, owned, visible } = data;
+  const hiddenCount = all.filter(p => p.hidden && !owned.has(p.id)).length;
+  const footerTail = `${prefix}pet combine <id> ghép • ${prefix}pet evolve tiến hoá • ${prefix}pet map` +
+    (hiddenCount > 0 ? ` • 🕵️ ${hiddenCount} pet ẩn` : '') + ' • 📖 lore hiện khi bạn sở hữu';
+
+  // ── 1) Thử dựng 1 embed như cũ (nhóm theo khí hậu) ──
+  const chunk = (lines, max = 1000) => {
+    const out = []; let cur = '';
+    for (const ln of lines) {
+      if (cur && cur.length + ln.length + 1 > max) { out.push(cur); cur = ln; }
+      else cur = cur ? `${cur}\n${ln}` : ln;
+    }
+    if (cur) out.push(cur);
+    return out;
+  };
+  const makeFields = (showLore) => {
+    const fields = [];
+    const byHab = new Map();
+    for (const p of visible) {
+      const key = p.habitat || '';
+      if (!byHab.has(key)) byHab.set(key, []);
+      byHab.get(key).push(p);
+    }
+    for (const [hab, list] of byHab) {
+      const info = hab ? pets.habitatInfo(hab) : { emoji: '❔', label: 'Không rõ vùng' };
+      const lines = list.map((p) => {
+        const t = tierInfo(p.tier);
+        const mark = owned.has(p.id) ? '✅' : '❌';
+        const evo = data.evoOutOf(p);
+        const lore = showLore && owned.has(p.id) ? `\n    📖 *${p.desc || ''}*` : '';
+        return `${mark} ${t.emoji} ${p.icon} **${p.name}** \`${p.id}\`\n    *${data.buffOf(p)}*` +
+          (evo ? `\n    🧬${evo}` : '') + `\n    ${data.sourceOf(p)}${lore}`;
+      });
+      for (const [i, val] of chunk(lines).entries()) {
+        fields.push({ name: `${info.emoji} ${info.label}${i > 0 ? ` (${i + 1})` : ''}`, value: val });
+      }
+    }
+    return fields;
+  };
+  const title = `🐾 Pet Collection — ${owned.size}/${visible.length} unlocked`;
+  const sizeOf = (fields) => title.length +
+    fields.reduce((n, f) => n + f.name.length + f.value.length, 0);
+
+  let fields = makeFields(true);
+  if (sizeOf(fields) > 5900) fields = makeFields(false);
+  const fitsOne = fields.length <= 25 && sizeOf(fields) <= COLLECTION_SAFE_CHARS;
+
+  if (fitsOne) {
+    const embed = new EmbedBuilder().setColor(0x9B59B6).setTitle(title)
+      .addFields(...fields)
+      .setFooter({ text: footerTail });
+    return replyFn({ embeds: [embed] });
+  }
+
+  // ── 2) Quá dài → phân trang theo khí hậu (nút lọc + ◀/▶) ──
+  const filterOptions = habitatFilterOptions(visible);
+  const wanted = (habitat || 'all').toLowerCase();
+  const active = filterOptions.some(f => f.key === wanted) ? wanted : 'all';
+  const filtered = active === 'all'
+    ? visible
+    : visible.filter(p => (p.habitat || 'none') === active);
+  // Giữ thứ tự khí hậu như bản 1-trang để đọc quen mắt
+  const sorted = [...filtered].sort((a, b) => {
+    const ha = a.habitat || '~', hb = b.habitat || '~';
+    if (ha !== hb) return ha.localeCompare(hb);
+    return (tierInfo(b.tier).order - tierInfo(a.tier).order) || a.name.localeCompare(b.name);
+  });
+
+  const { embed, components } = paginator.build({
+    domain: 'petcol',
+    userId,
+    items: sorted,
+    filter: active,
+    filterOptions,
+    page,
+    perPage: COLLECTION_PER_PAGE,
+    title,
+    color: 0x9B59B6,
+    formatItem: (p) => {
+      const hab = p.habitat ? pets.habitatInfo(p.habitat) : { emoji: '❔', label: 'Không rõ vùng' };
+      return `**${hab.emoji} ${hab.label}**\n${collectionEntry(data, p)}`;
+    },
+    footer: footerTail,
+  });
+  return replyFn({ embeds: [embed], components });
 }
 
 module.exports = {
@@ -165,111 +339,24 @@ module.exports = {
       }
       const embed = new EmbedBuilder().setColor(0x3498DB)
         .setTitle('🗺️ Pet sống theo khí hậu')
-        .setDescription(lines.join('\n').slice(0, 4000))
+        // `.slice()` cũ cắt giữa dòng → pet biến mất khỏi bản đồ mà không ai biết.
+        // clipLines giữ nguyên dòng và nói rõ còn bao nhiêu; bản đầy đủ có
+        // %pet collection (đã phân trang) để tra tiếp.
+        .setDescription(clipLines(lines, 3800, {
+          suffix: (n) => `… còn **${n}** dòng nữa — xem \`${prefix}pet collection\` (đã phân trang)`,
+        }))
         .setFooter({ text: `Pet chỉ rơi ở đúng vùng của nó • ${prefix}pet collection xem chi tiết` });
       return msg.reply({ embeds: [embed] });
     }
 
     // ===== collection (sưu tầm, nhóm theo KHÍ HẬU) =====
     if (sub === 'collection' || sub === 'col' || sub === 'sutam' || sub === 'list') {
-      const all = pets.getAllPets();
-      const ownedPets = pets.getPlayerPets(msg.author.id);
-      const owned = new Set(ownedPets.map(p => p.id));
-      const visible = all.filter(p => !p.hidden || owned.has(p.id));
-      const me = db.prepare('SELECT level FROM players WHERE user_id=?').get(msg.author.id)?.level || 1;
-
-      // Nguồn của từng pet: drop trực tiếp | ghép mảnh | tiến hoá | event
-      const dropRows = db.prepare('SELECT pet_id, monster_id, chance FROM pet_drops WHERE pet_id IS NOT NULL').all();
-      const directDrop = {};
-      for (const r of dropRows) directDrop[r.pet_id] = r;
-      const evoRows = pets.getAllEvolutions();
-      const evoFrom = {}; // to_pet_id → [recipe]
-      for (const r of evoRows) (evoFrom[r.to_pet_id] = evoFrom[r.to_pet_id] || []).push(r);
-
-      const mobName = (id) => db.prepare('SELECT name FROM monsters WHERE id=?').get(id)?.name || id;
-      const buffOf = (p) => {
-        const b = [];
-        if (p.atk_bonus) b.push(`+${p.atk_bonus} ATK`);
-        if (p.def_bonus) b.push(`+${p.def_bonus} DEF`);
-        if (p.hp_bonus)  b.push(`+${p.hp_bonus} HP`);
-        if (p.gold_bonus_pct) b.push(`+${p.gold_bonus_pct}% gold`);
-        if (p.xp_bonus_pct)   b.push(`+${p.xp_bonus_pct}% XP`);
-        if (p.drop_bonus_pct) b.push(`+${p.drop_bonus_pct}% drop`);
-        return b.length ? b.join(', ') : 'cosmetic';
-      };
-      const sourceOf = (p) => {
-        const parts = [];
-        const d = directDrop[p.id];
-        if (d) parts.push(`💀 ${mobName(d.monster_id)} (${(d.chance * 100).toFixed(1)}%)`);
-        if (p.shard_id && p.shard_qty > 0) {
-          const have = pets.getShard(msg.author.id, p.shard_id);
-          const src = db.prepare('SELECT monster_id FROM pet_drops WHERE shard_id=?').get(p.shard_id);
-          parts.push(`🧩 ${p.shard_qty}× ${pets.shardName(p.shard_id)} \`${p.shard_id}\` (có ${have})${src ? ` từ ${mobName(src.monster_id)}` : ''}`);
-        }
-        for (const e of evoFrom[p.id] || []) {
-          const have = pets.getShard(msg.author.id, e.shard_id);
-          const shardSrc = db.prepare('SELECT monster_id FROM pet_drops WHERE shard_id=?').get(e.shard_id);
-          const where = shardSrc ? ` từ ${mobName(shardSrc.monster_id)}` : '';
-          parts.push(`🧬 từ ${e.from_icon || ''} ${e.from_name} — ${e.shard_qty}× ${pets.shardName(e.shard_id)}\`${e.shard_id}\`${where} (có ${have}), ${e.gold_cost}💰, Lv.${e.min_level}`);
-        }
-        if (p.hidden) parts.push('🕵️ hidden');
-        return parts.length ? parts.join(' • ') : '🎁 event/admin';
-      };
-
-      // Chia field ≤1024 ký tự (Discord) mà không cắt giữa dòng.
-      const chunk = (lines, max = 1000) => {
-        const out = []; let cur = '';
-        for (const ln of lines) {
-          if (cur && cur.length + ln.length + 1 > max) { out.push(cur); cur = ln; }
-          else cur = cur ? `${cur}\n${ln}` : ln;
-        }
-        if (cur) out.push(cur);
-        return out;
-      };
-
-      const embed = new EmbedBuilder().setColor(0x9B59B6)
-        .setTitle(`🐾 Pet Collection — ${owned.size}/${visible.length} unlocked`);
-      const t = (tierKey) => tierInfo(tierKey);
-
-      // Nhóm theo khí hậu — "nó sống ở đâu" là thông tin quyết định đi săn ở đâu.
-      const byHab = new Map();
-      for (const p of visible) {
-        const key = p.habitat || '';
-        if (!byHab.has(key)) byHab.set(key, []);
-        byHab.get(key).push(p);
-      }
-      // Dựng field theo khí hậu. Embed của Discord có trần 6000 ký tự nên nếu
-      // hiện lore của tất cả pet đang sở hữu mà vượt trần, dựng lại KHÔNG lore
-      // (đo được 6971 ký tự khi sở hữu cả bộ 28 pet).
-      const makeFields = (showLore) => {
-        const fields = [];
-        for (const [hab, list] of byHab) {
-          const info = hab ? pets.habitatInfo(hab) : { emoji: '❔', label: 'Không rõ vùng' };
-          const lines = list.map(p => {
-            const mark = owned.has(p.id) ? '✅' : '❌';
-            const evoOut = pets.evolutionsFrom(p.id).map(r =>
-              ` → ${r.to_icon} ${r.to_name}${me < r.min_level ? ` (Lv.${r.min_level})` : ''}`).join(',');
-            const lore = showLore && owned.has(p.id) ? `\n    📖 *${p.desc || ''}*` : '';
-            return `${mark} ${t(p.tier).emoji} ${p.icon} **${p.name}** \`${p.id}\`\n    *${buffOf(p)}*${evoOut ? `\n    🧬${evoOut}` : ''}\n    ${sourceOf(p)}${lore}`;
-          });
-          for (const [i, val] of chunk(lines).entries()) {
-            fields.push({ name: `${info.emoji} ${info.label}${i > 0 ? ` (${i + 1})` : ''}`, value: val });
-          }
-        }
-        return fields;
-      };
-      const embedSize = (fields) => (embed.data.title || '').length +
-        fields.reduce((n, f) => n + f.name.length + f.value.length, 0);
-      let fields = makeFields(true);
-      if (embedSize(fields) > 5900) fields = makeFields(false);
-      embed.addFields(...fields);
-
-      const hiddenCount = all.filter(p => p.hidden && !owned.has(p.id)).length;
-      embed.setFooter({
-        text: `${prefix}pet combine <id> ghép • ${prefix}pet evolve tiến hoá • ${prefix}pet map` +
-          (hiddenCount > 0 ? ` • 🕵️ ${hiddenCount} pet ẩn` : '') + ' • 📖 lore hiện khi bạn sở hữu',
+      return renderCollection({
+        userId: msg.author.id,
+        habitat: args[1],
+        page: 0,
+        replyFn: (opts) => msg.reply(opts),
       });
-      return msg.reply({ embeds: [embed] });
     }
 
     // ===== Default: xem pet của mình =====
@@ -359,7 +446,7 @@ async function handleAdmin(msg, args, prefix) {
         const shard = p.shard_id ? ` shard:${p.shard_id}×${p.shard_qty}` : '';
         return `\`${p.id}\` ${p.icon} ${p.name} [${buffs.join(',') || 'cosmetic'}]${shard}`;
       });
-      embed.addFields({ name: `📊 ${tier}`, value: lines.join('\n').slice(0, 1024) });
+      embed.addFields({ name: `📊 ${tier}`, value: clipLines(lines, 1000) });
     }
     return msg.reply({ embeds: [embed] });
   }
@@ -598,3 +685,6 @@ async function handleAdmin(msg, args, prefix) {
 
   return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}pet admin help\``);
 }
+
+// Export cho button handler (phân trang sưu tầm khi danh sách quá dài)
+module.exports.renderCollection = renderCollection;

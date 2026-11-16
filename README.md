@@ -136,7 +136,7 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 | Lệnh | Mô tả |
 |---|---|
 | `%shop` | Xem cửa hàng |
-| `%buy <id> [qty]` / `%sell <id> [qty]` | Mua / bán cho NPC (không bán được món đang mặc). Hàng loạt: `%sell all [filter]`, `%sell junk` |
+| `%buy <id> [qty]` / `%sell <id> [qty]` | Mua / bán cho NPC (không bán được món đang mặc). Hàng loạt: `%sell all [filter]`, `%sell junk`; bán ≥1,000 vàng phải thêm `confirm` |
 | `%market` / `%market sell [id] [giá] [qty]` / `%market buy <#id>` | Chợ NGƯỜI CHƠI: bấm nút 🛒 để mua, `%market sell` xem món bán được + giá gợi ý, `%market sell <id>` gợi ý giá (`mine`, `cancel`, `search`, `recent`) |
 | `%mine [zone]` | Đào mỏ (alias: `%dao`) |
 | `%fish [zone]` | Câu cá (alias: `%cau`) |
@@ -247,6 +247,7 @@ mỗi push/PR qua GitHub Actions (`.github/workflows/test.yml`):
 | `test/market.test.js` | 24 | Chợ người chơi: escrow, thuế, huỷ/hết hạn, lịch sử giá |
 | `test/bulk_ops.test.js` | 20 | Phân trang `%inv` (giới hạn 6,000 ký tự) + bán/chế/nhận thưởng hàng loạt |
 | `test/market_help.test.js` | 18 | Nút mua ở chợ, bán từ túi + gợi ý giá, `%help <từ khoá>` |
+| `test/qol_safety.test.js` | 20 | Xác nhận bán ≥1,000 vàng; phân trang `%pet collection` / `%ach list` / `%help` / kho bang |
 | `test/smoke.test.js` | 47 | Chạy mọi lệnh để bắt lỗi dây chuyền |
 | `test/gather.test.js` | 23 | Nghề hái lượm: zone, drop, cooldown, chế tác từ nguyên liệu |
 | `test/job_tools.test.js` | 23 | Công cụ nghề: thông số riêng từng món, trần bonus, dao bếp / búa thợ |

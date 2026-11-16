@@ -1,6 +1,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getPlayer } = require('../game/player');
 const guilds = require('../game/guilds');
+const paginator = require('../game/paginator');
 const achievements = require('../game/achievements');
 
 function resolveTarget(msg, arg) {
@@ -88,6 +89,30 @@ function helpEmbed(prefix) {
 
 function maybeGrant(userId, ctx) {
   try { achievements.checkAndGrant(userId, ctx); } catch {}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Kho bang — phân trang (kho không có giới hạn số loại item)
+// ─────────────────────────────────────────────────────────────────────────────
+const VAULT_PER_PAGE = 12;
+
+function renderVaultPage({ userId, guild, page, replyFn }) {
+  const prefix = require('../game/prefix').getPrefix();
+  const items = guilds.listVault(guild.id);
+  const { embed, components } = paginator.build({
+    domain: 'vault',
+    userId,
+    items,
+    filter: 'all',
+    page,
+    perPage: VAULT_PER_PAGE,
+    title: `🏦 Kho [${guild.tag}] ${guild.name}`,
+    color: 0x1ABC9C,
+    formatItem: (it) => `📦 ${it.name || it.item_id} ×${it.qty} \`${it.item_id}\``,
+    footer: `${prefix}guild deposit / withdraw • ${items.length} loại • 💰 ${guild.gold}`,
+  });
+  if (items.length === 0) embed.setDescription(`💰 **${guild.gold}** vàng\n\n*Chưa có item.*`);
+  return replyFn({ embeds: [embed], components });
 }
 
 module.exports = {
@@ -281,21 +306,20 @@ module.exports = {
       return msg.reply({
         embeds: [new EmbedBuilder().setColor(0x1ABC9C)
           .setTitle(`👥 [${g.tag}] ${g.name} — ${members.length}/${guilds.maxMembers(g.level)}`)
-          .setDescription(lines.join('\n').slice(0, 4000) || '*Trống*')],
+          .setDescription(clipLines(lines) || '*Trống*')],
       });
     }
 
     // ====== vault ======
+    // Kho bang là danh sách KHÔNG giới hạn: đo với 250 loại item thì
+    // embed.setDescription throw (trần 4,096 ký tự) → cả lệnh chết, không xem
+    // được kho. Nay phân trang, mọi món đều xem được.
     if (sub === 'vault' || sub === 'kho' || sub === 'bank') {
       const mine = guilds.getPlayerGuild(msg.author.id);
       if (!mine) return msg.reply('❌ Bạn chưa ở bang nào.');
-      const items = guilds.listVault(mine.id);
-      const lines = items.map(it => `📦 ${it.name || it.item_id} ×${it.qty} \`${it.item_id}\``);
-      return msg.reply({
-        embeds: [new EmbedBuilder().setColor(0x1ABC9C)
-          .setTitle(`🏦 Kho [${mine.tag}] ${mine.name}`)
-          .setDescription(`💰 **${mine.gold}** vàng\n\n` + (lines.join('\n') || '*Chưa có item.*'))
-          .setFooter({ text: `${prefix}guild deposit / withdraw` })],
+      return renderVaultPage({
+        userId: msg.author.id, guild: mine, page: 0,
+        replyFn: (opts) => msg.reply(opts),
       });
     }
 
@@ -377,3 +401,6 @@ module.exports = {
   buildInfoEmbed,
   helpEmbed,
 };
+
+// Export cho nút phân trang kho bang
+module.exports.renderVaultPage = renderVaultPage;

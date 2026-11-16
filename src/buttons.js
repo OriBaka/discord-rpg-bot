@@ -447,6 +447,56 @@ async function handle(interaction) {
         });
       }
 
+      if (decoded.domain === 'vault') {
+        const guildCmd = require('./commands/guild');
+        const guilds = require('./game/guilds');
+        const mine = guilds.getPlayerGuild(decoded.userId);
+        if (!mine) return interaction.update({ content: '❌ Bạn không còn ở bang này.', embeds: [], components: [] });
+        return await guildCmd.renderVaultPage({
+          userId: decoded.userId,
+          guild: mine,
+          page: decoded.page,
+          replyFn: (opts) => interaction.update(opts),
+        });
+      }
+
+      if (decoded.domain === 'ach') {
+        const achCmd = require('./commands/achievement');
+        const gameAch = require('./game/achievements');
+        const all = gameAch.getAllAchievements();
+        const userAch = new Set(gameAch.getPlayerAchievements(decoded.userId).map(a => a.id));
+        const hiddenCount = all.filter(a => a.hidden && !userAch.has(a.id)).length;
+        return await achCmd.renderAchList({
+          userId: decoded.userId,
+          page: decoded.page,
+          all, userAch, hiddenCount,
+          replyFn: (opts) => interaction.update(opts),
+        });
+      }
+
+      if (decoded.domain === 'help') {
+        const helpCmd = require('./commands/help');
+        const isOwner = interaction.guild && interaction.guild.ownerId === decoded.userId;
+        const hasAdmin = interaction.member && interaction.member.permissions?.has('Administrator');
+        const adminIds = (process.env.ADMIN_IDS || '').split(',').map(x => x.trim());
+        return await helpCmd.renderHelpPage({
+          userId: decoded.userId,
+          page: decoded.page,
+          admin: Boolean(isOwner || hasAdmin || adminIds.includes(decoded.userId)),
+          replyFn: (opts) => interaction.update(opts),
+        });
+      }
+
+      if (decoded.domain === 'petcol') {
+        const petCmd = require('./commands/pet');
+        return await petCmd.renderCollection({
+          userId: decoded.userId,
+          habitat: decoded.filter,
+          page: decoded.page,
+          replyFn: (opts) => interaction.update(opts),
+        });
+      }
+
       if (decoded.domain === 'mksell') {
         const marketCmd = require('./commands/market');
         return await marketCmd.renderSellablePage({

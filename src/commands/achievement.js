@@ -3,6 +3,7 @@ const db = require('../db/database');
 const { getPlayer } = require('../game/player');
 const achievements = require('../game/achievements');
 const { getRestTokens, parseKV } = require('../game/argparse');
+const paginator = require('../game/paginator');
 
 function isAdmin(msg) {
   const adminIds = (process.env.ADMIN_IDS || '').split(',').map(s => s.trim());
@@ -17,6 +18,33 @@ function resolveTarget(msg, arg) {
   if (mention) return mention;
   const id = arg.replace(/[<@!>]/g, '');
   return msg.client.users.cache.get(id) || msg.author;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Danh sách thành tựu (phân trang)
+// ─────────────────────────────────────────────────────────────────────────────
+const ACH_PER_PAGE = 10;
+
+function renderAchList({ userId, page, all, userAch, hiddenCount, replyFn }) {
+  const visible = all.filter(a => !a.hidden || userAch.has(a.id));
+  const { embed, components } = paginator.build({
+    domain: 'ach',
+    userId,
+    items: visible,
+    filter: 'all',
+    page,
+    perPage: ACH_PER_PAGE,
+    title: `🏆 Achievements (${userAch.size}/${visible.length} unlocked)`,
+    color: 0xF1C40F,
+    formatItem: (a) => {
+      const mark = userAch.has(a.id) ? '✅' : '⬜';
+      const tag = a.hidden ? ' 🕵️' : '';
+      return `${mark} ${a.icon} **${a.name}** \`${a.id}\` *(${a.points}pt)*${tag}\n   *${a.desc}*`;
+    },
+    footer: `Tổng hiển thị: ${visible.length}` +
+      (hiddenCount > 0 ? ` • 🕵️ ${hiddenCount} thành tựu ẩn chưa khám phá` : ''),
+  });
+  return replyFn({ embeds: [embed], components });
 }
 
 module.exports = {
@@ -41,17 +69,12 @@ module.exports = {
       const visible = all.filter(a => !a.hidden || userAch.has(a.id));
       const hiddenCount = all.filter(a => a.hidden && !userAch.has(a.id)).length;
 
-      const lines = visible.map(a => {
-        const mark = userAch.has(a.id) ? '✅' : '⬜';
-        const tag = a.hidden ? ' 🕵️' : '';
-        return `${mark} ${a.icon} **${a.name}** \`${a.id}\` *(${a.points}pt)*${tag}\n   *${a.desc}*`;
+      // Thành tựu do admin tạo LÚC CHẠY → danh sách dài dần, nên phân trang
+      // luôn thay vì cắt ở 4000 ký tự (bản cũ làm mất thành tựu một cách im lặng).
+      return renderAchList({
+        userId: msg.author.id, page: 0, all, userAch, hiddenCount,
+        replyFn: (opts) => msg.reply(opts),
       });
-      const text = lines.join('\n');
-      const embed = new EmbedBuilder().setColor(0xF1C40F)
-        .setTitle(`🏆 Achievements (${userAch.size}/${visible.length} unlocked)`)
-        .setDescription(text.slice(0, 4000))
-        .setFooter({ text: `Tổng hiển thị: ${visible.length}` + (hiddenCount > 0 ? ` • 🕵️ ${hiddenCount} thành tựu ẩn chưa khám phá` : '') });
-      return msg.reply({ embeds: [embed] });
     }
 
     // ====== top — bảng xếp hạng ach_points ======
@@ -270,3 +293,6 @@ async function handleAdmin(msg, args, prefix) {
 
   return msg.reply(`❌ Lệnh con không hợp lệ. Gõ \`${prefix}ach admin help\``);
 }
+
+// Export cho button handler + test
+module.exports.renderAchList = renderAchList;

@@ -199,6 +199,27 @@ module.exports.buy = {
   },
 };
 
+// Ngưỡng xác nhận: bán tay 1 món rẻ thì không cần, nhưng một lệnh `%sell all`
+// có thể xoá sạch túi (đo được 657 món / 1,439,091 vàng trên nhân vật đầy đủ).
+// Từ 1,000 vàng trở lên phải gõ thêm `confirm` — vẫn 1 lệnh, chỉ thêm 1 từ.
+const SELL_CONFIRM_THRESHOLD = 1000;
+const CONFIRM_TOKENS = new Set(['confirm', 'ok', 'yes', 'xacnhan', 'dongy']);
+
+function isConfirmToken(a) {
+  return CONFIRM_TOKENS.has(String(a || '').toLowerCase());
+}
+
+function confirmPreview({ label, lines, total, count, prefix, example }) {
+  const shown = lines.slice(0, 8).join('\n');
+  const more = lines.length > 8 ? `\n… và **${lines.length - 8}** mục khác` : '';
+  return (
+    `⚠️ **Xác nhận bán ${label}** — thu **${total}** 💰 (${count} món).\n` +
+    (shown ? shown + more + '\n' : '') +
+    `\n👉 Nếu chắc chắn, gõ lại kèm \`confirm\`: \`${prefix}${example}\`\n` +
+    `_Không gõ lại thì chưa có gì bị bán._`
+  );
+}
+
 // ===== bán hàng loạt =====
 // `%sell all [filter]` và `%sell junk`.
 //
@@ -268,7 +289,9 @@ module.exports.sell = {
     if (bulkKind === 'all' || bulkKind === 'het' || bulkKind === 'junk' || bulkKind === 'rac') {
       const invCmd = require('./inventory');
       const isJunk = bulkKind === 'junk' || bulkKind === 'rac';
-      const filterArg = isJunk ? null : args[1];
+      const rest = args.slice(1).filter(a => !isConfirmToken(a));
+      const confirmed = args.slice(1).some(isConfirmToken);
+      const filterArg = isJunk ? null : rest[0];
       const filterDef = filterArg ? invCmd.parseFilter(filterArg) : null;
       if (filterDef && filterDef.key === 'custom') {
         return msg.reply(`❓ Không hiểu filter \`${filterArg}\`. Dùng: all, mat, potion, weapon, armor, acc, offhand, tool, lootbox`);
@@ -287,6 +310,21 @@ module.exports.sell = {
           return true;
         },
       });
+      // Chốt chặn: tổng thu ≥ ngưỡng thì bắt xác nhận (chưa trừ gì cả)
+      const bulkTotal = result.plans.reduce((n, p) => n + p.gain, 0);
+      if (bulkTotal >= SELL_CONFIRM_THRESHOLD && !confirmed) {
+        const label0 = isJunk ? 'rác (tier common)' : (filterDef ? filterDef.label : 'tất cả');
+        const example = isJunk ? 'sell junk confirm' : `sell all${filterArg ? ' ' + filterArg : ''} confirm`;
+        return msg.reply(confirmPreview({
+          label: label0,
+          lines: result.plans.map(p => `• ${p.it.name} ×${p.qty} → ${p.gain}💰`),
+          total: bulkTotal,
+          count: result.plans.reduce((n, p) => n + p.qty, 0),
+          prefix,
+          example,
+        }));
+      }
+
       // Bán thật
       let gold = 0;
       for (const p of result.plans) {
@@ -322,6 +360,17 @@ module.exports.sell = {
     }
     if (!hasItem(msg.author.id, id, qty)) return msg.reply('❌ Không đủ vật phẩm để bán.');
     const gain = (it.sell || Math.floor((it.price || 0) / 3)) * qty;
+    // Bán lẻ cũng có thể vượt ngưỡng (99× đồ quý) → cùng luật xác nhận
+    if (gain >= SELL_CONFIRM_THRESHOLD && !args.slice(1).some(isConfirmToken)) {
+      return msg.reply(confirmPreview({
+        label: `**${qty}× ${it.name}**`,
+        lines: [`• ${it.name} ×${qty} → ${gain}💰 (${gain / qty}/món)`],
+        total: gain,
+        count: qty,
+        prefix,
+        example: `sell ${id} ${qty} confirm`,
+      }));
+    }
     removeItem(msg.author.id, id, qty);
     updatePlayer(msg.author.id, { gold: p.gold + gain });
     return msg.reply(`✅ Đã bán **${qty}x ${it.name}** thu **${gain}** 💰`);
