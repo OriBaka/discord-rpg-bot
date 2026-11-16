@@ -4,7 +4,7 @@
 // nguyên liệu hiếm KHÔNG có giá thị trường — người có 20 mithril ore và người
 // cần 2 cái để chế đồ không gặp nhau được. Xem src/game/market.js để biết luật
 // (escrow, thuế, hạn tin, giới hạn tin/người).
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const db = require('../db/database');
 const { getPlayer } = require('../game/player');
 const { tierInfo } = require('../game/tiers');
@@ -50,21 +50,171 @@ function ago(ts) {
   return `${Math.floor(h / 24)}d`;
 }
 
+function prefix() { return require('../game/prefix').getPrefix(); }
+
 function formatLine(l) {
   const t = tierInfo(l.tier || 'common');
   const total = l.price * l.qty;
+  // Không còn dòng "gõ %market buy #id" — đã có nút 🛒 ngay dưới; chừa chỗ cho
+  // nhiều tin hơn mỗi trang.
   return `${t.emoji} **${l.name}** ×${l.qty} — **${l.price}** 💰/món (tổng ${total})\n` +
-    `   \`#${l.id}\` • ${sellerName(l.seller_id)} • ${ago(l.created_at)} trước\n` +
-    `   \`${prefix()}market buy ${l.id}\` để mua`;
+    `   \`#${l.id}\` • ${sellerName(l.seller_id)} • ${ago(l.created_at)} trước`;
 }
 
-function prefix() { return require('../game/prefix').getPrefix(); }
+// ─────────────────────────────────────────────────────────────────────────────
+// GỢI Ý GIÁ
+//
+// Trước đây `%market sell <id> <giá>` bắt người chơi tự đoán giá trong khi họ
+// không có thông tin gì (giá NPC không nói lên giá thị trường). Gợi ý lấy từ
+// giao dịch THẬT nếu có, không thì suy ra từ giá NPC và ghi rõ là suy đoán.
+// ─────────────────────────────────────────────────────────────────────────────
+function priceHint(itemId) {
+  const it = db.prepare('SELECT id, name, type, tier, sell, price, soulbound FROM items WHERE id = ?').get(itemId);
+  if (!it) return null;
+  const npc = it.sell || Math.floor((it.price || 0) / 3) || 0;
+  const recent = market.recentSales(itemId, 5);
+  if (recent.length > 0) {
+    const prices = recent.map(r => r.price).sort((a, b) => a - b);
+    const median = prices[Math.floor(prices.length / 2)];
+    return {
+      item: it, npc, source: 'market', suggested: median,
+      min: prices[0], max: prices[prices.length - 1], sales: recent.length, recent,
+    };
+  }
+  const suggested = Math.min(Math.max(npc * 2, market.MIN_PRICE), market.MAX_PRICE);
+  return { item: it, npc, source: 'npc', suggested, sales: 0, recent: [] };
+}
+
+// Vài món bán được: không soulbound, còn phần không bị trang bị.
+function sellableRows(userId) {
+  const { getEquippedCount } = require('../game/slots');
+  const rows = db.prepare('SELECT item_id, qty FROM inventory WHERE user_id = ?').all(userId);
+  const out = [];
+  for (const row of rows) {
+    const it = db.prepare('SELECT id, name, type, tier, sell, price, soulbound FROM items WHERE id = ?').get(row.item_id);
+    if (!it || it.soulbound) continue;
+    const equipped = getEquippedCount(userId, it.id);
+    const free = row.qty - equipped;
+    if (free <= 0) continue;
+    const hint = priceHint(it.id);
+    out.push({ ...it, qty: row.qty, free, hint });
+  }
+  // Món đáng tiền nhất lên trước — ai vào đây cũng để bán đồ giá trị
+  out.sort((a, b) => (b.hint.suggested * b.free) - (a.hint.suggested * a.free) || a.name.localeCompare(b.name));
+  return out;
+}
+
+function sellableFilters(rows) {
+  const counts = new Map();
+  for (const r of rows) counts.set(r.type, (counts.get(r.type) || 0) + 1);
+  const cats = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+    .map(([key]) => ({ key, label: categoryLabel(key).slice(0, 20), emoji: display.typeLabel(key).split(' ')[0] }));
+  return [{ key: 'all', label: 'Tất cả', emoji: '🎒' }, ...cats];
+}
+
+const SELLABLE_PER_PAGE = 6;
+
+function renderSellablePage({ userId, filter, page, replyFn, notice }) {
+  const rows = sellableRows(userId);
+  const filterOptions = sellableFilters(rows);
+  const active = (filter === 'all' || filterOptions.some(f => f.key === filter)) ? filter : 'all';
+  const filtered = active === 'all' ? rows : rows.filter(r => r.type === active);
+
+  const { embed, components } = paginator.build({
+    domain: 'mksell',
+    userId,
+    items: filtered,
+    filter: active,
+    filterOptions,
+    page,
+    perPage: SELLABLE_PER_PAGE,
+    title: `🏷️ Chọn món để bán lên chợ — ${active === 'all' ? 'Tất cả' : categoryLabel(active)}`,
+    color: 0x9B59B6,
+    formatItem: (r) => {
+      const t = tierInfo(r.tier || 'common');
+      const badge = r.hint.source === 'market' ? `📈 ${r.hint.suggested}` : `~${r.hint.suggested}`;
+      return `${t.emoji} **${r.name}** ×${r.qty} (bán được ${r.free}) — **${badge}** 💰/món
+` +
+        `   \`${prefix()}market sell ${r.id} ${r.hint.suggested}\` (theo gợi ý)`;
+    },
+    footer: `📈 = giá chợ gần đây • ~ = ước tính từ giá NPC • thuế ${Math.round(market.TAX_PCT * 100)}%`,
+  });
+
+  if (notice) {
+    const base = filtered.length === 0 ? '' : (embed.data.description || '');
+    embed.setDescription(`${notice}${base ? '\n\n' + base : ''}`.slice(0, 4000) || notice);
+  }
+
+  if (filtered.length === 0) {
+    embed.setDescription(rows.length === 0
+      ? `*Không có món nào bán được.*
+🔒 Món **soulbound** và phần đang **trang bị** không đăng bán được.
+💡 Kiếm thêm: \`${prefix()}hunt\`, \`${prefix()}mine\`.`
+      : `*Không có món **${categoryLabel(active)}** nào bán được.*`);
+  }
+  return replyFn({ embeds: [embed], components });
+}
+
+function priceHintEmbed(userId, itemId) {
+  const p = prefix();
+  const hint = priceHint(itemId);
+  if (!hint) return null;
+  const it = hint.item;
+  const t = tierInfo(it.tier || 'common');
+  const ownedRow = db.prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(userId, it.id);
+  const owned = ownedRow?.qty || 0;
+  const equipped = require('../game/slots').getEquippedCount(userId, it.id);
+  const free = Math.max(0, owned - equipped);
+
+  const lines = [`${t.emoji} **${it.name}** \`${it.id}\``];
+  if (hint.source === 'market') {
+    const range = hint.min === hint.max ? `${hint.min}` : `${hint.min}–${hint.max}`;
+    lines.push(`📈 Giá chợ gần đây: **${range}** 💰/món (${hint.sales} giao dịch) → gợi ý **${hint.suggested}**`);
+  } else {
+    lines.push(`~ Chưa ai bán món này trên chợ. Giá NPC ${hint.npc} 💰 → gợi ý **${hint.suggested}** 💰/món (2× giá NPC)`);
+  }
+  lines.push(`🏷️ Giá hợp lệ: ${market.MIN_PRICE}–${market.MAX_PRICE.toLocaleString('en-US')} 💰/món`);
+  lines.push(`🎒 Bạn có **${owned}**${equipped > 0 ? ` (đang mặc ${equipped})` : ''} → bán được **${free}**`);
+  lines.push('');
+  if (it.soulbound) {
+    lines.push('🔒 Món này **soulbound** — không đăng bán được.');
+  } else if (owned === 0) {
+    lines.push(`👉 Bạn không có món này trong túi — \`${p}market sell\` để xem món bán được.`);
+  } else if (free <= 0) {
+    lines.push(`👉 Không còn món nào rảnh để bán (đang mặc hết). Tháo ra: \`${p}unequip\``);
+  } else {
+    lines.push(`👉 Đăng bán: \`${p}market sell ${it.id} ${hint.suggested}\` (bán cả ${free}: \`${p}market sell ${it.id} ${hint.suggested} ${free}\`)`);
+  }
+  return new EmbedBuilder().setColor(0x9B59B6).setTitle('💰 Gợi ý giá bán').setDescription(lines.join('\n'));
+}
+
+// Số tin mỗi trang = số nút mua tối đa (Discord: 5 nút/row) → mọi tin hiện ra
+// đều bấm mua được, không có tin "nhìn thấy mà phải gõ tay".
+const MARKET_PER_PAGE = 5;
+
+function buildBuyRow(slice, userId, filter, page) {
+  if (slice.length === 0) return null;
+  const row = new ActionRowBuilder();
+  for (const l of slice.slice(0, 5)) {
+    const own = l.seller_id === userId;
+    const btn = new ButtonBuilder()
+      .setCustomId(`mkbuy:${l.id}:${userId}:${filter}:${page}`)
+      .setLabel(own ? `#${l.id} của bạn` : `#${l.id} · ${l.price}💰`)
+      .setEmoji('🛒')
+      .setStyle(own ? ButtonStyle.Secondary : ButtonStyle.Success)
+      .setDisabled(own);
+    row.addComponents(btn);
+  }
+  return row;
+}
 
 function renderMarketPage({ userId, filter, page, replyFn }) {
   market.cleanupExpired();
   const all = market.allListings();
   const cats = categoriesOf(all);
-  const filterOptions = [{ key: 'all', label: 'All', emoji: '🏪' }, ...cats];
+  const filterOptions = [{ key: 'all', label: 'Tất cả', emoji: '🏪' }, ...cats];
   const active = (filter === 'all' || cats.some(c => c.key === filter)) ? filter : 'all';
   const filtered = active === 'all' ? all : all.filter(l => (l.type || 'other') === active);
   // Rẻ trước: người mua thường tìm món rẻ nhất của loại mình cần
@@ -77,13 +227,24 @@ function renderMarketPage({ userId, filter, page, replyFn }) {
     filter: active,
     filterOptions,
     page,
-    title: `🏪 Chợ người chơi — ${active === 'all' ? 'All' : categoryLabel(active)}`,
+    perPage: MARKET_PER_PAGE,
+    title: `🏪 Chợ người chơi — ${active === 'all' ? 'Tất cả' : categoryLabel(active)}`,
     color: 0x9B59B6,
     formatItem: (l) => formatLine(l),
-    footer: `Đăng bán: ${prefix()}market sell <item> <giá> [qty] • Thuế ${Math.round(market.TAX_PCT * 100)}% • Tin hết hạn sau 7 ngày`,
+    footer: `🛒 bấm nút để mua 1 món • ${prefix()}market sell để xem món bán được + giá gợi ý • thuế ${Math.round(market.TAX_PCT * 100)}%`,
   });
+
+  // Chèn row nút mua giữa row filter và row điều hướng
+  const maxPage = Math.max(0, Math.ceil(filtered.length / MARKET_PER_PAGE) - 1);
+  const shownPage = Math.max(0, Math.min(page, maxPage));
+  const slice = filtered.slice(shownPage * MARKET_PER_PAGE, shownPage * MARKET_PER_PAGE + MARKET_PER_PAGE);
+  const buyRow = buildBuyRow(slice, userId, active, shownPage);
+  if (buyRow) {
+    const hasNav = maxPage > 0;
+    components.splice(hasNav ? components.length - 1 : components.length, 0, buyRow);
+  }
   if (filtered.length === 0) {
-    embed.setDescription(`*Chợ đang trống.*\nĐăng bán món đầu tiên: \`${prefix()}market sell <item_id> <giá> [qty]\`\n` +
+    embed.setDescription(`*Chợ đang trống.*\nXem món bạn bán được + giá gợi ý: \`${prefix()}market sell\`\n` +
       `💡 Nguyên liệu hiếm, đồ ăn, vũ khí/giáp **không soulbound** đều bán được.`);
   }
   return replyFn({ embeds: [embed], components });
@@ -93,9 +254,11 @@ function helpEmbed() {
   const p = prefix();
   return new EmbedBuilder().setColor(0x9B59B6).setTitle('🏪 Chợ người chơi')
     .setDescription([
-      `\`${p}market\` — xem chợ (lọc theo loại bằng nút hoặc \`${p}market material\`)`,
+      `\`${p}market\` — xem chợ (lọc theo loại bằng nút hoặc \`${p}market material\`), bấm nút 🛒 để mua`,
+      `\`${p}market sell\` — xem món **bán được** kèm **giá gợi ý** (món soulbound / đang mặc bị ẩn)`,
+      `\`${p}market sell <item_id>\` — gợi ý giá cho 1 món (dựa trên giá chợ gần đây, không có thì 2× giá NPC)`,
       `\`${p}market sell <item_id> <giá> [qty]\` — đăng bán (giá tính cho 1 món)`,
-      `\`${p}market buy <#id> [qty]\` — mua`,
+      `\`${p}market buy <#id> [qty]\` — mua bằng lệnh (nút 🛒 chỉ mua 1 món)`,
       `\`${p}market mine\` — tin bạn đang bán (kèm nút huỷ)`,
       `\`${p}market cancel <#id>\` — huỷ tin, nhận lại item`,
       `\`${p}market search <từ khoá>\` — tìm theo tên/id`,
@@ -126,9 +289,28 @@ module.exports = {
       const itemId = args[1];
       const price = parseInt(args[2]);
       const qty = Math.max(1, parseInt(args[3]) || 1);
-      if (!itemId || isNaN(price)) {
-        return msg.reply(`❌ Cú pháp: \`${prefix()}market sell <item_id> <giá> [qty]\` (giá cho 1 món)\n` +
-          `💡 Xem id trong \`${prefix()}inv\`.`);
+
+      // Không nêu món → liệt kê món BÁN ĐƯỢC kèm giá gợi ý (thay vì bắt nhớ id)
+      if (!itemId) {
+        return renderSellablePage({
+          userId: msg.author.id, filter: args[2] || 'all', page: 0,
+          replyFn: (opts) => msg.reply(opts),
+        });
+      }
+
+      // Có món nhưng chưa có giá → gợi ý giá (dựa trên giao dịch thật / giá NPC)
+      if (isNaN(price)) {
+        const exists = db.prepare('SELECT 1 FROM items WHERE id = ?').get(itemId);
+        if (!exists) {
+          // Gõ sai id (hoặc gõ tên loại hàng) → đưa danh sách món bán được thay
+          // vì báo lỗi cụt. Filter theo loại vẫn dùng được qua nút.
+          return renderSellablePage({
+            userId: msg.author.id, filter: itemId, page: 0,
+            notice: `⚠️ Không có item \`${itemId}\` — đây là món bạn bán được (lọc theo loại bằng nút).`,
+            replyFn: (opts) => msg.reply(opts),
+          });
+        }
+        return msg.reply({ embeds: [priceHintEmbed(msg.author.id, itemId)] });
       }
 
       const res = market.createListing(msg.author.id, itemId, price, qty);
@@ -265,5 +447,9 @@ module.exports = {
   },
 };
 
-// Export cho button handler (phân trang)
+// Export cho button handler (phân trang + nút mua) và test
 module.exports.renderMarketPage = renderMarketPage;
+module.exports.renderSellablePage = renderSellablePage;
+module.exports.priceHint = priceHint;
+module.exports.priceHintEmbed = priceHintEmbed;
+module.exports.MARKET_PER_PAGE = MARKET_PER_PAGE;

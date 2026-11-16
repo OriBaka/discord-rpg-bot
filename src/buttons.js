@@ -295,6 +295,81 @@ async function handle(interaction) {
   }
 
   // ============================================================
+  // MUA TỪ CHỢ BẰNG NÚT: mkbuy:<listingId>:<userId>:<filter>:<page>
+  // ============================================================
+  if (domain === 'mkbuy') {
+    try {
+      const listingId = parseInt(action);
+      const ownerId = rest[0];
+      const filter = rest[1] || 'all';
+      const page = parseInt(rest[2]) || 0;
+
+      if (interaction.user.id !== ownerId) {
+        return interaction.reply({ content: '❌ Đây là trang chợ của người khác — gõ `market` để mở chợ của bạn.', ephemeral: true });
+      }
+
+      const marketCmd = require('./commands/market');
+      const marketGame = require('./game/market');
+      const res = marketGame.buy(interaction.user.id, listingId, 1);
+
+      if (!res.ok) {
+        const msg = {
+          no_listing: '❌ Tin này không còn (đã bán hoặc hết hạn).',
+          own_listing: '❌ Đây là tin của chính bạn.',
+          no_gold: `💸 Không đủ vàng: cần **${res.total}**, bạn có **${res.gold}**.`,
+          qty_exceeds: `❌ Tin này chỉ còn **${res.listing?.qty ?? 0}** món.`,
+          no_player: '❌ Chưa có nhân vật — gõ `start`.',
+        }[res.error] || '❌ Không mua được.';
+        await interaction.reply({ content: msg, ephemeral: true });
+        // Trang có thể đã cũ → vẽ lại để nút biến mất/đổi số lượng
+        try {
+          let payload = null;
+          await marketCmd.renderMarketPage({
+            userId: ownerId, filter, page, replyFn: (opts) => { payload = opts; return null; },
+          });
+          if (payload && interaction.message?.edit) await interaction.message.edit(payload);
+        } catch { /* message cũ bị xoá thì thôi */ }
+        return;
+      }
+
+      // Mua được: DM người bán (best-effort như lệnh gõ tay)
+      try {
+        if (interaction.client?.users?.fetch) {
+          const u = await interaction.client.users.fetch(res.listing.seller_id).catch(() => null);
+          if (u) {
+            await u.send(`💰 **${res.listing.name}** ×${res.qty} của bạn đã bán với giá ${res.total} vàng — bạn nhận **${res.payout}** (thuế ${res.tax}).`).catch(() => {});
+          }
+        }
+      } catch { /* DM đóng thì thôi */ }
+
+      const left = res.remaining > 0
+        ? `\nTin còn **${res.remaining}** món — mua thêm: \`market buy #${listingId} ${res.remaining}\` hoặc bấm nút lần nữa.`
+        : '\nTin đã bán hết.';
+      await interaction.reply({
+        content: `✅ Đã mua **${res.listing.name}** ×${res.qty} — trả **${res.total}** 💰.${left}`,
+        ephemeral: true,
+      });
+
+      // Cập nhật lại message cho người khác thấy tồn kho mới
+      try {
+        let payload = null;
+        await marketCmd.renderMarketPage({
+          userId: ownerId, filter, page, replyFn: (opts) => { payload = opts; return null; },
+        });
+        if (payload && interaction.message?.edit) await interaction.message.edit(payload);
+      } catch { /* ignore */ }
+      return;
+    } catch (err) {
+      console.error('[mkbuy handler]', err);
+      const msg = `⚠️ Lỗi mua hàng: \`${err.message}\``;
+      if (interaction.replied || interaction.deferred) {
+        return interaction.followUp({ content: msg, ephemeral: true }).catch(() => {});
+      }
+      return interaction.reply({ content: msg, ephemeral: true }).catch(() => {});
+    }
+  }
+
+  // ============================================================
   // PAGINATION BUTTONS: page:<domain>:<userId>:<filter>:<page>
   // ============================================================
   if (domain === 'page') {
@@ -368,6 +443,16 @@ async function handle(interaction) {
           sort: decoded.sort || 'default',
           page: decoded.page,
           playerLevel: pl?.level || 1,
+          replyFn: (opts) => interaction.update(opts),
+        });
+      }
+
+      if (decoded.domain === 'mksell') {
+        const marketCmd = require('./commands/market');
+        return await marketCmd.renderSellablePage({
+          userId: decoded.userId,
+          filter: decoded.filter,
+          page: decoded.page,
           replyFn: (opts) => interaction.update(opts),
         });
       }
