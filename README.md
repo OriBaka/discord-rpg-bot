@@ -137,7 +137,7 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 |---|---|
 | `%shop` | Xem cửa hàng |
 | `%buy <id> [qty]` / `%sell <id> [qty]` | Mua / bán cho NPC (không bán được món đang mặc). Hàng loạt: `%sell all [filter]`, `%sell junk` |
-| `%market` / `%market sell <id> <giá> [qty]` / `%market buy <#id>` | Chợ NGƯỜI CHƠI: đăng bán nguyên liệu, đồ ăn, vũ khí/giáp không soulbound, vật phẩm hiếm (`mine`, `cancel`, `search`, `recent`) |
+| `%market` / `%market sell [id] [giá] [qty]` / `%market buy <#id>` | Chợ NGƯỜI CHƠI: bấm nút 🛒 để mua, `%market sell` xem món bán được + giá gợi ý, `%market sell <id>` gợi ý giá (`mine`, `cancel`, `search`, `recent`) |
 | `%mine [zone]` | Đào mỏ (alias: `%dao`) |
 | `%fish [zone]` | Câu cá (alias: `%cau`) |
 | `%gather [zone]` | Hái lượm gỗ/thảo dược (foraging, alias: `%forage`, `%hai`) |
@@ -163,7 +163,7 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 | `%info item/mob/zone <id>` | Chi tiết item / quái / khu vực |
 | `%quest` | Quest hằng ngày, `%quest claim <id>` nhận thưởng |
 | `%ach [@user]` | Thành tựu, `%ach list`, `%ach top` |
-| `%help` | Danh sách lệnh |
+| `%help` / `%help <từ khoá>` | Danh sách lệnh / tra cứu nhanh (vd `%help market`, `%help pet`; gõ không dấu vẫn được) |
 
 ### Admin
 
@@ -243,6 +243,10 @@ mỗi push/PR qua GitHub Actions (`.github/workflows/test.yml`):
 | File | Test | Nội dung |
 |---|---|---|
 | `test/balance.test.js` | 40 | Cân bằng quái/trang bị/bình máu — chặn hồi quy chỉ số |
+| `test/lootbox.test.js` | 31 | Hộp quà: admin tạo/sửa, tỉ lệ rơi, mở nhiều hộp |
+| `test/market.test.js` | 24 | Chợ người chơi: escrow, thuế, huỷ/hết hạn, lịch sử giá |
+| `test/bulk_ops.test.js` | 20 | Phân trang `%inv` (giới hạn 6,000 ký tự) + bán/chế/nhận thưởng hàng loạt |
+| `test/market_help.test.js` | 18 | Nút mua ở chợ, bán từ túi + gợi ý giá, `%help <từ khoá>` |
 | `test/smoke.test.js` | 47 | Chạy mọi lệnh để bắt lỗi dây chuyền |
 | `test/gather.test.js` | 23 | Nghề hái lượm: zone, drop, cooldown, chế tác từ nguyên liệu |
 | `test/job_tools.test.js` | 23 | Công cụ nghề: thông số riêng từng món, trần bonus, dao bếp / búa thợ |
@@ -265,5 +269,4 @@ mỗi push/PR qua GitHub Actions (`.github/workflows/test.yml`):
 
 - Cân bằng lại end-game: Ancient/Void Dragon hiện gần như bất khả thi
 - Dungeon nhiều tầng có checkpoint
-- Chợ người chơi với nhau (auction house)
 - Season/leaderboard reset định kỳ
