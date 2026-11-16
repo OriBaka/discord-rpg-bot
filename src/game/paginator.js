@@ -5,13 +5,15 @@ const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('
 const PER_PAGE = 8;
 
 // Stateless: encode toàn bộ state vào customId
-// Format: page:<kind>:<domain>:<userId>:<filter>:<page>
+// Format: page:<kind>:<domain>:<userId>:<filter>:<page>[:<sort>]
+//   sort chỉ dùng cho domain 'inv' (default|value|qty); id cũ 6 phần vẫn đọc được.
 //   kind = 'f' (filter click, page=0) hoặc 'n' (nav click, giữ filter)
 // VD: page:n:craft:123:all:1 (next page)
 //     page:f:craft:123:weapon:0 (switch filter)
 
-function encodeCustomId(domain, userId, filter, page, kind = 'n') {
-  return `page:${kind}:${domain}:${userId}:${filter}:${page}`;
+function encodeCustomId(domain, userId, filter, page, kind = 'n', sort) {
+  const base = `page:${kind}:${domain}:${userId}:${filter}:${page}`;
+  return sort && sort !== 'default' ? `${base}:${sort}` : base;
 }
 
 function decodeCustomId(customId) {
@@ -23,6 +25,7 @@ function decodeCustomId(customId) {
     userId: parts[3],
     filter: parts[4],
     page: parseInt(parts[5]) || 0,
+    sort: parts[6] || 'default',
   };
 }
 
@@ -38,7 +41,7 @@ function decodeCustomId(customId) {
 //   color: embed color
 //   formatItem: function(item, idx) → string
 //   footer: text (optional)
-function build({ domain, userId, items, filter, filterOptions, page, title, color, formatItem, footer, perPage = PER_PAGE }) {
+function build({ domain, userId, items, filter, filterOptions, page, title, color, formatItem, footer, perPage = PER_PAGE, sort }) {
   const total = items.length;
   const maxPage = Math.max(0, Math.ceil(total / perPage) - 1);
   page = Math.max(0, Math.min(page, maxPage));
@@ -66,7 +69,7 @@ function build({ domain, userId, items, filter, filterOptions, page, title, colo
       const isCurrent = opt.key === filter;
       filterRow.addComponents(
         new ButtonBuilder()
-          .setCustomId(encodeCustomId(domain, userId, opt.key, 0, 'f'))
+          .setCustomId(encodeCustomId(domain, userId, opt.key, 0, 'f', sort))
           .setLabel(opt.label)
           .setEmoji(opt.emoji || '📁')
           .setStyle(isCurrent ? ButtonStyle.Primary : ButtonStyle.Secondary)
@@ -80,7 +83,7 @@ function build({ domain, userId, items, filter, filterOptions, page, title, colo
   if (maxPage > 0) {
     const navRow = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
-        .setCustomId(encodeCustomId(domain, userId, filter, page - 1, 'n'))
+        .setCustomId(encodeCustomId(domain, userId, filter, page - 1, 'n', sort))
         .setEmoji('◀️')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(page <= 0),
@@ -90,7 +93,7 @@ function build({ domain, userId, items, filter, filterOptions, page, title, colo
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(true),
       new ButtonBuilder()
-        .setCustomId(encodeCustomId(domain, userId, filter, page + 1, 'n'))
+        .setCustomId(encodeCustomId(domain, userId, filter, page + 1, 'n', sort))
         .setEmoji('▶️')
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(page >= maxPage),

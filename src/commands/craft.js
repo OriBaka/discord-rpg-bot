@@ -152,7 +152,10 @@ async function handleCommand(msg, args, type) {
     });
   }
 
-  // ===== execute recipe =====
+  // ===== execute recipe (hỗ trợ xN) =====
+  // `%craft iron_ingot`      → 1 lần
+  // `%craft iron_ingot x10`  → 10 lần (dừng khi hết nguyên liệu)
+  // `%craft iron_ingot 10`   → tương tự
   const recipeId = sub;
   const recipe = recipes.getRecipe(recipeId);
   if (!recipe) return msg.reply(`❌ Recipe \`${recipeId}\` không tồn tại. Gõ \`${prefix}${type} list\``);
@@ -163,8 +166,14 @@ async function handleCommand(msg, args, type) {
     return msg.reply(`🔒 Recipe **${recipe.name}** yêu cầu ${jobType} Lv.${recipe.min_job_level} (bạn Lv.${job.level}).`);
   }
 
-  // Check inputs
   const inputs = recipes.parseInputs(recipe);
+  const MAX_TIMES = 100; // chặn loop vô hạn / spam
+  const qtyArg = (args[1] || '').toLowerCase().replace(/^x/, '');
+  let times = qtyArg ? (parseInt(qtyArg) || 0) : 1;
+  if (times < 1) times = 1;
+  const capped = Math.min(times, MAX_TIMES);
+
+  // Check inputs (lần đầu)
   for (const inp of inputs) {
     if (!hasItem(msg.author.id, inp.item_id, inp.qty)) {
       const it = getItem(inp.item_id);
@@ -179,62 +188,100 @@ async function handleCommand(msg, args, type) {
   // === Công cụ bổ trợ (dao bếp / búa thợ) ===
   // save_chance : cơ hội KHÔNG tiêu nguyên liệu (búa thợ)
   // extra_chance: cơ hội ra thêm 1 món (dao bếp)
-  const toolBonus = jobBuffs.bonus(msg.author.id, jobType, p.level);
-  let toolText = '';
-  // Nguồn của hiệu ứng có thể là công cụ (búa/dao) hoặc buff consumable —
-  // trước đây lấy thẳng toolBonus.tool.name nên crash khi chỉ có buff.
-  const effectSource = () => toolBonus.tool ? toolBonus.tool.name : 'Vật phẩm bổ trợ';
-  const savedInputs = toolBonus.saveChance > 0 && Math.random() < toolBonus.saveChance;
+  // Với xN: mỗi lần chế roll riêng (đúng bản chất "mỗi lần chế"), buff có lượt
+  // thì bị trừ dần và tự hết giữa chừng — không được tính 1 lần rồi nhân N.
+  const achievements = require('../game/achievements');
+  const achCtx = { client: msg.client, guildId: msg.guild?.id };
+  const toolNotes = [];
+  let totalOut = 0, totalXp = 0, savedCount = 0, extraCount = 0, done = 0;
+  let stoppedEarly = false;
+  let lastXpRes = null;
+  const newAchs = [];
+  const seenAch = new Set();
 
-  if (savedInputs) {
-    toolText += `\n${effectSource()}: **không tiêu nguyên liệu** ✨`;
-  } else {
+  for (let n = 0; n < capped; n++) {
+    // Còn đủ NL không? (lần đầu đã check, nhưng các lần sau phải check lại)
+    let missing = null;
     for (const inp of inputs) {
-      removeItem(msg.author.id, inp.item_id, inp.qty);
+      if (!hasItem(msg.author.id, inp.item_id, inp.qty)) { missing = inp; break; }
+    }
+    if (missing) { stoppedEarly = true; break; }
+
+    const toolBonus = jobBuffs.bonus(msg.author.id, jobType, p.level);
+    // Nguồn của hiệu ứng có thể là công cụ (búa/dao) hoặc buff consumable —
+    // trước đây lấy thẳng toolBonus.tool.name nên crash khi chỉ có buff.
+    const effectSource = () => toolBonus.tool ? toolBonus.tool.name : 'Vật phẩm bổ trợ';
+    const savedInputs = toolBonus.saveChance > 0 && Math.random() < toolBonus.saveChance;
+
+    if (savedInputs) {
+      savedCount++;
+      toolNotes.push(`${effectSource()}: **không tiêu nguyên liệu** ✨`);
+    } else {
+      for (const inp of inputs) {
+        removeItem(msg.author.id, inp.item_id, inp.qty);
+      }
+    }
+
+    // Buff tạm thời có hiệu lực cho ĐÚNG lần chế này rồi trừ 1 lượt
+    if (toolBonus.buff) {
+      const left = jobBuffs.consume(msg.author.id, jobType);
+      toolNotes.push(`${jobBuffs.describeActive(toolBonus.buff)}` + (left === 0 ? ' — **vừa hết lượt**' : ''));
+    }
+
+    const bonusQty = toolBonus.extraChance > 0 && Math.random() < toolBonus.extraChance ? 1 : 0;
+    if (bonusQty > 0) { extraCount++; toolNotes.push(`${effectSource()}: **+1 món** ✨`); }
+    const madeThisTime = recipe.output_qty + bonusQty;
+    totalOut += madeThisTime;
+    totalXp += recipe.xp_gain;
+    done++;
+
+    addItem(msg.author.id, recipe.output_id, madeThisTime);
+    // Quest 'craft': chế/nấu thành công, tính theo số món tạo ra
+    require('../game/quests').onCraft(msg.author.id, recipe.id, madeThisTime);
+    // Thành tựu craft_total: cộng bộ đếm TRƯỚC khi check, nếu không món thứ 100
+    // sẽ chỉ được tính ở lần chế thứ 101.
+    achievements.trackCraft(msg.author.id, madeThisTime);
+    lastXpRes = jobs.addJobXp(msg.author.id, jobType, recipe.xp_gain, achCtx);
+    for (const a of [...(lastXpRes.achievements || []), ...achievements.checkAndGrant(msg.author.id, achCtx)]) {
+      const key = a.id || a.name;
+      if (!seenAch.has(key)) { seenAch.add(key); newAchs.push(a); }
     }
   }
 
-  // Buff tạm thời có hiệu lực cho ĐÚNG lần chế này rồi trừ 1 lượt
-  if (toolBonus.buff) {
-    const left = jobBuffs.consume(msg.author.id, jobType);
-    toolText += `\n${jobBuffs.describeActive(toolBonus.buff)}` + (left === 0 ? ' — **vừa hết lượt**' : '');
-  }
-
-  const bonusQty = toolBonus.extraChance > 0 && Math.random() < toolBonus.extraChance ? 1 : 0;
-  const totalOut = recipe.output_qty + bonusQty;
-  if (bonusQty > 0) toolText += `\n${effectSource()}: **+1 món** ✨`;
-
-  // Produce output
-  addItem(msg.author.id, recipe.output_id, totalOut);
-  // Quest 'craft': chế/nấu thành công, tính theo số món tạo ra
-  require('../game/quests').onCraft(msg.author.id, recipe.id, totalOut);
-  // Thành tựu craft_total: cộng bộ đếm TRƯỚC khi check, nếu không món thứ 100
-  // sẽ chỉ được tính ở lần chế thứ 101.
-  const achievements = require('../game/achievements');
-  achievements.trackCraft(msg.author.id, totalOut);
-  const achCtx = { client: msg.client, guildId: msg.guild?.id };
-  const xpRes = jobs.addJobXp(msg.author.id, jobType, recipe.xp_gain, achCtx);
-  // addJobXp chỉ check khi LÊN CẤP, còn craft_total phải mở đúng món thứ N dù
-  // không lên cấp → check thêm, rồi gộp danh sách để hiện một lần.
-  const newAchs = [...(xpRes.achievements || []), ...achievements.checkAndGrant(msg.author.id, achCtx)];
-
   const out = getItem(recipe.output_id);
   const t = tierInfo(out?.tier || 'common');
-  let text = `${verbThe} **${totalOut}× ${t.emoji} ${out?.name || recipe.output_id}**!\n+${recipe.xp_gain} ${jobType} XP`;
-  if (toolText) text += toolText;
-  if (xpRes.levelsGained.length > 0) {
-    text += `\n\n🎉 **${jobType} Lv.UP!** Đạt Lv.${xpRes.level}`;
+  const head = done > 1
+    ? `${verbThe} **${done} lần** → **${totalOut}× ${t.emoji} ${out?.name || recipe.output_id}**!`
+    : `${verbThe} **${totalOut}× ${t.emoji} ${out?.name || recipe.output_id}**!`;
+  let text = `${head}\n+${totalXp} ${jobType} XP`;
+
+  // Gộp ghi chú công cụ (loop 100 lần không thể in 100 dòng)
+  const noteSummary = [];
+  if (savedCount > 0) noteSummary.push(`✨ không tiêu NL **${savedCount}** lần`);
+  if (extraCount > 0) noteSummary.push(`✨ +${extraCount} món thêm`);
+  const buffNote = toolNotes.find(n => n.includes('vừa hết lượt')) || toolNotes.find(n => !n.includes('không tiêu NL') && !n.includes('+1 món'));
+  if (buffNote) noteSummary.push(buffNote);
+  if (noteSummary.length) text += `\n${noteSummary.join(' • ')}`;
+
+  if (stoppedEarly) {
+    text += `\n⚠️ Dừng ở lần **${done}**: hết nguyên liệu.`;
+  }
+  if (times > MAX_TIMES && done === MAX_TIMES) {
+    text += `\n⚠️ Tối đa ${MAX_TIMES} lần/lệnh — gõ tiếp nếu cần.`;
+  }
+  if (lastXpRes?.levelsGained?.length > 0) {
+    text += `\n\n🎉 **${jobType} Lv.UP!** Đạt Lv.${lastXpRes.level}`;
   }
   if (newAchs.length > 0) {
     text += `\n\n🏆 **Thành tựu mới**: ${newAchs.map(a => `${a.icon} ${a.name}`).join(', ')}`;
   }
 
   const embed = new EmbedBuilder().setColor(color)
-    .setTitle(`${icon} ${verbDo}: ${recipe.name}`)
+    .setTitle(`${icon} ${verbDo}: ${recipe.name}${done > 1 ? ` ×${done}` : ''}`)
     .setDescription(text)
-    .setFooter({ text: `Lv.${xpRes.level} (${xpRes.xp}/${xpRes.xpToNext} XP)` });
+    .setFooter({ text: `Lv.${lastXpRes?.level ?? job.level} (${lastXpRes?.xp ?? job.xp}${lastXpRes ? '/' + lastXpRes.xpToNext : ''} XP)` });
   const { buildAgainRow } = require('../game/again_button');
-  return msg.reply({ embeds: [embed], components: [buildAgainRow(type, msg.author.id, [recipeId])] });
+  return msg.reply({ embeds: [embed], components: [buildAgainRow(type, msg.author.id, [recipeId, ...(done > 1 ? [`x${done}`] : [])])] });
 }
 
 // ===== Admin =====

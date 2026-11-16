@@ -43,7 +43,7 @@ module.exports = {
         { name: '🏪 Chợ', value:
           `\`${prefix}shop\` xem cửa hàng NPC\n` +
           `\`${prefix}buy <id> [qty]\` mua ở shop\n` +
-          `\`${prefix}sell <id> [qty]\` bán cho NPC (giá cố định)\n` +
+          `\`${prefix}sell <id> [qty]\` bán cho NPC • \`${prefix}sell all [filter]\` • \`${prefix}sell junk\` (tier common)\n` +
           `\`${prefix}market\` chợ NGƯỜI CHƠI — bán nguyên liệu/đồ hiếm cho người khác\n` +
           `\`${prefix}market sell <id> <giá> [qty]\` đăng bán • \`${prefix}market buy <#id>\` mua\n` +
           `\`${prefix}market mine\` tin của bạn • \`${prefix}market recent\` giá gần đây` },
@@ -54,7 +54,7 @@ module.exports = {
           `\`${prefix}info zone <id>\` chi tiết khu vực` },
         { name: '📜 Nhiệm vụ & Thành tựu', value:
           `\`${prefix}quest\` xem quest hằng ngày\n` +
-          `\`${prefix}quest claim <id>\` nhận thưởng\n` +
+          `\`${prefix}quest claim <id>\` nhận thưởng • \`${prefix}quest claim all\` nhận hết quest đã xong\n` +
           `\`${prefix}quest list\` xem custom quest\n` +
           `\`${prefix}ach [@user]\` xem thành tựu\n` +
           `\`${prefix}ach top\` BXH thành tựu` },
@@ -71,7 +71,7 @@ module.exports = {
           `\`${prefix}mine [zone]\` đào mỏ (mining)\n` +
           `\`${prefix}fish [zone]\` câu cá (fishing)\n` +
           `\`${prefix}gather [zone]\` hái lượm gỗ/thảo dược (foraging)\n` +
-          `\`${prefix}craft list\` / \`${prefix}craft <recipe>\` chế tạo\n` +
+          `\`${prefix}craft list\` / \`${prefix}craft <recipe> [xN]\` chế tạo (vd \`${prefix}craft iron_ingot x10\`)\n` +
           `\`${prefix}cook list\` / \`${prefix}cook <recipe>\` nấu ăn` },
         { name: '🏰 Bang hội', value:
           `\`${prefix}guild\` xem bang / hướng dẫn\n` +
