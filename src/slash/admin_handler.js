@@ -33,6 +33,8 @@ function routeAdm(interaction) {
   const uArg = u ? u : null;
 
   switch (sub) {
+    case 'backup':
+      return { cmdName: 'adm', args: ['backup'] };
     case 'help':
       return { cmdName: 'adm', args: ['help'] };
     case 'gold':

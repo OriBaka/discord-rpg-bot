@@ -208,3 +208,32 @@ Administrator thì vẫn dùng được dù không set.)
 ---
 
 Chúc bạn deploy thành công! Có lỗi gì cứ gửi log cho mình xem nhé. 🚀
+
+## Backup và khôi phục
+
+### Cấu hình
+
+1. Đảm bảo `DB_PATH=/data/rpg.db` và volume mount `/data` như trước.
+2. Điền Discord user ID của chủ bot vào `ADMIN_IDS` (nhiều ID cách nhau dấu phẩy).
+3. Tạo một **kênh backup riêng**, chỉ chủ bot/người thực sự tin cậy được xem; bản DB chứa dữ liệu của **mọi server** dùng bot, không chỉ server hiện tại.
+4. Cấp bot `View Channel`, `Send Messages`, `Attach Files`, rồi đặt `BACKUP_CHANNEL_ID=<ID kênh>` trong Railway Variables.
+5. Tuỳ chọn: `BACKUP_KEEP=7` (1–100), `BACKUP_DIR=/data/backups` (mặc định cạnh DB). Luôn đặt thư mục trên volume.
+6. Sau deploy, chạy `%adm backup` hoặc `/adm backup`. Kiểm tra tin nhắn có file `.db` trong kênh backup và tải một bản về máy.
+
+Bot tạo snapshot SQLite nhất quán mà không cần dừng game, bao gồm dữ liệu đã commit trong WAL; kiểm tra `quick_check` trước khi công nhận bản hoàn tất. Khi startup, nếu không có snapshot mới trong 24 giờ thì tạo ngay, sau đó kiểm tra mỗi giờ. Giữ tối đa `BACKUP_KEEP` bản **local**, không tự xoá các tin nhắn backup trên Discord. Các lần gọi trùng nhau dùng chung một lượt backup.
+
+Nếu không cấu hình kênh, backup vẫn chạy local nhưng **không chống mất volume**. Nếu gửi Discord lỗi (quyền, mất mạng, file quá lớn), bot giữ bản local và ghi lỗi vào log; không tự retry upload cho tới lần backup kế tiếp. Dùng lệnh manual để thử lại sau khi sửa. Có kiểm tra giới hạn đính kèm theo server (mặc định 10 MiB nếu không biết); nếu DB vượt giới hạn, hãy lưu backup ra kho ngoài như S3/R2 bằng quy trình riêng. Tính năng này chưa tích hợp S3/R2.
+
+Khi nhận SIGTERM/SIGINT, bot chờ lượt backup đang chạy, checkpoint WAL và đóng DB (tối đa 10 giây). WAL vốn hỗ trợ phục hồi khi process bị kill; shutdown sạch không thay thế backup.
+
+### Khôi phục an toàn (thủ công)
+
+Không có lệnh restore trong Discord để tránh ghi đè nhầm toàn bộ game.
+
+1. Tải file `.db` từ kênh riêng hoặc lấy từ `/data/backups`. Nên kiểm tra thử bằng SQLite: `PRAGMA integrity_check;` phải trả `ok`.
+2. **Dừng service bot**, tạm tắt tự redeploy/restart. Không thay DB khi process vẫn đang chạy.
+3. Qua công cụ quản lý volume/shell đáng tin cậy có mount volume, sao lưu bộ DB hiện tại (`rpg.db` cùng `rpg.db-wal`, `rpg.db-shm` nếu có) ra chỗ khác để có thể quay lại.
+4. Thay `/data/rpg.db` bằng snapshot đã chọn. Sau khi đã giữ bản cũ, loại bỏ các sidecar `rpg.db-wal` và `rpg.db-shm` cũ; tuyệt đối không ghép WAL cũ với snapshot mới. Đảm bảo process bot có quyền đọc/ghi file.
+5. Khởi động bot, kiểm tra người chơi, inventory, vàng và log. Toàn bộ thay đổi sau thời điểm snapshot sẽ mất.
+
+Nên diễn tập khôi phục với bản sao DB trong môi trường riêng trước khi có sự cố; không chạy bot thử cùng token production.

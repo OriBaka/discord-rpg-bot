@@ -271,3 +271,12 @@ mỗi push/PR qua GitHub Actions (`.github/workflows/test.yml`):
 - Cân bằng lại end-game: Ancient/Void Dragon hiện gần như bất khả thi
 - Dungeon nhiều tầng có checkpoint
 - Season/leaderboard reset định kỳ
+
+### 💾 Backup dữ liệu
+
+- `%adm backup` hoặc `/adm backup`: tạo snapshot ngay, chỉ người trong `ADMIN_IDS` được dùng.
+- Tự backup khi khởi động nếu chưa có bản trong 24 giờ, sau đó kiểm tra mỗi giờ.
+- Mặc định giữ **7 bản** trong thư mục `backups` cạnh file DB; dùng SQLite Online Backup API để lấy cả dữ liệu đã commit trong WAL khi bot đang chạy.
+- Set `BACKUP_CHANNEL_ID` thành ID **kênh riêng** để gửi thêm bản ra Discord. File không bao giờ được trả về kênh đang gõ lệnh.
+- Bản local trên cùng volume **không bảo vệ được khi mất/xóa volume**. Kiểm tra file đã tới Discord và tải một bản về nơi an toàn.
+- Xem cấu hình, giới hạn gửi file và hướng dẫn khôi phục tại [DEPLOY_RAILWAY.md](DEPLOY_RAILWAY.md#backup-và-khôi-phục).

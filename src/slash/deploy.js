@@ -69,9 +69,8 @@ async function deploySlashCommands(client) {
         15_000,
         'GET existing commands'
       );
-      const existingNames = new Set((existing || []).map(c => c.name));
-      const newNames = new Set(cmds.map(c => c.name));
-      const same = existingNames.size === newNames.size && [...newNames].every(n => existingNames.has(n));
+      // Subcommands/options can change without changing a top-level name.
+      const same = require('./schema').sameCommands(existing, cmds);
       if (same) {
         log(`✅ [slash] Slash đã sync (${existing.length} commands). Skip deploy để tránh rate limit.`);
         log(`   Nếu muốn force redeploy: gõ %sla redeploy trong Discord.`);

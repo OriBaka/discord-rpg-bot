@@ -52,6 +52,8 @@ module.exports = {
     const sub = (args[0] || '').toLowerCase();
     const prefix = require('../game/prefix').getPrefix();
 
+    if (sub === 'backup') return require('../game/backup').execute(msg, args.slice(1));
+
     // ===== Help =====
     if (!sub || sub === 'help') {
       const embed = new EmbedBuilder()

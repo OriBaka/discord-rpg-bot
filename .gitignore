@@ -7,3 +7,7 @@ data/*.db-shm
 data/*.db-wal
 # Không commit lockfile: CI dùng `npm install` (xem .github/workflows/test.yml)
 package-lock.json
+
+# Database snapshots (never commit player data)
+backups/
+*.db.partial

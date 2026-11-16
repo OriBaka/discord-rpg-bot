@@ -76,6 +76,9 @@ client.once('ready', async () => {
   console.log(`🤖 Bot online với tên ${client.user.tag}`);
   client.user.setActivity(`${PREFIX}help | /me | RPG cày cuốc`);
 
+  // Local daily snapshots + optional off-volume Discord copy.
+  require('./game/backup').getService(client).start();
+
   // Deploy slash commands
   try {
     const { deploySlashCommands } = require('./slash/deploy');
@@ -164,3 +167,29 @@ client.login(TOKEN)
     console.error('❌ LOGIN FAIL:', err);
     process.exit(1);
   });
+
+// Railway sends SIGTERM before redeploy. Drain backup, then checkpoint/close.
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[shutdown] ${signal}`);
+  const deadline = setTimeout(() => process.exit(1), 10000);
+  deadline.unref();
+  try {
+    client.removeAllListeners('messageCreate');
+    client.removeAllListeners('interactionCreate');
+    await require('./game/backup').getService(client).stop();
+    client.destroy();
+    const db = require('./db/database');
+    db.pragma('wal_checkpoint(TRUNCATE)');
+    db.close();
+    clearTimeout(deadline);
+    process.exit(0);
+  } catch (err) {
+    console.error('[shutdown]', err);
+    process.exit(1);
+  }
+}
+process.once('SIGTERM', () => { void shutdown('SIGTERM'); });
+process.once('SIGINT', () => { void shutdown('SIGINT'); });
