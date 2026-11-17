@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **46 lệnh** prefix + **50 slash command** (35 người chơi + 15 admin)
+- **47 lệnh** prefix + **51 slash command** (36 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -345,3 +345,19 @@ SQLite nhẹ sau migrations. Không tự VACUUM, không xóa lịch sử hay tha
 `npm run db:check` kiểm tra DB hiện tại ở chế độ read-only; `npm run db:benchmark`
 đo bằng dữ liệu giả lập trong RAM, không đụng DB thật.
 Xem [chi tiết tối ưu DB](docs/DB_OPTIMIZATION.md) và lưu ý vận hành trước khi bảo trì.
+
+
+### ✨ Aura — reroll buff bằng vàng
+
+`%aura` xem aura và tỷ lệ; `%aura roll confirm` tiêu **2.500 vàng** mỗi lượt.
+`%aura accept` thay aura đang dùng bằng ô chờ; `%aura discard` bỏ ô chờ.
+`%aura top` xếp hạng % aura đang dùng, không phải sức mạnh tổng thể.
+Slash: `/aura action:roll confirm:True`, `/aura action:accept`.
+
+- Common 60% (+1–3%), Rare 28% (+4–6%), Epic 10% (+7–9%), Legendary 2% (+10–12%).
+- Mỗi lượt chọn ATK hoặc DEF với xác suất 50–50; 3 giá trị trong mỗi tier chia đều.
+- Chỉ một buff, không cộng dồn; tối đa +12%. Không pity/bảo đảm nâng cấp, không hoàn vàng.
+- Roll chỉ thay ô chờ. Aura đang dùng giữ nguyên cho tới khi accept; accept sẽ mất aura cũ, kể cả khi kết quả mới yếu hơn.
+- Bonus làm tròn xuống trên ATK/DEF cơ bản + trang bị (không sửa chỉ số gốc). Áp dụng hunt, trận PvE/PvP mới và tính sát thương raid; trận đang chạy giữ snapshot cũ.
+- 2 giây giữa các lượt roll, không batch roll. Tiến độ lưu qua restart; admin reset nhân vật xóa aura. Vàng chi được ghi cùng transaction vào gold_sink_log.
+- Không liên quan tới thần khí hoặc cơ chế sở hữu Kiếm Thất Đại Tội.

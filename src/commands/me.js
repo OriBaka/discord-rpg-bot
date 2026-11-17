@@ -92,6 +92,8 @@ module.exports = {
       )
       .setFooter({ text: `${prefix}gear xem chi tiết • ${prefix}inv xem túi đồ` });
 
+    const auraState = require('../game/aura').get(msg.author.id);
+    if (auraState?.active_stat) embed.addFields({ name: '✨ Aura', value: require('./aura').describe(auraState) });
     return msg.reply({ embeds: [embed] });
   },
 };

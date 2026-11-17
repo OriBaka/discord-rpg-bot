@@ -572,6 +572,16 @@ const definitions = [
       return !action || action === 'view' ? [] : [action];
     }),
   },
+  {
+    data: new SlashCommandBuilder().setName('aura').setDescription('Roll aura ATK/DEF bằng vàng')
+      .addStringOption(o => o.setName('action').setDescription('Hành động').addChoices(
+        ...['help', 'roll', 'accept', 'discard', 'top'].map(value => ({ name: value, value }))))
+      .addBooleanOption(o => o.setName('confirm').setDescription('Xác nhận tiêu 2500 vàng khi roll')),
+    handler: simpleHandler('aura', i => {
+      const a = i.options.getString('action');
+      return a ? [a, i.options.getBoolean('confirm') ? 'confirm' : ''] : [];
+    }),
+  },
   // ====== Help ======
   {
     data: new SlashCommandBuilder().setName('help').setDescription('Hướng dẫn các lệnh'),

@@ -45,9 +45,10 @@ function getEffectiveStats(p) {
   // Truyền player để slots áp hệ số DEF theo class (armor_share).
   // Không truyền thì mọi class hưởng 100% giáp và Pháp Sư mất phần bù HP.
   const bonus = getTotalBonus(p.user_id, p);
+  const auraBonus = require('./aura').bonus(p.user_id, p.atk + bonus.atk, p.def + bonus.def);
   return {
-    atk: p.atk + bonus.atk,
-    def: p.def + bonus.def,
+    atk: p.atk + bonus.atk + auraBonus.atk,
+    def: p.def + bonus.def + auraBonus.def,
     bonus_heal: bonus.heal, // hồi máu tự động/trận (necklace bonus)
   };
 }
