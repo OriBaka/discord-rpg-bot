@@ -337,3 +337,11 @@ Không tạo service thứ hai hoặc chia sẻ volume SQLite.
 
 Phát triển local: `npm install`, `npm run web` (không cần token Discord; vẫn mở/seed/migrate DB theo `DB_PATH`, nên dùng DB thử riêng).
 Trong production chỉ dùng `npm start`; không chạy thêm `npm run web` song song với bot.
+
+### 💾 Tối ưu & kiểm tra SQLite
+
+Tự bổ sung index phục vụ BXH, tra cứu bang/zone, quest và chợ; cập nhật thống kê
+SQLite nhẹ sau migrations. Không tự VACUUM, không xóa lịch sử hay thay đổi cân bằng.
+`npm run db:check` kiểm tra DB hiện tại ở chế độ read-only; `npm run db:benchmark`
+đo bằng dữ liệu giả lập trong RAM, không đụng DB thật.
+Xem [chi tiết tối ưu DB](docs/DB_OPTIMIZATION.md) và lưu ý vận hành trước khi bảo trì.
