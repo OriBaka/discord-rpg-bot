@@ -31,6 +31,7 @@ function migrate() {
   // seedDefaults() vì hàm đó early-return khi bảng đã có dữ liệu — nên mỗi lần
   // migrate phải tự bổ sung phần còn thiếu, kiểu idempotent.
   seedForaging();
+  require('./coal_supply').migrate();
 }
 
 function seedDefaults() {
