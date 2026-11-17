@@ -237,3 +237,17 @@ Không có lệnh restore trong Discord để tránh ghi đè nhầm toàn bộ 
 5. Khởi động bot, kiểm tra người chơi, inventory, vàng và log. Toàn bộ thay đổi sau thời điểm snapshot sẽ mất.
 
 Nên diễn tập khôi phục với bản sao DB trong môi trường riêng trước khi có sự cố; không chạy bot thử cùng token production.
+
+## Dashboard web cùng service bot
+
+1. Giữ nguyên volume, `DB_PATH`, token và start command `npm start`.
+2. Web bật mặc định (`WEB_ENABLED=true`), dùng `PORT` Railway tự cấp và bind `0.0.0.0`.
+3. Trong **Settings → Networking**, chọn **Generate Domain** cho service bot. Nếu được hỏi target port, dùng đúng `PORT` của service. Không cần service/volume thứ hai.
+4. Mở domain để xem tổng quan, BXH, hồ sơ, chợ và bang hội. Không có đăng nhập hay mua bán trên web.
+5. Có thể dùng `/healthz` làm HTTP healthcheck; đây chỉ là trạng thái HTTP/DB, không phải trạng thái kết nối Discord.
+
+**Lưu ý quyền riêng tư:** dashboard hiển thị dữ liệu toàn bot, bao gồm tên nhân vật,
+Discord ID để liên kết hồ sơ, cấp/class, trang bị đang mặc, tin chợ và thông tin bang.
+Không bật public domain nếu không muốn dữ liệu đó công khai. `WEB_ENABLED=false` tắt web.
+API chỉ SELECT những trường công khai; không dùng helper chợ có tác dụng dọn tin/hoàn item.
+Không có endpoint tải file, sửa DB, đọc env, hay tải backup. Thay đổi trên Discord sẽ xuất hiện khi tải lại web.
