@@ -53,6 +53,9 @@ function migrate() {
       sold_at   INTEGER NOT NULL
     );
   `);
+  const columns = new Set(db.prepare('PRAGMA table_info(market_sales)').all().map(c => c.name));
+  if (!columns.has('tax')) db.exec('ALTER TABLE market_sales ADD COLUMN tax INTEGER');
+  if (!columns.has('payout')) db.exec('ALTER TABLE market_sales ADD COLUMN payout INTEGER');
 }
 
 const now = () => Date.now();
@@ -168,7 +171,7 @@ function buy(buyerId, listingId, qty = 1) {
   const total = listing.price * qty;
   if (buyer.gold < total) return { ok: false, error: 'no_gold', listing, total, gold: buyer.gold };
 
-  const payout = Math.floor(total * (1 - TAX_PCT));
+  const payout = total - Math.ceil(total * (TAX_PCT * 100) / 100);
   const tax = total - payout;
 
   db.transaction(() => {
@@ -180,8 +183,8 @@ function buy(buyerId, listingId, qty = 1) {
     } else {
       db.prepare('UPDATE market_listings SET qty = qty - ? WHERE id = ?').run(qty, listingId);
     }
-    db.prepare(`INSERT INTO market_sales (item_id, qty, price, seller_id, buyer_id, sold_at)
-      VALUES (?,?,?,?,?,?)`).run(listing.item_id, qty, listing.price, listing.seller_id, buyerId, now());
+    db.prepare(`INSERT INTO market_sales (item_id, qty, price, seller_id, buyer_id, sold_at, tax, payout)
+      VALUES (?,?,?,?,?,?,?,?)`).run(listing.item_id, qty, listing.price, listing.seller_id, buyerId, now(), tax, payout);
   })();
 
   return {

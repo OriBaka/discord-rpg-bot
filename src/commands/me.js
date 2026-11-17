@@ -18,11 +18,13 @@ module.exports = {
   name: 'me',
   aliases: ['profile', 'tt', 'nv'],
   description: 'Xem thông tin nhân vật',
-  async execute(msg) {
+  async execute(msg, args = []) {
     const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
     if (!p) return msg.reply(`❌ Bạn chưa có nhân vật. Gõ \`${prefix}start\` để tạo!`);
 
+    if (args.length) return require('../game/gold_sink_commands').cosmetics(msg, args);
+    const look = require('../game/gold_sinks').appearance(msg.author.id);
     const eff = getEffectiveStats(p);
     // Truyền player để áp hệ số giáp theo class (xem classes.js).
     const bonus = getTotalBonus(msg.author.id, p);
@@ -72,8 +74,9 @@ module.exports = {
       : null;
 
     const embed = new EmbedBuilder()
-      .setColor(cls?.color || 0x5865F2)
+      .setColor(look.color?.color || cls?.color || 0x5865F2)
       .setTitle(titleName)
+      .setAuthor({ name: look.title?.name || 'Nhà thám hiểm' })
       .setDescription(
         `🎭 **${cls ? cls.name : 'Chưa chọn class'}** • Lv. **${p.level}** (${p.xp}/${need} XP)` +
         (guildLine ? `\n${guildLine}` : '')

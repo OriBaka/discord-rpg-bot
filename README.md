@@ -294,3 +294,26 @@ Slash tương ứng: `/story action:…`. Alias prefix: `%cottruyen`.
 - Thưởng một lần mỗi bước (tổng 1.120 vàng, 300 XP, 2 bình nhỏ, 2 bình vừa) và kỷ vật soulbound **Dấu Chỉ Người Canh Đèn**, không cộng chỉ số chiến đấu.
 - Alpha Wolf là elite hiện có (`elite_wolf`); dùng `%battle elite_wolf` hoặc `%hunt elite_wolf`. Chuẩn bị trang bị/hồi máu, có thể quay lại sau nếu còn yếu.
 - Không trao kiếm Thất Đại Tội ngay chương đầu. Chương 2 chưa phát hành; hoàn thành không tự mở nội dung chưa có.
+
+### 🎨 Ngoại hình hồ sơ & công trình bang hội
+
+- `%me cosmetics`: xem 3 màu hồ sơ (1.500–5.000 vàng) và 3 danh hiệu (2.000–25.000 vàng).
+- `%me buy <id> confirm`: mua vĩnh viễn, không hoàn vàng; mua trùng không trừ lại.
+- `%me equip <id>`: áp dụng miễn phí. Dùng `default_color` / `default_title` để trở về mặc định.
+- Slash: `/me action:buy id:jade confirm:True`, `/me action:equip id:jade`. Không chọn action vẫn xem hồ sơ như trước.
+- Màu và danh hiệu hiển thị trên `%me`, không phải role Discord, không thay đổi chỉ số.
+
+`%guild building` xem **Đại sảnh**, **Thư viện**, **Tượng đài** (mỗi công trình tối đa 3 cấp).
+Mọi thành viên có thể dùng `%guild building contribute <id> <vàng> confirm`,
+hoặc `/guild building id:hall amount:1000 confirm:True`.
+
+- Đại sảnh/Thư viện: mỗi cấp lần lượt cần 5.000 / 15.000 / 40.000 vàng. Tượng đài: 10.000 / 30.000 / 80.000.
+- Chỉ tiêu vàng cá nhân tự nguyện, tối đa phần còn thiếu của **cấp hiện tại**. Vàng bị hủy, không chuyển vào kho bang để rút lại.
+- Công trình hiển thị trên thông tin bang; có nội dung mô tả và cấp diện mạo, **không cộng buff sức mạnh hay thu nhập**. Không có cơ chế sở hữu Kiếm Thất Đại Tội.
+- Không hoàn tiền khi rời/giải tán bang. Rời bang không mất ngoại hình đã mua; admin reset nhân vật sẽ xóa ngoại hình cá nhân.
+
+**Thuế chợ đã có sẵn và vẫn là 5%**, chỉ thu khi bán thành công, không đánh thuế lần hai.
+Người mua trả đúng giá niêm yết; người bán nhận tổng giá trừ thuế làm tròn lên tới vàng nguyên
+(ví dụ bán 1 vàng nhận 0; bán 101 nhận 95). Mua lẻ nhiều lần có thể tốn thuế làm tròn nhiều hơn mua gộp.
+`%market tax` xem tổng vàng thuế bị hủy từ khi bật sổ thuế; giao dịch cũ không truy thu.
+Mua ngoại hình, góp công trình và ghi thuế được cập nhật trong transaction; giữ lịch sử chi để kiểm tra khi cần.

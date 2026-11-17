@@ -335,3 +335,5 @@ renameAll();
 
 // Main story content is additive and seeded after existing balance/lore.
 runMigrate('../game/story', 'migrateStory');
+
+runMigrate('../game/gold_sinks', 'migrateGoldSinks');

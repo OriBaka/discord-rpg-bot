@@ -35,6 +35,7 @@ function buildInfoEmbed(g, extra = {}) {
         inline: true,
       },
     );
+  embed.addFields({ name: '🏗️ Công trình', value: require('../game/gold_sinks').buildings(g.id).map(b => `${b.icon} ${b.name} Lv.${b.level}`).join(' • ') });
   if (g.motd) embed.addFields({ name: '📢 MOTD', value: g.motd.slice(0, 1024) });
   return embed;
 }
@@ -56,6 +57,7 @@ function helpEmbed(prefix) {
           `\`${prefix}guild members\` — danh sách thành viên`,
           `\`${prefix}guild top\` — BXH bang`,
           `\`${prefix}guild buff\` — buff hiện tại`,
+          `\`${prefix}guild building\` — công trình & đóng góp`,
         ].join('\n'),
       },
       {
@@ -125,6 +127,7 @@ module.exports = {
     if (!p) return msg.reply(`❌ Gõ \`${prefix}start\` để tạo nhân vật trước.`);
 
     const sub = (args[0] || '').toLowerCase();
+    if (sub === 'building') return require('../game/gold_sink_commands').buildings(msg, args.slice(1));
     const ctx = { client: msg.client, guildId: msg.guild?.id };
 
     // ====== help ======

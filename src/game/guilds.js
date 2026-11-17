@@ -347,6 +347,7 @@ function disbandGuild(userId) {
   if (!isLeader(m)) return { ok: false, error: 'Chỉ bang chủ mới giải tán được.' };
   const guild = getGuild(m.guild_id);
   const run = db.transaction(() => {
+    db.prepare('DELETE FROM guild_buildings WHERE guild_id = ?').run(m.guild_id);
     db.prepare('DELETE FROM guild_vault WHERE guild_id = ?').run(m.guild_id);
     db.prepare('DELETE FROM guild_invites WHERE guild_id = ?').run(m.guild_id);
     db.prepare('DELETE FROM guild_members WHERE guild_id = ?').run(m.guild_id);

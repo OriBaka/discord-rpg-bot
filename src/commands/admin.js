@@ -422,6 +422,8 @@ module.exports = {
     if (sub === 'reset' || sub === 'del') {
       db.transaction(() => {
         // foreign_keys is not enabled on every existing deployment.
+        db.prepare('DELETE FROM cosmetic_owned WHERE user_id=?').run(target.id);
+        db.prepare('DELETE FROM cosmetic_equipped WHERE user_id=?').run(target.id);
         db.prepare('DELETE FROM player_story WHERE user_id=?').run(target.id);
         db.prepare('DELETE FROM players WHERE user_id=?').run(target.id);
         db.prepare('DELETE FROM inventory WHERE user_id=?').run(target.id);

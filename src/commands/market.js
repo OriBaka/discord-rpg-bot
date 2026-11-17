@@ -279,6 +279,11 @@ module.exports = {
 
     const sub = (args[0] || '').toLowerCase();
 
+    if (sub === 'tax') {
+      const totals = db.prepare('SELECT COUNT(*) n, COALESCE(SUM(tax),0) tax FROM market_sales WHERE tax IS NOT NULL').get();
+      return msg.reply(`🧾 Thuế chợ 5% khi bán thành công, làm tròn lên tới 1 vàng; không phí đăng/hủy tin.\nĐã ghi nhận hủy **${totals.tax} vàng** từ **${totals.n} giao dịch** kể từ khi bật sổ thuế. Giao dịch cũ không được truy thu hay tính lại.`);
+    }
+
     // ===== help =====
     if (sub === 'help' || sub === 'huongdan') {
       return msg.reply({ embeds: [helpEmbed()] });
