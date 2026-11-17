@@ -32,6 +32,9 @@ function collectSources() {
     src.get(id).push(where);
   };
 
+  for (const step of require('../src/game/story').STEPS) {
+    if (step.item) add(step.item, 'story');
+  }
   for (const r of db.prepare('SELECT item_id FROM shop').all()) add(r.item_id, 'shop');
   for (const r of db.prepare('SELECT item_id FROM monster_drops').all()) add(r.item_id, 'monster_drop');
   for (const r of db.prepare('SELECT output_id FROM recipes').all()) add(r.output_id, 'recipe');

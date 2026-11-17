@@ -332,3 +332,6 @@ runMigrate('../game/market', 'migrateMarket');
 // ===== One-shot rename: VN → EN (chỉ chạy 1 lần) =====
 const { renameAll } = require('./rename_items');
 renameAll();
+
+// Main story content is additive and seeded after existing balance/lore.
+runMigrate('../game/story', 'migrateStory');

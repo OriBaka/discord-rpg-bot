@@ -98,6 +98,7 @@ function buildSections(prefix) {
     {
       name: '📜 Nhiệm vụ & Thành tựu', terms: ['nhiem vu', 'quest', 'thanh tuu', 'achievement'],
       lines: [
+        `\`${prefix}story\` chính tuyến • \`${prefix}story start\` bắt đầu • \`${prefix}story claim\` tiếp tục • \`${prefix}story journal\` sổ hành trình`,
         `\`${prefix}quest\` xem quest hằng ngày`,
         `\`${prefix}quest claim <id>\` nhận thưởng • \`${prefix}quest claim all\` nhận hết quest đã xong`,
         `\`${prefix}quest list\` xem custom quest`,

@@ -548,6 +548,16 @@ const definitions = [
     },
   },
 
+  {
+    data: new SlashCommandBuilder().setName('story').setDescription('Chính tuyến: chương mở đầu và chương 1')
+      .addStringOption(o => o.setName('action').setDescription('Hành động').addChoices(
+        { name: 'Xem', value: 'view' }, { name: 'Bắt đầu', value: 'start' },
+        { name: 'Nhận thưởng / tiếp tục', value: 'claim' }, { name: 'Sổ hành trình', value: 'journal' })),
+    handler: simpleHandler('story', i => {
+      const action = i.options.getString('action');
+      return !action || action === 'view' ? [] : [action];
+    }),
+  },
   // ====== Help ======
   {
     data: new SlashCommandBuilder().setName('help').setDescription('Hướng dẫn các lệnh'),
