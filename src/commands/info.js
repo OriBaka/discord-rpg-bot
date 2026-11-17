@@ -264,8 +264,8 @@ module.exports = {
           { name: '🎚️ Lv yêu cầu', value: `${z.min_level}`, inline: true },
           { name: '👹 Quái trong zone', value: mobList },
         );
-      if (z.image_url) embed.setImage(z.image_url); // zone dùng image to (background)
-      return msg.reply({ embeds: [embed] });
+      const files = require('../game/zone_art').applyZoneArt(embed, z);
+      return msg.reply({ embeds: [embed], files });
     }
 
     // ===== info items [type] =====

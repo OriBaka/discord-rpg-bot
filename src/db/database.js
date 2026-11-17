@@ -337,3 +337,6 @@ renameAll();
 runMigrate('../game/story', 'migrateStory');
 
 runMigrate('../game/gold_sinks', 'migrateGoldSinks');
+
+// Replace previous zone illustration URLs once, preserving later admin changes.
+runMigrate('../game/zone_art', 'migrateZoneArt');
