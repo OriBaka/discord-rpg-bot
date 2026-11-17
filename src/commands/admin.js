@@ -420,8 +420,12 @@ module.exports = {
 
     // ===== reset =====
     if (sub === 'reset' || sub === 'del') {
-      db.prepare('DELETE FROM players WHERE user_id=?').run(target.id);
-      db.prepare('DELETE FROM inventory WHERE user_id=?').run(target.id);
+      db.transaction(() => {
+        // foreign_keys is not enabled on every existing deployment.
+        db.prepare('DELETE FROM player_story WHERE user_id=?').run(target.id);
+        db.prepare('DELETE FROM players WHERE user_id=?').run(target.id);
+        db.prepare('DELETE FROM inventory WHERE user_id=?').run(target.id);
+      })();
       return msg.reply(`✅ Đã xoá nhân vật của **${target.username}**.`);
     }
 

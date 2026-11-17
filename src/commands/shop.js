@@ -341,6 +341,7 @@ module.exports.sell = {
 
     const it = getItem(id);
     if (!it) return msg.reply('❌ Sai ID vật phẩm.');
+    if (it.soulbound) return msg.reply('🔒 Vật phẩm soulbound không thể bán.');
 
     // Không cho bán món đang mặc: equip KHÔNG lấy item ra khỏi túi,
     // nên nếu bán luôn thì vừa giữ buff vừa có vàng (lỗi dup trước đây).

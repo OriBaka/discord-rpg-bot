@@ -99,6 +99,7 @@ function removeQuestFromPlayer(userId, questId) {
 // === Event hooks (auto-track progress) ===
 // Khi player giết quái → cập nhật quest 'kill'
 function onKillMonster(userId, monsterId) {
+  require('./story').onEvent(userId, 'kill', monsterId);
   const quests = db.prepare(`SELECT pq.*, q.* FROM player_quests pq
     JOIN quests q ON q.id = pq.quest_id
     WHERE pq.user_id = ? AND q.objective = 'kill' AND pq.claimed = 0`).all(userId);
@@ -173,12 +174,18 @@ function bumpObjective(userId, objective, targetId, amount = 1) {
 // vậy người chơi mở zone cao (rơi nhiều) sẽ xong quest nhanh hơn, đúng ý nghĩa
 // "thu hoạch nhiều nguyên liệu".
 function onGather(userId, jobType, amount = 1) {
-  if (amount > 0) bumpObjective(userId, 'gather', jobType, amount);
+  if (amount > 0) {
+    bumpObjective(userId, 'gather', jobType, amount);
+    require('./story').onEvent(userId, 'gather', jobType, amount);
+  }
 }
 
 // Chế/nấu thành công: tính theo số món tạo ra.
 function onCraft(userId, recipeId, qty = 1) {
-  if (qty > 0) bumpObjective(userId, 'craft', recipeId, qty);
+  if (qty > 0) {
+    bumpObjective(userId, 'craft', recipeId, qty);
+    require('./story').onEvent(userId, 'craft', recipeId, qty);
+  }
 }
 
 // Hạ elite/boss (elite_tier >= 1). Quái thường KHÔNG tính — nếu không thì quest
@@ -186,6 +193,7 @@ function onCraft(userId, recipeId, qty = 1) {
 function onKillBoss(userId, monsterId, eliteTier = 0) {
   if (!eliteTier) return;
   bumpObjective(userId, 'boss', monsterId, 1);
+  require('./story').onEvent(userId, 'boss', monsterId);
 }
 
 // Objective dạng TRẠNG THÁI (level / job_level / item) không cộng dồn được theo

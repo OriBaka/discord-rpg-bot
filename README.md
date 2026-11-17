@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **45 lệnh** prefix + **49 slash command** (34 người chơi + 15 admin)
+- **46 lệnh** prefix + **50 slash command** (35 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -280,3 +280,17 @@ mỗi push/PR qua GitHub Actions (`.github/workflows/test.yml`):
 - Set `BACKUP_CHANNEL_ID` thành ID **kênh riêng** để gửi thêm bản ra Discord. File không bao giờ được trả về kênh đang gõ lệnh.
 - Bản local trên cùng volume **không bảo vệ được khi mất/xóa volume**. Kiểm tra file đã tới Discord và tải một bản về nơi an toàn.
 - Xem cấu hình, giới hạn gửi file và hướng dẫn khôi phục tại [DEPLOY_RAILWAY.md](DEPLOY_RAILWAY.md#backup-và-khôi-phục).
+
+
+### 📖 Chính tuyến — Những người đứng đợi
+
+`%story start` bắt đầu **chương mở đầu + chương 1**; `%story` đọc truyện/mục tiêu,
+`%story claim` bàn giao/nhận thưởng và mở bước kế, `%story journal` xem các mốc.
+Slash tương ứng: `/story action:…`. Alias prefix: `%cottruyen`.
+
+- 8 bước nối tiếp: trò chuyện → săn Slime → hái lượm → săn sói → giao nanh → chế/nấu → hạ Alpha Wolf → trở về.
+- Chỉ bước đang mở nhận tiến độ; không cộng các lần săn/chế trước đó. Mục tiêu giao đồ kiểm tra túi hiện tại và tiêu hao đúng số lượng khi nhận thưởng.
+- Người chơi cũ bắt đầu từ đầu chính tuyến, giữ nguyên level/trang bị và mọi zone. Không có thời hạn hay reset ngày.
+- Thưởng một lần mỗi bước (tổng 1.120 vàng, 300 XP, 2 bình nhỏ, 2 bình vừa) và kỷ vật soulbound **Dấu Chỉ Người Canh Đèn**, không cộng chỉ số chiến đấu.
+- Alpha Wolf là elite hiện có (`elite_wolf`); dùng `%battle elite_wolf` hoặc `%hunt elite_wolf`. Chuẩn bị trang bị/hồi máu, có thể quay lại sau nếu còn yếu.
+- Không trao kiếm Thất Đại Tội ngay chương đầu. Chương 2 chưa phát hành; hoàn thành không tự mở nội dung chưa có.
