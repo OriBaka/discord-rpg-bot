@@ -47,6 +47,7 @@ function buildSections(prefix) {
         `\`${prefix}gear [@user]\` xem trang bị đang mặc`,
         `\`${prefix}top\` bảng xếp hạng`,
         `\`${prefix}class\` xem/đổi class`,
+        `\`${prefix}aura\` roll buff ATK/DEF bằng vàng • \`${prefix}aura top\` BXH`,
       ],
     },
     {
