@@ -1,0 +1,41 @@
+const { test, before } = require('node:test');
+const assert = require('node:assert/strict');
+const { quiet, loud, fakeMessage } = require('./harness');
+let db, supply;
+before(() => { quiet(); db = require('../src/db/database'); supply = require('../src/game/coal_supply'); loud(); });
+const coal = zone => db.prepare("SELECT chance,qty_min,qty_max FROM gather_drops WHERE zone_id=? AND item_id='coal'").get(zone);
+test('coal is available to Lv.1 miners, more plentiful at Lv.10, and affordable in shop', () => {
+  assert.equal(db.prepare("SELECT min_job_level FROM gather_zones WHERE id='stone_quarry'").get().min_job_level, 1);
+  assert.deepEqual(coal('stone_quarry'), { chance: 0.55, qty_min: 1, qty_max: 2 });
+  assert.deepEqual(coal('iron_mine'), { chance: 0.75, qty_min: 2, qty_max: 3 });
+  const item = db.prepare("SELECT price,sell FROM items WHERE id='coal'").get();
+  assert.deepEqual(item, { price: 25, sell: 8 });
+  assert.equal(db.prepare("SELECT price FROM shop WHERE item_id='coal'").get().price, item.price);
+});
+test('existing DB upgrade changes only coal supply; rerun preserves admin overrides', () => {
+  const unrelated = db.prepare("SELECT * FROM gather_drops WHERE item_id!='coal' ORDER BY zone_id,item_id").all();
+  db.prepare('DELETE FROM meta WHERE key=?').run(supply.KEY);
+  db.prepare("DELETE FROM gather_drops WHERE zone_id='stone_quarry' AND item_id='coal'").run();
+  db.prepare("UPDATE gather_drops SET chance=0.5,qty_min=1,qty_max=2 WHERE zone_id='iron_mine' AND item_id='coal'").run();
+  db.prepare("DELETE FROM shop WHERE item_id='coal'").run();
+  supply.migrate();
+  assert.equal(coal('stone_quarry').chance, 0.55);
+  assert.equal(coal('iron_mine').qty_max, 3);
+  assert.deepEqual(db.prepare("SELECT * FROM gather_drops WHERE item_id!='coal' ORDER BY zone_id,item_id").all(), unrelated);
+  db.prepare("UPDATE shop SET price=30 WHERE item_id='coal'").run();
+  supply.migrate();
+  assert.equal(db.prepare("SELECT price FROM shop WHERE item_id='coal'").get().price, 30);
+  db.prepare("UPDATE shop SET price=25 WHERE item_id='coal'").run();
+});
+test('new player can buy coal and craft copper without reaching Mining Lv.10', async () => {
+  const player = require('../src/game/player'); const id = 'COAL_NEW';
+  player.createPlayer(id, id);
+  const msg = fakeMessage(id);
+  const before = player.getPlayer(id).gold;
+  await require('../src/commands/shop').buy.execute(msg, ['coal', '2']);
+  assert.equal(player.getPlayer(id).gold, before - 50);
+  assert.equal(db.prepare("SELECT qty FROM inventory WHERE user_id=? AND item_id='coal'").get(id).qty, 2);
+  player.addItem(id, 'copper_ore', 2);
+  await require('../src/commands/craft').execute(msg, ['recipe_copper_ingot']);
+  assert.equal(db.prepare("SELECT qty FROM inventory WHERE user_id=? AND item_id='copper_ingot'").get(id).qty, 1);
+});

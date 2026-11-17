@@ -63,9 +63,9 @@ function migrate() {
   // Lv5 → Lv15 ở cooking, Lv25 → Lv35 ở crafting):
   const newRecipes = [
     // Trout: river Lv.10 (60%) / lake Lv.20 (40%). Recipe Lv.8 — mở được
-    // ngay khi vừa vào river. CỐ Ý không dùng coal: coal chỉ rơi ở iron_mine
-    // (Lv.10 MINING), nên nếu recipe câu cá đòi coal thì người chỉ chơi
-    // fishing sẽ bị chặn bởi một nghề khác. Giữ chuỗi cá khép kín.
+    // ngay khi vừa vào river. CỐ Ý không dùng coal để giữ chuỗi cá khép kín.
+    // Lúc thiết kế, coal bị khóa sau Mining Lv.10; coal_supply hiện đã thêm
+    // nguồn Lv.1 và shop, nhưng recipe cá này vẫn không cần nghề khác.
     ['recipe_trout_smoked', 'Smoke Trout', 'cook', 'cooking', 8,
       '[{"item_id":"fish_trout","qty":2},{"item_id":"fish_carp","qty":1}]',
       'food_trout_smoked', 1, 30, 'Trout smoked over wood'],

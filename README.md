@@ -361,3 +361,11 @@ Slash: `/aura action:roll confirm:True`, `/aura action:accept`.
 - Bonus làm tròn xuống trên ATK/DEF cơ bản + trang bị (không sửa chỉ số gốc). Áp dụng hunt, trận PvE/PvP mới và tính sát thương raid; trận đang chạy giữ snapshot cũ.
 - 2 giây giữa các lượt roll, không batch roll. Tiến độ lưu qua restart; admin reset nhân vật xóa aura. Vàng chi được ghi cùng transaction vào gold_sink_log.
 - Không liên quan tới thần khí hoặc cơ chế sở hữu Kiếm Thất Đại Tội.
+
+### ⛏️ Coal cho đầu game
+
+- `%mine stone_quarry` (Mining Lv.1): **55% rơi 1–2 coal** mỗi lượt, trước bonus công cụ/buff.
+- `%mine iron_mine` (Mining Lv.10): **75% rơi 2–3 coal**, thay cho 50% rơi 1–2.
+- `%buy coal 10`: mua 10 coal với **25 vàng/món**; bán NPC vẫn **8 vàng/món**.
+- Tỷ lệ là mỗi lượt thử, không bảo đảm lượt nào cũng có. Các nguyên liệu khác và nguồn coal từ quái không đổi.
+- Migration áp dụng cho DB cũ một lần; giữ các chỉnh sửa admin sau đó.
