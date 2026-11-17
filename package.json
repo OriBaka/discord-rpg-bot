@@ -8,7 +8,9 @@
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "test": "node --test \"test/*.test.js\"",
-    "web": "node src/web/standalone.js"
+    "web": "node src/web/standalone.js",
+    "db:check": "node tools/db_check.js",
+    "db:benchmark": "node tools/db_benchmark.js"
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",

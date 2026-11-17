@@ -340,3 +340,16 @@ runMigrate('../game/gold_sinks', 'migrateGoldSinks');
 
 // Replace previous zone illustration URLs once, preserving later admin changes.
 runMigrate('../game/zone_art', 'migrateZoneArt');
+
+// Apply now for normal startup, then again after deferred circular migrations.
+const dbMaintenance = require('./optimize');
+dbMaintenance.applyIndexes(db);
+setTimeout(() => {
+  if (!db.open) return;
+  try {
+    dbMaintenance.applyIndexes(db);
+    dbMaintenance.optimize(db);
+  } catch (err) {
+    console.error('[db optimize]', err.message);
+  }
+}, 0);
