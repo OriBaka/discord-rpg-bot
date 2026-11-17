@@ -60,8 +60,14 @@ const definitions = [
     handler: simpleHandler('start'),
   },
   {
-    data: new SlashCommandBuilder().setName('me').setDescription('Xem thông tin nhân vật'),
-    handler: simpleHandler('me'),
+    data: new SlashCommandBuilder().setName('me').setDescription('Hồ sơ và ngoại hình')
+      .addStringOption(o => o.setName('action').setDescription('Hành động').addChoices({ name: 'Cửa hàng ngoại hình', value: 'cosmetics' }, { name: 'Mua', value: 'buy' }, { name: 'Áp dụng / mặc định', value: 'equip' }))
+      .addStringOption(o => o.setName('id').setDescription('ID ngoại hình hoặc default_color / default_title'))
+      .addBooleanOption(o => o.setName('confirm').setDescription('Xác nhận mua không hoàn vàng')),
+    handler: simpleHandler('me', i => {
+      const a = i.options.getString('action');
+      return a ? [a, i.options.getString('id') || '', i.options.getBoolean('confirm') ? 'confirm' : ''] : [];
+    }),
   },
   {
     data: new SlashCommandBuilder().setName('gear').setDescription('Xem trang bị đang mặc')
@@ -432,12 +438,20 @@ const definitions = [
           .addChoices({ name: 'Vàng', value: 'gold' }, { name: 'Item', value: 'item' }))
         .addIntegerOption(o => o.setName('amount').setDescription('Số vàng hoặc số lượng').setRequired(true).setMinValue(1))
         .addStringOption(o => o.setName('item').setDescription('Item ID (nếu rút item)').setRequired(false).setAutocomplete(true)))
+      .addSubcommand(s => s.setName('building').setDescription('Công trình bang hội')
+        .addStringOption(o => o.setName('id').setDescription('hall / library / monument'))
+        .addIntegerOption(o => o.setName('amount').setDescription('Vàng cá nhân đóng góp').setMinValue(1))
+        .addBooleanOption(o => o.setName('confirm').setDescription('Xác nhận góp không hoàn lại')))
       .addSubcommand(s => s.setName('help').setDescription('Hướng dẫn bang hội')),
     handler: { cmdName: 'guild', extractArgs: (i) => {
       const sub = i.options.getSubcommand();
       if (sub === 'info') {
         const q = i.options.getString('query');
         return q ? ['info', q] : [];
+      }
+      if (sub === 'building') {
+        const id = i.options.getString('id');
+        return id ? ['building', 'contribute', id, String(i.options.getInteger('amount') || ''), i.options.getBoolean('confirm') ? 'confirm' : ''] : ['building'];
       }
       if (sub === 'create') return ['create', i.options.getString('tag'), i.options.getString('name')];
       if (sub === 'invite') return ['invite', i.options.getUser('user')];

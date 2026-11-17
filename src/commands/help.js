@@ -42,7 +42,7 @@ function buildSections(prefix) {
       name: '👤 Nhân vật', terms: ['nhan vat', 'character', 'profile', 'toi'],
       lines: [
         `\`${prefix}start\` tạo nhân vật`,
-        `\`${prefix}me\` xem hồ sơ`,
+        `\`${prefix}me\` xem hồ sơ • \`${prefix}me cosmetics\` mua màu/danh hiệu`,
         `\`${prefix}inv [filter]\` xem túi đồ (vd \`${prefix}inv weapon\`, \`${prefix}inv ring\`)`,
         `\`${prefix}gear [@user]\` xem trang bị đang mặc`,
         `\`${prefix}top\` bảng xếp hạng`,
@@ -135,7 +135,7 @@ function buildSections(prefix) {
         `\`${prefix}guild\` xem bang / hướng dẫn`,
         `\`${prefix}guild create <tag> <tên>\` lập bang (Lv.5, 500 vàng)`,
         `\`${prefix}guild invite @user\` mời thành viên`,
-        `\`${prefix}guild vault\` kho chung`,
+        `\`${prefix}guild vault\` kho chung • \`${prefix}guild building\` xây công trình`,
         `\`${prefix}guild top\` BXH bang • buff vàng/XP khi hunt`,
         '*Thành viên đánh boss tuần sẽ cộng XP cho bang → bang lên cấp nhanh hơn*',
       ],
