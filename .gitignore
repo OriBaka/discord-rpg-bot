@@ -11,3 +11,5 @@ package-lock.json
 # Database snapshots (never commit player data)
 backups/
 *.db.partial
+
+.venv/

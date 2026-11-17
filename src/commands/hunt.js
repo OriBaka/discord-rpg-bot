@@ -212,6 +212,7 @@ module.exports = {
     }
 
     const { buildAgainRow } = require('../game/again_button');
-    return msg.reply({ embeds: [embed], components: [buildAgainRow('hunt', msg.author.id, args)] });
+    const files = require('../game/zone_art').applyZoneArt(embed, getZone(monster.zone_id));
+    return msg.reply({ embeds: [embed], files, components: [buildAgainRow('hunt', msg.author.id, args)] });
   },
 };
