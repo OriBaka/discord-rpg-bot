@@ -317,3 +317,23 @@ Người mua trả đúng giá niêm yết; người bán nhận tổng giá tr�
 (ví dụ bán 1 vàng nhận 0; bán 101 nhận 95). Mua lẻ nhiều lần có thể tốn thuế làm tròn nhiều hơn mua gộp.
 `%market tax` xem tổng vàng thuế bị hủy từ khi bật sổ thuế; giao dịch cũ không truy thu.
 Mua ngoại hình, góp công trình và ghi thuế được cập nhật trong transaction; giữ lịch sử chi để kiểm tra khi cần.
+
+### 🌐 Dashboard công khai (chỉ đọc)
+
+Web chạy chung service/process với bot bằng `npm start`, bind `0.0.0.0:$PORT`
+(mặc định local 3000). `WEB_ENABLED=false` để tắt. Trên Railway, tạo public domain
+ở **Settings → Networking → Generate Domain**, target port theo `PORT` Railway cấp.
+Không tạo service thứ hai hoặc chia sẻ volume SQLite.
+
+- Tổng quan: số người chơi/bang, tin chợ còn hạn, tổng thuế đã ghi nhận.
+- BXH cấp độ, tìm theo tên/Discord ID, hồ sơ công khai với class, trang bị đang mặc, bang và danh hiệu/màu đã chọn (dạng tên).
+- Chợ đang mở: tìm theo tên/mã vật phẩm, xem giá/số lượng/người bán. Mua bán vẫn ở Discord.
+- Danh sách bang, cấp độ, số thành viên và công trình. Mỗi danh sách phân trang 20 kết quả.
+- **Dữ liệu toàn bot**, không phân vùng server. Chỉ bật public domain nếu chấp nhận công khai tên nhân vật, Discord user ID liên kết hồ sơ, class/cấp, trang bị đang mặc, danh sách bang và tin chợ.
+- Không công khai túi đồ, vàng cá nhân/kho bang, tiến độ truyện, settings/admin IDs, file DB hay backup. Không có thao tác ghi hoặc đăng nhập/quản trị.
+- Dữ liệu cập nhật khi mở trang/chuyển trang/tìm kiếm/bấm Làm mới; không tự polling. Thông tin chợ có thể thay đổi sau khi tải.
+- `GET /healthz` kiểm tra HTTP/DB đang mở, **không** xác nhận Discord đang online.
+- Có giới hạn API tổng 240 lượt burst, hồi 4 lượt/giây cho cả service; không tin header IP do client tự gửi. Quy mô lớn nên thêm CDN/reverse-proxy rate limit. Trang tĩnh không dùng tài nguyên bên ngoài.
+
+Phát triển local: `npm install`, `npm run web` (không cần token Discord; vẫn mở/seed/migrate DB theo `DB_PATH`, nên dùng DB thử riêng).
+Trong production chỉ dùng `npm start`; không chạy thêm `npm run web` song song với bot.

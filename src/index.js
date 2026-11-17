@@ -71,6 +71,9 @@ for (const file of cmdFiles) {
 
 console.log(`✅ Đã load ${new Set(client.commands.values()).size} lệnh.`);
 
+// Dashboard shares the bot service/volume; API routes are strictly read-only.
+const dashboard = require('./web/server').startDashboard(require('./db/database'));
+
 // ===== Events =====
 client.once('ready', async () => {
   console.log(`🤖 Bot online với tên ${client.user.tag}`);
@@ -179,6 +182,9 @@ async function shutdown(signal) {
   try {
     client.removeAllListeners('messageCreate');
     client.removeAllListeners('interactionCreate');
+    if (dashboard) {
+      await new Promise(resolve => { dashboard.close(resolve); dashboard.closeIdleConnections(); });
+    }
     await require('./game/backup').getService(client).stop();
     client.destroy();
     const db = require('./db/database');
