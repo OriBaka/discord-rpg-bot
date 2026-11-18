@@ -344,6 +344,7 @@ runMigrate('../game/zone_art', 'migrateZoneArt');
 runMigrate('../game/aura', 'migrateAura');
 
 runMigrate('../game/adventurer_gear', 'migrateAdventurerGear');
+runMigrate('../game/exclusive_gear', 'migrateExclusiveGear');
 
 // Apply now for normal startup, then again after deferred circular migrations.
 const dbMaintenance = require('./optimize');
