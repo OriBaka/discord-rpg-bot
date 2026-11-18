@@ -1,4 +1,4 @@
-const { randomInt } = require('node:crypto');
+const { randomInt, randomUUID } = require('node:crypto');
 const COST = 2500;
 const COOLDOWN = 2000;
 const TIERS = [
@@ -56,6 +56,8 @@ function migrate() {
     rolls INTEGER NOT NULL DEFAULT 0, gold_spent INTEGER NOT NULL DEFAULT 0,
     last_roll INTEGER NOT NULL DEFAULT 0
   )`);
+  const columns = new Set(db().prepare('PRAGMA table_info(player_aura)').all().map(c => c.name));
+  if (!columns.has('ui_token')) db().exec("ALTER TABLE player_aura ADD COLUMN ui_token TEXT NOT NULL DEFAULT ''");
 }
 function get(user) { return db().prepare('SELECT * FROM player_aura WHERE user_id=?').get(user) || null; }
 function generate(rng = randomInt) {
@@ -65,11 +67,12 @@ function generate(rng = randomInt) {
   if (!tier) throw new Error('Invalid aura random result');
   return { stat: STAT_KEYS[rng(STAT_KEYS.length)], tier: tier.id, percent: tier.min + rng(tier.max - tier.min + 1) };
 }
-function roll(user, now = Date.now(), rng = randomInt) {
+function roll(user, now = Date.now(), rng = randomInt, expectedToken = null) {
   return db().transaction(() => {
     const player = db().prepare('SELECT gold FROM players WHERE user_id=?').get(user);
     if (!player) return { error: 'Bạn chưa có nhân vật.' };
     const state = get(user);
+    if (expectedToken !== null && token(state) !== expectedToken) return { error: STALE };
     if (state && now - state.last_roll < COOLDOWN) return { error: 'Đợi 2 giây giữa hai lượt roll.' };
     if (player.gold < COST) return { error: `Cần ${COST} vàng cho mỗi lượt.` };
     const candidate = generate(rng);
@@ -79,17 +82,22 @@ function roll(user, now = Date.now(), rng = randomInt) {
       pending_stat=excluded.pending_stat,pending_tier=excluded.pending_tier,pending_percent=excluded.pending_percent,
       rolls=rolls+1,gold_spent=gold_spent+excluded.gold_spent,last_roll=excluded.last_roll`)
       .run(user, candidate.stat, candidate.tier, candidate.percent, COST, now);
+    db().prepare('UPDATE player_aura SET ui_token=? WHERE user_id=?').run(randomUUID(), user);
     db().prepare('INSERT INTO gold_sink_log (user_id,kind,target,amount,created_at) VALUES (?,?,?,?,?)')
       .run(user, 'aura', `${candidate.tier}:${candidate.stat}:${candidate.percent}`, COST, now);
     return { candidate };
   })();
 }
-function resolve(user, accept) {
+const STALE = 'Aura đã thay đổi. Nhấn Làm mới hoặc dùng aura để mở bảng mới.';
+function token(state) { return state?.ui_token || 'start'; }
+function resolve(user, accept, expectedToken = null) {
   return db().transaction(() => {
     const state = get(user);
+    if (expectedToken !== null && token(state) !== expectedToken) return { error: STALE };
     if (!state?.pending_stat) return { error: 'Không có aura chờ. Roll trước.' };
     if (accept) db().prepare('UPDATE player_aura SET active_stat=pending_stat,active_tier=pending_tier,active_percent=pending_percent WHERE user_id=?').run(user);
     db().prepare('UPDATE player_aura SET pending_stat=NULL,pending_tier=NULL,pending_percent=NULL WHERE user_id=?').run(user);
+    db().prepare('UPDATE player_aura SET ui_token=? WHERE user_id=?').run(randomUUID(), user);
     return {};
   })();
 }
@@ -104,4 +112,4 @@ function top(effect = '') {
     JOIN players p ON p.user_id=a.user_id WHERE a.active_stat IS NOT NULL AND (?='' OR a.active_stat=?)
     ORDER BY a.active_percent DESC,a.user_id LIMIT 10`).all(effect, effect);
 }
-module.exports = { EFFECTS, STAT_KEYS, effectName, percent, health, storedHp, jobBonus, jobXp, COST, COOLDOWN, TIERS, migrate, get, generate, roll, resolve, bonus, top };
+module.exports = { token, STALE, EFFECTS, STAT_KEYS, effectName, percent, health, storedHp, jobBonus, jobXp, COST, COOLDOWN, TIERS, migrate, get, generate, roll, resolve, bonus, top };

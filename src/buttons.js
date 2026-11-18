@@ -96,6 +96,7 @@ async function finalizeBattle(interaction, battleRow, log) {
 
 async function handle(interaction) {
   const customId = interaction.customId;
+  if (customId.startsWith('aura:')) return require('./game/aura_ui').handle(interaction);
   const parts = customId.split(':');
   const [domain, action, ...rest] = parts;
 
