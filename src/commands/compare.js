@@ -33,23 +33,14 @@ function itemFieldValue(it) {
   if (h) stats.push(`❤️ ${h.replace('+', '')}`);
   if (it.min_level) stats.push(`🔒LV${it.min_level}`);
   if (it.class_req) stats.push(`[${it.class_req}]`);
-  return `${t.emoji} **${it.name}**\n${stats.join(' • ') || '_(no stats)_'}\n💰 ${it.price || '?'} • sell ${it.sell || '?'}`;
+  return `${t.emoji} **${it.name}**\n${stats.join(' • ') || '_(no stats)_'}\n💰 ${it.price || '?'} • sell ${it.sell || '?'}\n${require('../game/gear_identity').describe(it)}`;
 }
 
-function findEquippedComparable(userId, newItem) {
-  const equipped = getEquipped(userId);
-  // Find slot mà newItem có thể equip
-  const slot = findSlotForItem(newItem);
-  if (!slot) return null;
-  const eqId = equipped[slot];
-  if (!eqId) return null;
-  return getItem(eqId);
-}
 
 module.exports = {
   name: 'compare',
   aliases: ['cmp', 'sosanh'],
-  description: 'So sánh 2 gear: compare <item1> [item2]. Nếu chỉ 1 arg → so với item đang equip cùng slot.',
+  description: 'So sánh 2 gear: compare <item> [slot hoặc item2]. Một món: xem chỉ số thực tế sau khi thay đồ.',
   async execute(msg, args) {
     const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
@@ -73,6 +64,23 @@ module.exports = {
       return msg.reply(`❌ Chỉ so sánh được ${COMPARABLE.join('/')}. Item \`${id1}\` là type=${it1.type}.`);
     }
 
+    if ((!id2 || SLOTS[id2]) && it1.type !== 'consumable') {
+      const { preview, materials } = require('../game/gear_preview');
+      const result = preview(p, it1, id2);
+      if (result.error) return msg.reply(`❌ ${result.error}`);
+      const handbook = require('../game/handbook').lookup(require('../db/database'), it1.id);
+      const delta = key => `${result.before[key]} → ${result.after[key]} (${diff(result.before[key], result.after[key])})`;
+      const embed = new EmbedBuilder().setColor(0x5865F2).setTitle('📊 Mô phỏng thay trang bị')
+        .setDescription(`Ô **${result.slot}** · Chỉ xem trước, không tự mặc.\n${result.warnings.join(' ') || 'Đủ điều kiện trang bị.'}`)
+        .addFields(
+          { name: 'Đang mặc', value: itemFieldValue(result.old), inline: true },
+          { name: 'Thay bằng', value: itemFieldValue(it1), inline: true },
+          { name: 'Chỉ số nhân vật thực tế (đang mặc → thay bằng)', value: `⚔️ ATK: ${delta('atk')}\n🛡️ DEF: ${delta('def')}\nĐã tính nâng cấp, hướng trang bị, hệ số class và Aura.` },
+          { name: 'Nguồn kiếm', value: (handbook.sources.join('\n') || 'Chưa ghi nhận nguồn.').slice(0, 1000) },
+          { name: 'Nguyên liệu cho 1 lần chế tạo', value: (materials(p.user_id, it1.id).join('\n') || 'Không có công thức.').slice(0, 1000) })
+        .setFooter({ text: `${prefix}compare ${it1.id} ring1 / ring2 để chọn ô nhẫn · ${prefix}find ${it1.id}` });
+      return msg.reply({ embeds: [embed] });
+    }
     let it2 = null;
     let leftLabel = 'Item 1', rightLabel = 'Item 2';
     if (id2) {
@@ -82,7 +90,7 @@ module.exports = {
       rightLabel = `📥 ${id2}`;
     } else {
       // So với item đang equip cùng slot
-      it2 = findEquippedComparable(msg.author.id, it1);
+      it2 = null; // Consumables have no equipment slot.
       if (!it2) {
         return msg.reply(
           `💡 Bạn chưa equip gear cùng slot với **${it1.name}**.\n` +

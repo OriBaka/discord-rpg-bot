@@ -33,6 +33,8 @@ module.exports = {
     const equipped = getEquipped(target.id);
     // Truyền player để áp hệ số giáp theo class (xem classes.js).
     const bonus = getTotalBonus(target.id, p);
+    const eff = require('../game/player').getEffectiveStats(p);
+    const direction = require('../game/gear_identity').score(Object.values(equipped).map(getItem).filter(Boolean));
     const cls = p.primary_class ? classInfo(p.primary_class) : null;
 
     // Tạo dòng cho mỗi slot
@@ -75,10 +77,11 @@ module.exports = {
           `⚔️ ATK: **+${bonus.atk}**\n` +
           `🛡️ DEF: **+${bonus.def}**\n` +
           (bonus.heal > 0 ? `❤️ Hồi/trận: **+${bonus.heal}**` : '') },
+        { name: '⚖️ Hướng trang bị', value: `${direction > 0 ? 'Công phá' : direction < 0 ? 'Kiên thủ' : 'Cân bằng'}: ${direction > 0 ? '+' : ''}${direction}/±6 điểm · ATK trang bị ${direction >= 0 ? '+' : ''}${direction}%, DEF trang bị ${direction <= 0 ? '+' : ''}${-2 * direction}%. Đã tính trong tổng bonus. Tra compare <id> để xem thay đồ.` },
         { name: '🎯 Tổng chỉ số', value:
-          `⚔️ ATK: **${p.atk + bonus.atk}** (gốc ${p.atk})\n` +
-          `🛡️ DEF: **${p.def + bonus.def}** (gốc ${p.def})\n` +
-          `❤️ HP: **${p.hp}/${p.max_hp}**`, inline: true },
+          `⚔️ ATK: **${eff.atk}** (gốc ${p.atk})\n` +
+          `🛡️ DEF: **${eff.def}** (gốc ${p.def})\n` +
+          `❤️ HP: **${eff.hp}/${eff.max_hp}**`, inline: true },
       )
       .setFooter({ text: `Đang dùng ${totalCount}/${slotCount} slot • ID: ${target.id}` });
 

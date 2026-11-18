@@ -39,12 +39,12 @@ function updatePlayer(userId, fields) {
 }
 
 // ===== Stats có cộng trang bị (tổng hợp tất cả slot) =====
-function getEffectiveStats(p) {
+function getEffectiveStats(p, equipment = null) {
   // Dùng require trong hàm để tránh circular dependency
   const { getTotalBonus } = require('./slots');
   // Truyền player để slots áp hệ số DEF theo class (armor_share).
   // Không truyền thì mọi class hưởng 100% giáp và Pháp Sư mất phần bù HP.
-  const bonus = getTotalBonus(p.user_id, p);
+  const bonus = getTotalBonus(p.user_id, p, equipment);
   const auraBonus = require('./aura').bonus(p.user_id, p.atk + bonus.atk, p.def + bonus.def);
   return {
     atk: p.atk + bonus.atk + auraBonus.atk,

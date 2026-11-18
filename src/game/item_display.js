@@ -117,6 +117,7 @@ function statPairs(it) {
     if (key === 'min_level' && Number(v) <= 1) continue;   // Lv.1 là mặc định, khỏi rườm
     out.push({ name: label, value: fmt(v, it) });
   }
+  if (['weapon', 'armor', 'offhand', 'accessory'].includes(it.type)) out.push({ name: '⚖️ Hướng trang bị', value: require('./gear_identity').describe(it) });
   if (it.image_url) out.push({ name: '🖼️ Ảnh', value: 'đã gắn' });
 
   // Công dụng nghề (bảng job_tools): đọc từ DB nên công cụ thêm sau tự hiện ở

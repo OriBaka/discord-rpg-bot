@@ -283,8 +283,9 @@ const MAX_GEAR_DEF = 500;
 
 // `player` là object player (cần primary_class). Không truyền thì giữ hành vi
 // cũ (hệ số 1) — dùng cho các lời gọi chỉ cần biết tổng ATK.
-function getTotalBonus(userId, player = null) {
-  const equipped = getEquipped(userId);
+function getTotalBonus(userId, player = null, equipment = null) {
+  const equipped = equipment ?? getEquipped(userId);
+  const identityItems = [];
   let atk = 0, def = 0, heal = 0;
   const share = armorShareOf(player);
   // Cấp nâng cấp đọc 1 lần cho cả lượt — tránh 1 query mỗi slot.
@@ -296,6 +297,7 @@ function getTotalBonus(userId, player = null) {
   for (const slot of Object.keys(equipped)) {
     const it = getItem(equipped[slot]);
     if (!it) continue;
+    identityItems.push(it);
     atk  += it.atk  || 0;
     def  += it.def  || 0;
     heal += it.heal || 0;
@@ -308,7 +310,8 @@ function getTotalBonus(userId, player = null) {
       } catch { /* bỏ qua nếu module lỗi — không được làm sập combat */ }
     }
   }
-  return { atk, def: Math.min(MAX_GEAR_DEF, Math.round(def * share)), heal };
+  const adjusted = require('./gear_identity').apply(atk, def, identityItems);
+  return { atk: adjusted.atk, def: Math.min(MAX_GEAR_DEF, Math.round(adjusted.def * share)), heal };
 }
 
 // ===== Tìm slot phù hợp để equip 1 item =====
