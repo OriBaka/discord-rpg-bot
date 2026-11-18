@@ -490,3 +490,41 @@ Ví dụ `%hunt ember_phoenix`, `%find trophy_cinder_ring`. Star Devourer là qu
 mạnh trong Astral Ruins, không phải raid boss mới. Tỷ lệ trên là tỷ lệ gốc, không
 bảo đảm rơi sau số lượt cố định; modifier drop hiện có vẫn áp dụng. Trang bị nhận
 được vẫn cần đủ cấp để mặc. Không có bất kỳ nguồn nhận Kiếm Thất Đại Tội nào.
+
+### ⚖️ Hướng trang bị & xem trước thay đồ
+
+Không chỉ đổi tên: một số dòng/món nay có **đánh đổi công–thủ luôn hiệu lực khi mặc**.
+Không có proc ngẫu nhiên, set bonus, buff theo số lượt hay hồi máu mới.
+
+| Trang bị | Điểm hướng mỗi món |
+| --- | ---: |
+| Runeforged, Starforged | +1 |
+| Rimeforged, Emberguard | −1 |
+| Berserker Ring (đồ cũ) | +3 |
+| Warden Ring (đồ cũ) | −3 |
+| Cinder Trophy Ring, Void Trophy Pendant, Star Trophy Ring | +2 |
+| Obsidian/Abyss Trophy Pendant, Glacier Trophy Sigil | −2 |
+| Các món khác, kể cả Dawnwatch/Trailwarden | 0 (cân bằng) |
+
+Cộng điểm **của từng ô đang mặc**, triệt tiêu điểm trái dấu rồi chặn ở **−6…+6**.
+Mỗi điểm tăng 1% ATK và giảm 2% DEF **tổng trang bị**, điểm âm đảo dấu.
+Ví dụ +6: +6% ATK/−12% DEF trang bị; −6: −6% ATK/+12% DEF trang bị.
+Tính sau nâng cấp, trước hệ số giáp class và Aura; làm tròn một lần mỗi chỉ số,
+DEF vẫn chịu trần cũ. Không đổi ATK/DEF gốc của nhân vật, HP, nguồn kiếm, số lượng
+đồ sở hữu hoặc chỉ số lưu trong item. Nhẫn trùng tính theo số ô, vẫn chịu trần chung.
+Đây là cơ chế mới thay cho việc các dòng cùng bậc hoàn toàn giống nhau; các mục
+trước nói “không buff ẩn” vẫn đúng: hướng và công thức được hiện công khai.
+
+- `%info item <id>` / `%inv`: xem hướng của món đồ; `%gear`: xem điểm hướng tổng.
+- `%compare <id>`: mô phỏng thay vào ô mà `%equip` sẽ chọn, kể cả ô trống.
+- `%compare <id> ring1` hoặc `ring2`: chọn chính xác ô nhẫn muốn thay.
+- Hiện món đang mặc, chỉ số nhân vật trước → sau (đã tính nâng cấp/class/Aura),
+  cảnh báo thiếu cấp/class/số bản sở hữu, nguồn kiếm, nguyên liệu có/cần/thiếu cho
+  một lần chế tạo. Chỉ xem trước, không tự mua, chế tạo hoặc thay đồ.
+- `%compare <item1> <item2>` vẫn so hai món theo chỉ số gốc; muốn xem tác động
+  thực tế lên nhân vật thì dùng chế độ một món hoặc chỉ định slot.
+
+Trang bị cũ được áp hướng khi tính chỉ số, không cần xóa/nhận lại hay migration
+viết đè vật phẩm. Combat nhanh, battle theo lượt, duel và raid dùng chung chỉ số
+hiệu lực; trận theo lượt đang diễn ra giữ snapshot như trước. Kiếm Thất Đại Tội
+không có hướng mới và vẫn tuyệt đối chỉ ở lore.

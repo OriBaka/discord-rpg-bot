@@ -40,7 +40,7 @@ function itemEmbed(it, prefix) {
   embedBase.addFields(fields);
 
   if (it.type === 'weapon' || it.type === 'armor' || it.type === 'offhand' || it.type === 'accessory') {
-    embedBase.setFooter({ text: `Trang bị: ${prefix}equip ${it.id}` });
+    embedBase.setFooter({ text: `So sánh: ${prefix}compare ${it.id} • Trang bị: ${prefix}equip ${it.id}` });
   } else if (it.type === 'consumable') {
     embedBase.setFooter({ text: `Sử dụng: ${prefix}use ${it.id}` });
   }
