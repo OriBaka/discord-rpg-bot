@@ -3,7 +3,7 @@ const { getPlayer, updatePlayer } = require('../game/player');
 
 const DEFAULT_HEAL_CD_MS = 10 * 60 * 1000; // 10 phút
 const settings = require('../game/settings');
-function getHealCd() { return settings.getCdOverride('heal') ?? DEFAULT_HEAL_CD_MS; }
+function getHealCd(p) { return settings.getCdOverride('heal') ?? (p.level <= 5 ? 60000 : DEFAULT_HEAL_CD_MS); }
 
 // Đảm bảo cột last_heal tồn tại (migrate nhẹ)
 try {
@@ -22,7 +22,7 @@ function formatRemain(ms) {
 module.exports = {
   name: 'heal',
   aliases: ['rest', 'quantro'],
-  description: 'Vào quán trọ hồi đầy HP (tốn vàng theo level + cooldown 10 phút)',
+  description: 'Quán trọ hồi đầy HP; ưu đãi Lv.1–5, bình thường cooldown 10 phút',
   async execute(msg) {
     const prefix = require('../game/prefix').getPrefix();
     const p = getPlayer(msg.author.id);
@@ -33,7 +33,7 @@ module.exports = {
     // Check cooldown
     const now = Date.now();
     const lastHeal = p.last_heal || 0;
-    const remain = getHealCd() - (now - lastHeal);
+    const remain = getHealCd(p) - (now - lastHeal);
     if (remain > 0) {
       return msg.reply(
         `⏳ Quán trọ đang đông khách! Còn **${formatRemain(remain)}** nữa mới được nghỉ tiếp.\n` +
@@ -45,11 +45,12 @@ module.exports = {
     const missing = p.max_hp - p.hp;
     const hpCost = Math.ceil(missing * 0.5);
     const lvCost = p.level * 15;
-    const cost = hpCost + lvCost;
+    const normalCost = hpCost + lvCost;
+    const cost = p.level <= 5 ? Math.min(20, Math.max(5, Math.ceil(normalCost / 4))) : normalCost;
 
     if (p.gold < cost) {
       return msg.reply(
-        `💸 Cần **${cost}** 💰 để hồi đầy (HP: ${hpCost}, phí Lv.${p.level}: ${lvCost}).\n` +
+        `💸 Cần **${cost}** 💰 để hồi đầy${p.level <= 5 ? " (giá ưu đãi tân thủ)" : ` (HP: ${hpCost}, phí Lv.${p.level}: ${lvCost})`}.\n` +
         `Bạn có **${p.gold}** 💰. Thử dùng bình máu rẻ hơn: \`${prefix}use potion_s\`.`
       );
     }
@@ -62,8 +63,8 @@ module.exports = {
 
     return msg.reply(
       `🏨 Bạn nghỉ tại quán trọ, hồi đầy **${missing}** HP.\n` +
-      `💰 Trả **${cost}** vàng (HP: ${hpCost} + phí cao cấp: ${lvCost})\n` +
-      `⏳ Lần heal tiếp theo: 10 phút nữa.`
+      `💰 Trả **${cost}** vàng${p.level <= 5 ? " (ưu đãi Lv.1–5: 5–20 vàng, nghỉ mỗi 60 giây nếu admin không đổi cooldown)" : ` (HP: ${hpCost} + phí cao cấp: ${lvCost})`}\n` +
+      `⏳ Lần heal tiếp theo: ${formatRemain(getHealCd(p))} nữa.`
     );
   },
 };
