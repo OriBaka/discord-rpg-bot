@@ -79,3 +79,15 @@ test('caps API rate without trusting forwarded IP headers', async () => {
     assert.equal(status, 429);
   } finally { limited.closeAllConnections(); await new Promise(resolve => limited.close(resolve)); }
 });
+
+test('handbook API supports paginated search and live item source detail', async () => {
+  const before = db.prepare('SELECT total_changes() n').get().n;
+  const list = await get('/api/items?q=coal'); assert.equal(list.status, 200);
+  assert.ok(list.data.items.some(i => i.id === 'coal'));
+  const detail = await get('/api/items/coal'); assert.equal(detail.status, 200);
+  assert.ok(detail.data.sources.some(s => s.includes('25 vàng')));
+  assert.ok(detail.data.uses.length > 0);
+  assert.equal((await get('/api/items/NO_ITEM')).status, 404);
+  assert.equal((await get('/api/items?q=%25')).data.items.length, 0);
+  assert.equal(db.prepare('SELECT total_changes() n').get().n, before);
+});

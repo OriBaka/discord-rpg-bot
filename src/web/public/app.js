@@ -2,8 +2,8 @@
 const $ = id => document.getElementById(id);
 const number = n => new Intl.NumberFormat('vi-VN').format(n || 0);
 const classes = { melee: 'Chiến binh', magic: 'Pháp sư', ranged: 'Cung thủ' };
-const labels = { overview: 'Tổng quan', players: 'Nhà thám hiểm', market: 'Chợ giao thương', guilds: 'Bang hội', profile: 'Hồ sơ nhà thám hiểm' };
-const titles = { overview: 'Thế giới đang chuyển mình.', players: 'Những người viết nên hành trình.', market: 'Mỗi món đồ, một cơ hội mới.', guilds: 'Đi cùng nhau. Đi xa hơn.', profile: 'Dấu ấn của một nhà thám hiểm.' };
+const labels = { items: 'Sổ tay vật phẩm', item: 'Nguồn kiếm vật phẩm', overview: 'Tổng quan', players: 'Nhà thám hiểm', market: 'Chợ giao thương', guilds: 'Bang hội', profile: 'Hồ sơ nhà thám hiểm' };
+const titles = { items: 'Biết đường đi. Tìm điều cần.', item: 'Mỗi vật phẩm, một câu chuyện.', overview: 'Thế giới đang chuyển mình.', players: 'Những người viết nên hành trình.', market: 'Mỗi món đồ, một cơ hội mới.', guilds: 'Đi cùng nhau. Đi xa hơn.', profile: 'Dấu ấn của một nhà thám hiểm.' };
 let state = { view: 'overview', page: 1, q: '', id: '' };
 let controller;
 function el(tag, text, cls) {
@@ -40,8 +40,9 @@ async function api(url, signal) {
 }
 function readRoute() {
   const route = location.hash.slice(1);
+  if (route.startsWith('item/')) return { view: 'item', id: route.slice(5), page: 1, q: '' };
   if (route.startsWith('profile/')) return { view: 'profile', id: route.slice(8), page: 1, q: '' };
-  return { view: ['players', 'market', 'guilds'].includes(route) ? route : 'overview', page: 1, q: '', id: '' };
+  return { view: ['players', 'market', 'guilds', 'items'].includes(route) ? route : 'overview', page: 1, q: '', id: '' };
 }
 async function render() {
   controller?.abort(); controller = new AbortController(); const signal = controller.signal;
@@ -49,8 +50,8 @@ async function render() {
   $('main').setAttribute('aria-busy', 'true');
   $('breadcrumb').textContent = labels[state.view]; $('page-title').textContent = titles[state.view];
   document.querySelectorAll('nav a').forEach(a => a.classList.toggle('active', a.dataset.view === state.view || state.view === 'profile' && a.dataset.view === 'players'));
-  $('overview').hidden = state.view !== 'overview'; $('profile').hidden = state.view !== 'profile';
-  $('browse').hidden = !['players', 'market', 'guilds'].includes(state.view);
+  $('overview').hidden = state.view !== 'overview'; $('profile').hidden = !['profile', 'item'].includes(state.view);
+  $('browse').hidden = !['players', 'market', 'guilds', 'items'].includes(state.view);
   for (const id of ['stats', 'leaders', 'results', 'profile']) $(id).replaceChildren();
   $('prev').disabled = true; $('next').disabled = true;
   try {
@@ -60,6 +61,17 @@ async function render() {
         const card = el('div', undefined, 'stat'); card.append(el('small', title), el('strong', number(value)), el('span', note)); $('stats').append(card);
       }
       $('leaders').replaceChildren(table(['HẠNG', 'NHÀ THÁM HIỂM', 'CLASS', 'CẤP ĐỘ', 'KINH NGHIỆM'], playerRows(data.leaders)));
+    } else if (state.view === 'item') {
+      const data = await api('/api/items/' + encodeURIComponent(state.id), signal);
+      const card = el('article', undefined, 'panel profile-card');
+      card.append(el('div', data.item.id + ' / ' + data.item.tier, 'eyebrow'), el('h2', data.item.name), el('p', data.item.desc));
+      for (const [label, rows] of [['Nguồn kiếm', data.sources], ['Dùng để chế / nấu', data.uses]]) {
+        card.append(el('h3', label)); const list = el('ul');
+        for (const row of rows) list.append(el('li', row));
+        if (!rows.length) list.append(el('li', 'Chưa ghi nhận trong các nguồn được tra cứu.'));
+        card.append(list);
+      }
+      card.append(el('p', data.note, 'muted')); $('profile').replaceChildren(card);
     } else if (state.view === 'profile') {
       const p = await api('/api/players/' + encodeURIComponent(state.id), signal);
       const card = el('article', undefined, 'panel profile-card'); card.append(el('div', 'HỒ SƠ CÔNG KHAI', 'eyebrow'), el('h2', p.name));
@@ -70,10 +82,13 @@ async function render() {
       card.append(el('p', 'Túi đồ, vàng cá nhân và tiến độ truyện không được công khai trên web.', 'muted'));
       $('profile').replaceChildren(card);
     } else {
-      $('search').placeholder = state.view === 'players' ? 'Tìm theo tên hoặc Discord ID…' : state.view === 'market' ? 'Tìm theo tên hoặc mã vật phẩm…' : 'Tìm theo tên hoặc tag bang hội…';
+      $('search').placeholder = state.view === 'items' ? 'Tìm tên hoặc ID vật phẩm…' : state.view === 'players' ? 'Tìm theo tên hoặc Discord ID…' : state.view === 'market' ? 'Tìm theo tên hoặc mã vật phẩm…' : 'Tìm theo tên hoặc tag bang hội…';
       $('search').value = state.q;
       $('list-title').textContent = state.view === 'players' ? 'Bảng xếp hạng cấp độ' : labels[state.view];
       const data = await api(`/api/${state.view}?page=${state.page}&q=${encodeURIComponent(state.q)}`, signal);
+      if (state.view === 'items') $('results').replaceChildren(table(['VẬT PHẨM', 'ID', 'LOẠI', 'PHẨM CHẤT'], data.items.map(i => {
+        const a = el('a', i.name); a.href = '#item/' + encodeURIComponent(i.id); return [a, i.id, i.type, i.tier];
+      })));
       if (state.view === 'players') $('results').replaceChildren(table(['HẠNG', 'NHÀ THÁM HIỂM', 'CLASS', 'CẤP ĐỘ', 'KINH NGHIỆM'], playerRows(data.items, (state.page - 1) * data.pageSize)));
       if (state.view === 'market') $('results').replaceChildren(table(['VẬT PHẨM', 'PHẨM CHẤT', 'SỐ LƯỢNG', 'GIÁ / MÓN', 'NGƯỜI BÁN', 'MÃ TIN'], data.items.map(i => [i.name, i.tier, number(i.qty), number(i.price) + ' vàng', i.seller, '#' + i.id])));
       if (state.view === 'guilds') $('results').replaceChildren(table(['BANG HỘI', 'CẤP', 'THÀNH VIÊN', 'CÔNG TRÌNH'], data.items.map(g => [`[${g.tag}] ${g.name}`, 'Lv. ' + g.level, number(g.members), g.buildings.map(b => `${b.name} Lv.${b.level}`).join(' · ') || 'Chưa xây dựng'])));
