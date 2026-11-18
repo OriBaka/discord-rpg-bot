@@ -32,13 +32,13 @@ async function renderCard(userId) {
   const need = player.xpToNext(p.level); const ratio = Math.max(0, Math.min(1, p.xp / need));
   ctx.fillStyle = '#303b2d'; ctx.fillRect(72, 244, 856, 12); ctx.fillStyle = accent; ctx.fillRect(72, 244, Math.round(856 * ratio), 12);
   text(`XP  ${p.xp} / ${need}`, 72, 284, 13, '#aeb7a6');
-  for (const [i, [label, value]] of [['HP', `${p.hp} / ${p.max_hp}`], ['ATK', stats.atk], ['DEF', stats.def]].entries()) {
+  for (const [i, [label, value]] of [['HP', `${stats.hp} / ${stats.max_hp}`], ['ATK', stats.atk], ['DEF', stats.def]].entries()) {
     const x = 72 + i * 290; ctx.fillStyle = '#242e23'; ctx.fillRect(x, 308, 274, 79);
     text(label, x + 18, 335, 12, '#aeb7a6', 240); text(value, x + 18, 369, 25, '#f0e7d6', 240);
   }
   text('BANG HỘI', 72, 425, 11, accent); text(guild ? `[${guild.tag}] ${guild.name}` : 'Độc hành', 72, 454, 17, '#e9eadd', 410);
   text('PET ĐỒNG HÀNH', 520, 425, 11, accent); text(pet?.name || 'Chưa chọn pet', 520, 454, 17, '#e9eadd', 405);
-  text(aura?.active_stat ? `AURA / ${aura.active_tier.toUpperCase()} / ${aura.active_stat.toUpperCase()} +${aura.active_percent}%` : 'AURA / Chưa kích hoạt', 72, 510, 16, accent, 850);
+  text(aura?.active_stat ? `AURA / ${aura.active_tier.toUpperCase()} / ${require('./aura').effectName(aura.active_stat)} +${aura.active_percent}%` : 'AURA / Chưa kích hoạt', 72, 510, 16, accent, 850);
   text('Chỉ số hiện tại · Bao gồm trang bị và Aura · Không bao gồm bonus pet riêng của PvP', 72, 541, 10, '#a1ab98');
   return c.encode('png');
 }

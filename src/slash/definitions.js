@@ -573,12 +573,14 @@ const definitions = [
     }),
   },
   {
-    data: new SlashCommandBuilder().setName('aura').setDescription('Roll aura ATK/DEF bằng vàng')
+    data: new SlashCommandBuilder().setName('aura').setDescription('Roll aura chiến đấu/nghề bằng vàng')
       .addStringOption(o => o.setName('action').setDescription('Hành động').addChoices(
         ...['help', 'roll', 'accept', 'discard', 'top'].map(value => ({ name: value, value }))))
+      .addStringOption(o => o.setName('effect').setDescription('Lọc BXH theo hiệu ứng').addChoices(...Object.keys(require('../game/aura').EFFECTS).map(value => ({ name: value, value }))))
       .addBooleanOption(o => o.setName('confirm').setDescription('Xác nhận tiêu 2500 vàng khi roll')),
     handler: simpleHandler('aura', i => {
       const a = i.options.getString('action');
+      if (a === 'top') return [a, i.options.getString('effect') || ''];
       return a ? [a, i.options.getBoolean('confirm') ? 'confirm' : ''] : [];
     }),
   },

@@ -133,6 +133,7 @@ module.exports = {
       dropText = '*Không hái được gì...*';
     } else {
       for (const d of drops) {
+        if (toolBonus.extraChance > 0 && Math.random() < toolBonus.extraChance) d.qty++;
         addItem(msg.author.id, d.item_id, d.qty);
         gatherQty += d.qty;
         const it = getItem(d.item_id);
@@ -173,7 +174,7 @@ module.exports = {
       .setDescription(dropText + lvlText + '\n\n' + (toolBonus.tool
         ? `🧺 **${toolBonus.tool.name}** — ${jobTools.describe(toolBonus.tool)}`
         : '🧺 *Chưa có giỏ hái — mua ở shop để tăng cơ hội rơi.*') + buffText)
-      .setFooter({ text: `+${zone.base_xp} Foraging XP • Total Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
+      .setFooter({ text: `+${xpResult.xpGained} Foraging XP • Total Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
     return msg.reply({ embeds: [embed], components: [buildAgainRow('gather', msg.author.id, args)] });
   },

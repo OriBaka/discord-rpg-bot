@@ -49,6 +49,7 @@ function getEffectiveStats(p) {
   return {
     atk: p.atk + bonus.atk + auraBonus.atk,
     def: p.def + bonus.def + auraBonus.def,
+    ...require('./aura').health(p),
     bonus_heal: bonus.heal, // hồi máu tự động/trận (necklace bonus)
   };
 }

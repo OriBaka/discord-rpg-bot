@@ -27,6 +27,7 @@ function getFullStats(userId) {
   return {
     atk: eff.atk + (petBonus.atk || 0),
     def: eff.def + (petBonus.def || 0),
+    max_hp: eff.max_hp,
     max_hp_bonus: petBonus.hp || 0,
   };
 }

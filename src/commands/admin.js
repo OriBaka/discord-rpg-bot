@@ -424,6 +424,7 @@ module.exports = {
         // foreign_keys is not enabled on every existing deployment.
         db.prepare('DELETE FROM cosmetic_owned WHERE user_id=?').run(target.id);
         db.prepare('DELETE FROM cosmetic_equipped WHERE user_id=?').run(target.id);
+        db.prepare('DELETE FROM aura_job_xp WHERE user_id=?').run(target.id);
         db.prepare('DELETE FROM player_aura WHERE user_id=?').run(target.id);
         db.prepare('DELETE FROM player_story WHERE user_id=?').run(target.id);
         db.prepare('DELETE FROM players WHERE user_id=?').run(target.id);

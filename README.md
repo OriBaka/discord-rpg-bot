@@ -347,15 +347,15 @@ SQLite nhẹ sau migrations. Không tự VACUUM, không xóa lịch sử hay tha
 Xem [chi tiết tối ưu DB](docs/DB_OPTIMIZATION.md) và lưu ý vận hành trước khi bảo trì.
 
 
-### ✨ Aura — reroll buff bằng vàng
+### ✨ Aura — reroll buff chiến đấu / nghề bằng vàng
 
 `%aura` xem aura và tỷ lệ; `%aura roll confirm` tiêu **2.500 vàng** mỗi lượt.
 `%aura accept` thay aura đang dùng bằng ô chờ; `%aura discard` bỏ ô chờ.
-`%aura top` xếp hạng % aura đang dùng, không phải sức mạnh tổng thể.
+`%aura top [effect_id]` xếp hạng % aura đang dùng, lọc ví dụ `%aura top mining_xp`; không phải sức mạnh tổng thể.
 Slash: `/aura action:roll confirm:True`, `/aura action:accept`.
 
 - Common 60% (+1–3%), Rare 28% (+4–6%), Epic 10% (+7–9%), Legendary 2% (+10–12%).
-- Mỗi lượt chọn ATK hoặc DEF với xác suất 50–50; 3 giá trị trong mỗi tier chia đều.
+- Mỗi lượt chọn đều một trong 16 hiệu ứng (6,25%/loại); 3 giá trị trong mỗi tier chia đều.
 - Chỉ một buff, không cộng dồn; tối đa +12%. Không pity/bảo đảm nâng cấp, không hoàn vàng.
 - Roll chỉ thay ô chờ. Aura đang dùng giữ nguyên cho tới khi accept; accept sẽ mất aura cũ, kể cả khi kết quả mới yếu hơn.
 - Bonus làm tròn xuống trên ATK/DEF cơ bản + trang bị (không sửa chỉ số gốc). Áp dụng hunt, trận PvE/PvP mới và tính sát thương raid; trận đang chạy giữ snapshot cũ.
@@ -385,6 +385,37 @@ Slash: `/aura action:roll confirm:True`, `/aura action:accept`.
 - Ảnh ghép cục bộ bằng `@napi-rs/canvas`, font DejaVu Sans có license trong `assets/fonts`.
   Không gọi AI, tải avatar hoặc cần API key lúc chạy. Cần cho bot quyền Attach Files.
   Tối đa hai lượt dựng ảnh đồng thời mỗi process; gửi lại card để cập nhật dữ liệu.
-- Giữ `%me` dạng embed như trước. Chưa thêm hiệu ứng Aura mới hoặc cơ chế thần khí.
+- Giữ `%me` dạng embed như trước. Card hiển thị hiệu ứng Aura hiện tại; không thêm cơ chế thần khí.
 
 Ảnh minh họa profile card: [xem PNG mẫu](docs/previews/profile-card.png) — dữ liệu nhân vật minh họa, không phải dữ liệu production.
+
+
+#### Aura mở rộng — 16 hướng build
+
+Mỗi hiệu ứng có tên English riêng, giữ nguyên tỷ lệ tier 60/28/10/2 và giá 2.500 vàng.
+Aura cũ ATK/DEF giữ nguyên; không reset active hoặc ô chờ. Vẫn chỉ một hiệu ứng có hiệu lực.
+
+- **Ember Soul**: ATK; **Iron Will**: DEF; **Heartwood**: Max HP.
+- **Deep Delver / Tide Scholar / Grove Sage / Forge Scholar / Hearth Scholar**:
+  XP lần lượt mining / fishing / foraging / crafting / cooking.
+- **Earth Whisper / Ocean Call / Wild Bloom**: nhân tỷ lệ rơi nguyên liệu tương ứng
+  mining / fishing / foraging. Ví dụ +12% biến tỷ lệ 50% thành 56%, không phải 62%.
+- Bản **Bounty** của ba tên trên: thêm cơ hội nhận +1 nguyên liệu cho mỗi dòng drop đã trúng;
+  không tạo nguyên liệu khi trượt, không nhân kho báu, không nhân thêm qua streak/vein.
+- **Masterwork**: thêm cơ hội chế tạo không mất nguyên liệu.
+- **Golden Feast**: thêm cơ hội nấu ra +1 món.
+
+Extra/save cộng **điểm phần trăm**, chịu trần tổng của công cụ + vật phẩm + Aura:
+drop +60%, extra/save 40%. Không có Aura sản lượng nhân trực tiếp.
+XP nghề giữ phần lẻ theo từng nghề trong DB, nên +1% vẫn tích lũy được ở đầu game;
+chỉ phần bonus đã đủ 1 XP mới được cộng. Không buff XP nhân vật hoặc vàng.
+
+HP được tính từ Max HP gốc theo tỷ lệ, giữ tỷ lệ máu còn lại; DB vẫn lưu HP gốc.
+Hunt và trận PvE mới dùng HP hiệu dụng, kết quả quy đổi về HP gốc; trận đang chạy
+lưu snapshot Max HP gốc để đổi Aura giữa trận không đổi kết quả. PvP dùng Max HP
+hiệu dụng; raid không nhận sát thương nên Aura HP không tăng sát thương raid.
+Thuốc/quán trọ vẫn hồi trên HP gốc, tương ứng cùng tỷ lệ HP hiệu dụng. `%me` và card
+hiển thị HP hiệu dụng; đổi/nhận Aura không hồi máu gốc.
+Tên hiệu ứng xuất hiện trên `%aura`, `%me`, card và hồ sơ web; chưa thêm animation
+hay thông báo Legendary tự động để tránh spam. BXH % không so trực tiếp độ mạnh
+của các hướng build. Kiếm Thất Đại Tội vẫn chỉ thuộc lore.

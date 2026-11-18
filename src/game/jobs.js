@@ -86,28 +86,31 @@ function updateJob(userId, jobType, fields) {
 // thông báo. Nghề lên cấp là mốc DUY NHẤT để mở thành tựu nghề (job_level /
 // job_all_level), nên phải check ở đây — không có sự kiện nào khác.
 function addJobXp(userId, jobType, xpGain, context = null) {
-  const job = getJob(userId, jobType);
-  let xp = job.xp + xpGain;
-  let level = job.level;
-  const lvlUps = [];
+  return db.transaction(() => {
+    xpGain = require('./aura').jobXp(userId, jobType, xpGain);
+    const job = getJob(userId, jobType);
+    let xp = job.xp + xpGain;
+    let level = job.level;
+    const lvlUps = [];
 
-  while (xp >= xpToNext(level) && level < 100) {
-    xp -= xpToNext(level);
-    level += 1;
-    lvlUps.push(level);
-  }
-
-  updateJob(userId, jobType, { xp, level });
-
-  let achievements = [];
-  if (lvlUps.length > 0) {
-    try {
-      achievements = require('./achievements').checkAndGrant(userId, context);
-    } catch (e) {
-      console.error('[addJobXp hook achievements]', e.message);
+    while (xp >= xpToNext(level) && level < 100) {
+      xp -= xpToNext(level);
+      level += 1;
+      lvlUps.push(level);
     }
-  }
-  return { level, levelsGained: lvlUps, xp, xpToNext: xpToNext(level), achievements };
+
+    updateJob(userId, jobType, { xp, level });
+
+    let achievements = [];
+    if (lvlUps.length > 0) {
+      try {
+        achievements = require('./achievements').checkAndGrant(userId, context);
+      } catch (e) {
+        console.error('[addJobXp hook achievements]', e.message);
+      }
+    }
+    return { level, levelsGained: lvlUps, xp, xpToNext: xpToNext(level), achievements, xpGained: xpGain };
+  })();
 }
 
 function setCooldown(userId, jobType) {

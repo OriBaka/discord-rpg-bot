@@ -17,7 +17,9 @@ async function finalizeBattle(interaction, battleRow, log) {
   summary.push('---');
 
   // Update player HP to remaining
-  const finalHp = Math.max(0, battleRow.hp_a);
+  const finalHp = battleRow.base_max_hp_a > 0
+    ? Math.min(player.max_hp, require('./game/aura').storedHp(battleRow.hp_a, battleRow.max_hp_a, battleRow.base_max_hp_a))
+    : Math.max(0, Math.min(player.max_hp, battleRow.hp_a));
   updatePlayer(battleRow.user_a, { hp: finalHp });
 
   if (winner === 'a') {

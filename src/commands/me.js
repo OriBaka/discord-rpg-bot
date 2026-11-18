@@ -82,7 +82,7 @@ module.exports = {
         (guildLine ? `\n${guildLine}` : '')
       )
       .addFields(
-        { name: '❤️ HP',    value: `${p.hp}/${p.max_hp}`, inline: true },
+        { name: '❤️ HP',    value: `${eff.hp}/${eff.max_hp}`, inline: true },
         { name: '⚔️ ATK',   value: `**${eff.atk}** *(+${bonus.atk})*`, inline: true },
         { name: '🛡️ DEF',   value: `**${eff.def}** *(+${bonus.def})*`, inline: true },
         { name: '💰 Vàng',  value: `${p.gold}`, inline: true },

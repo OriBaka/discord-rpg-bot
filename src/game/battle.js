@@ -38,6 +38,9 @@ function migrate() {
     )
   `).run();
 
+  const columns = new Set(db.prepare('PRAGMA table_info(battles)').all().map(c => c.name));
+  if (!columns.has('base_max_hp_a')) db.exec('ALTER TABLE battles ADD COLUMN base_max_hp_a INTEGER NOT NULL DEFAULT 0');
+
   // Elite monsters — thêm cột elite_tier vào monsters
   try {
     db.prepare('SELECT elite_tier FROM monsters LIMIT 1').get();
@@ -54,14 +57,14 @@ function createBattle(data) {
   const db = getDb();
   const info = db.prepare(`
     INSERT INTO battles (mode, channel_id, user_a, user_b, monster_id, is_elite,
-      hp_a, hp_b, max_hp_a, max_hp_b, atk_a, atk_b, def_a, def_b, turn)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      hp_a, hp_b, max_hp_a, max_hp_b, atk_a, atk_b, def_a, def_b, turn, base_max_hp_a)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     data.mode, data.channel_id, data.user_a, data.user_b || '',
     data.monster_id || '', data.is_elite || 0,
     data.hp_a, data.hp_b, data.max_hp_a, data.max_hp_b,
     data.atk_a, data.atk_b, data.def_a, data.def_b,
-    data.turn || 'a'
+    data.turn || 'a', data.base_max_hp_a || 0
   );
   return info.lastInsertRowid;
 }
