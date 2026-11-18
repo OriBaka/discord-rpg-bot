@@ -419,3 +419,17 @@ hiển thị HP hiệu dụng; đổi/nhận Aura không hồi máu gốc.
 Tên hiệu ứng xuất hiện trên `%aura`, `%me`, card và hồ sơ web; chưa thêm animation
 hay thông báo Legendary tự động để tránh spam. BXH % không so trực tiếp độ mạnh
 của các hướng build. Kiếm Thất Đại Tội vẫn chỉ thuộc lore.
+
+#### Aura — nút thao tác & so sánh
+
+`%aura` / `/aura` mở bảng có nút **Roll**, **Accept**, **Discard**, **Làm mới**.
+Roll yêu cầu xác nhận trả 2.500 vàng; Accept xác nhận thay Aura đang dùng;
+Discard xác nhận bỏ ô chờ. Các xác nhận là tin nhắn riêng (ephemeral), không spam kênh.
+Bảng so sánh nêu mức tăng/giảm nếu cùng hiệu ứng; khác hiệu ứng chỉ ghi khác hướng build,
+không gán nhãn mạnh hơn chỉ vì % cao hơn. `aura help` vẫn liệt kê đầy đủ hiệu ứng/tier.
+
+Chỉ chủ hồ sơ dùng được nút. Mỗi thay đổi có token trạng thái lưu DB: nút/xác nhận
+cũ sau roll/accept/discard sẽ bị từ chối, không trừ vàng hoặc nhận nhầm ô chờ mới.
+Làm mới mở lại trạng thái hiện tại. Các lệnh text/slash cũ vẫn dùng được; nhận
+trực tiếp bằng `%aura accept` vẫn là một thao tác có chủ ý, không thêm bước bắt buộc.
+Không đổi chi phí, tỷ lệ, buff hoặc giới hạn Aura.

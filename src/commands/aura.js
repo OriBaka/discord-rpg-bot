@@ -32,13 +32,7 @@ module.exports = {
       if (result.error) return msg.reply(result.error);
       notice = sub === 'accept' ? '✅ Đã thay aura đang dùng. Chỉ áp dụng cho trận mới.\n' : 'Đã bỏ ô chờ, giữ aura đang dùng.\n';
     } else if (sub && sub !== 'help') return msg.reply(`Dùng ${p}aura [roll confirm | accept | discard | top | help].`);
-    const state = aura.get(uid);
-    return msg.reply({ embeds: [new EmbedBuilder().setColor(tierInfo(state?.active_tier).color).setTitle('✨ AURA · Khí lực')
-      .setDescription(notice + `**Đang dùng**\n${describe(state)}\n\n**Ô chờ**\n${describe(state, 'pending')}`)
-      .addFields({ name: 'Tỷ lệ & sức mạnh', value: aura.TIERS.map(t => `${t.id}: ${t.chance}% · +${t.min}–${t.max}%`).join('\n') },
-        { name: 'Quy tắc', value: '16 hiệu ứng có xác suất bằng nhau (6,25% mỗi loại), độc lập tier. Một aura duy nhất; không pity. Drop nhân tỷ lệ cơ bản; extra/save cộng điểm %. Có trần công cụ + buff. HP theo tỷ lệ máu, không hồi miễn phí. Ô chờ chưa buff.' },
-        { name: 'Hiệu ứng', value: Object.entries(aura.EFFECTS).map(([id, e]) => `${id}: ${e.name}`).join('\n') },
-        { name: 'Cách dùng', value: `${p}aura roll confirm — ${aura.COST} vàng/lượt\n${p}aura accept — nhận ô chờ, mất aura đang dùng\n${p}aura discard — bỏ ô chờ\n${p}aura top [effect_id] — BXH theo hiệu ứng\nĐã roll ${state?.rolls || 0} lượt · tiêu ${state?.gold_spent || 0} vàng` })] });
+    return msg.reply(require('../game/aura_ui').render(uid, notice, sub === 'help'));
   },
   describe,
 };
