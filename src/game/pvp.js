@@ -104,8 +104,8 @@ function getTopRated(limit = 10) {
 function simulateDuel(p1, p2, stats1, stats2) {
   // p1, p2: player objects (có level, max_hp...)
   // stats1, stats2: { atk, def } effective (đã cộng trang bị + pet)
-  let hp1 = p1.max_hp;
-  let hp2 = p2.max_hp;
+  let hp1 = stats1.max_hp || p1.max_hp;
+  let hp2 = stats2.max_hp || p2.max_hp;
   const log = [];
   let round = 0;
 

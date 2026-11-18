@@ -161,6 +161,7 @@ module.exports = {
       dropText = '*Không tìm thấy gì...*';
     } else {
       for (const d of drops) {
+        if (tb.extraChance > 0 && Math.random() < tb.extraChance) d.qty++;
         addItem(msg.author.id, d.item_id, d.qty);
         gatherQty += d.qty;
         const it = getItem(d.item_id);
@@ -203,7 +204,7 @@ module.exports = {
     const embed = new EmbedBuilder().setColor(0x95A5A6)
       .setTitle(`⛏️ Đào tại ${zone.icon} ${zone.name}`)
       .setDescription(dropText + lvlText + toolText)
-      .setFooter({ text: `+${zone.base_xp} Mining XP • Total Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
+      .setFooter({ text: `+${xpResult.xpGained} Mining XP • Total Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
     return msg.reply({ embeds: [embed], components: [buildAgainRow('mine', msg.author.id, args)] });
   },

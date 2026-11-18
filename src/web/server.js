@@ -83,7 +83,9 @@ function createDashboard({ db, logger = console }) {
         const looks = db.prepare('SELECT type,cosmetic_id FROM cosmetic_equipped WHERE user_id=?').all(id);
         const catalog = require('../game/gold_sinks').COSMETICS;
         const appearance = looks.filter(l => Object.hasOwn(catalog, l.cosmetic_id)).map(l => ({ type: l.type, name: catalog[l.cosmetic_id].name }));
-        return send(200, { ...p, equipment, guild, appearance });
+        const activeAura = db.prepare('SELECT active_stat,active_tier,active_percent FROM player_aura WHERE user_id=? AND active_stat IS NOT NULL').get(id);
+        const aura = activeAura ? { effect: require('../game/aura').effectName(activeAura.active_stat), tier: activeAura.active_tier, percent: activeAura.active_percent } : null;
+        return send(200, { ...p, equipment, guild, appearance, aura });
       }
       if (url.pathname === '/api/market') {
         const where = " FROM market_listings l JOIN items i ON i.id=l.item_id JOIN players p ON p.user_id=l.seller_id WHERE l.created_at>? AND (i.name LIKE ? ESCAPE '\\' OR i.id LIKE ? ESCAPE '\\')";

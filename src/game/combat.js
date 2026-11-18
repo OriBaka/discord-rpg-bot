@@ -57,7 +57,7 @@ function rollCrit() {
 // Mô phỏng 1 trận đánh nhanh, trả về log + kết quả
 function simulateBattle(player, monster) {
   const stats = getEffectiveStats(player);
-  let pHp = player.hp;
+  let pHp = stats.hp;
   let mHp = monster.hp;
   const log = [];
   let round = 0;
@@ -74,7 +74,7 @@ function simulateBattle(player, monster) {
 
     // Quái phản đòn
     const mCrit = rollCrit();
-    let mDmg = damageAfterDef(monster.atk, stats.def, player.max_hp);
+    let mDmg = damageAfterDef(monster.atk, stats.def, stats.max_hp);
     if (mCrit) mDmg = Math.round(mDmg * CRIT_MULT);
     pHp -= mDmg;
     log.push(`💥 ${monster.name} đánh trả **${mDmg}**${mCrit ? ' 💢CHÍ MẠNG' : ''} → Bạn còn **${Math.max(0,pHp)} HP**`);
@@ -87,7 +87,7 @@ function simulateBattle(player, monster) {
   return {
     win,
     timedOut,                       // true = chạm trần vòng (không phải thua)
-    playerHpAfter: Math.max(0, pHp),
+    playerHpAfter: require('./aura').storedHp(pHp, stats.max_hp, player.max_hp),
     monsterHpLeft: Math.max(0, mHp),
     rounds: round,
     log,

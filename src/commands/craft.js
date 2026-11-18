@@ -211,7 +211,7 @@ async function handleCommand(msg, args, type) {
     const toolBonus = jobBuffs.bonus(msg.author.id, jobType, p.level);
     // Nguồn của hiệu ứng có thể là công cụ (búa/dao) hoặc buff consumable —
     // trước đây lấy thẳng toolBonus.tool.name nên crash khi chỉ có buff.
-    const effectSource = () => toolBonus.tool ? toolBonus.tool.name : 'Vật phẩm bổ trợ';
+    const effectSource = () => 'Công cụ / buff / Aura';
     const savedInputs = toolBonus.saveChance > 0 && Math.random() < toolBonus.saveChance;
 
     if (savedInputs) {
@@ -233,7 +233,7 @@ async function handleCommand(msg, args, type) {
     if (bonusQty > 0) { extraCount++; toolNotes.push(`${effectSource()}: **+1 món** ✨`); }
     const madeThisTime = recipe.output_qty + bonusQty;
     totalOut += madeThisTime;
-    totalXp += recipe.xp_gain;
+
     done++;
 
     addItem(msg.author.id, recipe.output_id, madeThisTime);
@@ -243,6 +243,7 @@ async function handleCommand(msg, args, type) {
     // sẽ chỉ được tính ở lần chế thứ 101.
     achievements.trackCraft(msg.author.id, madeThisTime);
     lastXpRes = jobs.addJobXp(msg.author.id, jobType, recipe.xp_gain, achCtx);
+    totalXp += lastXpRes.xpGained;
     for (const a of [...(lastXpRes.achievements || []), ...achievements.checkAndGrant(msg.author.id, achCtx)]) {
       const key = a.id || a.name;
       if (!seenAch.has(key)) { seenAch.add(key); newAchs.push(a); }

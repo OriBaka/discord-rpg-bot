@@ -7,9 +7,49 @@ const TIERS = [
   { id: 'epic', chance: 10, min: 7, max: 9 },
   { id: 'legendary', chance: 2, min: 10, max: 12 },
 ];
+const EFFECTS = {
+  atk: { name: 'Ember Soul', label: 'ATK' },
+  def: { name: 'Iron Will', label: 'DEF' },
+  hp: { name: 'Heartwood', label: 'Max HP' },
+};
+for (const [job, name] of Object.entries({ mining: 'Deep Delver', fishing: 'Tide Scholar', foraging: 'Grove Sage', crafting: 'Forge Scholar', cooking: 'Hearth Scholar' })) {
+  EFFECTS[job + '_xp'] = { name, label: job + ' XP' };
+}
+for (const [job, name] of Object.entries({ mining: 'Earth Whisper', fishing: 'Ocean Call', foraging: 'Wild Bloom' })) {
+  EFFECTS[job + '_drop'] = { name, label: job + ' drop multiplier' };
+  EFFECTS[job + '_extra'] = { name: name + ' Bounty', label: job + ' thêm 1 nguyên liệu / dòng drop' };
+}
+EFFECTS.crafting_save = { name: 'Masterwork', label: 'crafting tiết kiệm toàn bộ nguyên liệu' };
+EFFECTS.cooking_extra = { name: 'Golden Feast', label: 'cooking thêm 1 món' };
+const STAT_KEYS = Object.keys(EFFECTS);
+function effectName(stat) { return EFFECTS[stat]?.name || stat; }
+function percent(user, effect) { const a = get(user); return a?.active_stat === effect ? Math.max(0, Math.min(12, a.active_percent)) : 0; }
+function health(p) {
+  const max = p.max_hp + Math.floor(p.max_hp * percent(p.user_id, 'hp') / 100);
+  return { hp: Math.floor(p.hp * max / p.max_hp), max_hp: max };
+}
+function storedHp(hp, effectiveMax, baseMax) {
+  if (hp <= 0) return 0;
+  return Math.min(baseMax, Math.max(1, Math.ceil(hp * baseMax / effectiveMax)));
+}
+function jobBonus(user, job) {
+  const a = get(user); const n = a ? Math.max(0, Math.min(12, a.active_percent || 0)) / 100 : 0;
+  return { drop: a?.active_stat === job + '_drop' ? n : 0,
+    extra: a?.active_stat === job + '_extra' ? n : 0,
+    save: a?.active_stat === job + '_save' ? n : 0 };
+}
+function jobXp(user, job, amount) {
+  const pct = percent(user, job + '_xp');
+  if (!pct || amount <= 0) return amount;
+  const old = db().prepare('SELECT remainder FROM aura_job_xp WHERE user_id=? AND job=?').get(user, job)?.remainder || 0;
+  const scaled = amount * pct + old;
+  db().prepare('INSERT INTO aura_job_xp VALUES (?,?,?) ON CONFLICT(user_id,job) DO UPDATE SET remainder=excluded.remainder').run(user, job, scaled % 100);
+  return amount + Math.floor(scaled / 100);
+}
 function db() { return require('../db/database'); }
 function migrate() {
-  db().exec(`CREATE TABLE IF NOT EXISTS player_aura (
+  db().exec(`CREATE TABLE IF NOT EXISTS aura_job_xp (user_id TEXT NOT NULL, job TEXT NOT NULL, remainder INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(user_id,job));
+    CREATE TABLE IF NOT EXISTS player_aura (
     user_id TEXT PRIMARY KEY,
     active_stat TEXT, active_tier TEXT, active_percent INTEGER,
     pending_stat TEXT, pending_tier TEXT, pending_percent INTEGER,
@@ -23,7 +63,7 @@ function generate(rng = randomInt) {
   let tier;
   for (const t of TIERS) { if (ticket < t.chance) { tier = t; break; } ticket -= t.chance; }
   if (!tier) throw new Error('Invalid aura random result');
-  return { stat: rng(2) === 0 ? 'atk' : 'def', tier: tier.id, percent: tier.min + rng(tier.max - tier.min + 1) };
+  return { stat: STAT_KEYS[rng(STAT_KEYS.length)], tier: tier.id, percent: tier.min + rng(tier.max - tier.min + 1) };
 }
 function roll(user, now = Date.now(), rng = randomInt) {
   return db().transaction(() => {
@@ -59,9 +99,9 @@ function bonus(user, atk, def) {
   return { atk: aura.active_stat === 'atk' ? Math.floor(atk * aura.active_percent / 100) : 0,
     def: aura.active_stat === 'def' ? Math.floor(def * aura.active_percent / 100) : 0 };
 }
-function top() {
+function top(effect = '') {
   return db().prepare(`SELECT p.name,a.active_stat,a.active_tier,a.active_percent FROM player_aura a
-    JOIN players p ON p.user_id=a.user_id WHERE a.active_stat IS NOT NULL
-    ORDER BY a.active_percent DESC,a.user_id LIMIT 10`).all();
+    JOIN players p ON p.user_id=a.user_id WHERE a.active_stat IS NOT NULL AND (?='' OR a.active_stat=?)
+    ORDER BY a.active_percent DESC,a.user_id LIMIT 10`).all(effect, effect);
 }
-module.exports = { COST, COOLDOWN, TIERS, migrate, get, generate, roll, resolve, bonus, top };
+module.exports = { EFFECTS, STAT_KEYS, effectName, percent, health, storedHp, jobBonus, jobXp, COST, COOLDOWN, TIERS, migrate, get, generate, roll, resolve, bonus, top };

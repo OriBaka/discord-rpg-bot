@@ -5,16 +5,18 @@ const { tierInfo } = require('../game/tiers');
 function describe(s, prefix = 'active') {
   if (!s?.[prefix + '_stat']) return 'Chưa có';
   const tier = s[prefix + '_tier'];
-  return `${tierInfo(tier).emoji} **${tier.toUpperCase()} · ${s[prefix + '_stat'].toUpperCase()} +${s[prefix + '_percent']}%**`;
+  return `${tierInfo(tier).emoji} **${tier.toUpperCase()} · ${aura.effectName(s[prefix + '_stat']) + ' · ' + (aura.EFFECTS[s[prefix + '_stat']]?.label || s[prefix + '_stat'])} +${s[prefix + '_percent']}%**`;
 }
 module.exports = {
-  name: 'aura', aliases: [], description: 'Aura: roll bằng vàng, buff ATK hoặc DEF; aura help để xem tỷ lệ',
+  name: 'aura', aliases: [], description: 'Aura: roll bằng vàng, buff chiến đấu hoặc nghề; aura help để xem tỷ lệ',
   async execute(msg, args = []) {
     const p = getPrefix(); const uid = msg.author.id;
     if (!require('../game/player').getPlayer(uid)) return msg.reply(`Tạo nhân vật trước bằng ${p}start.`);
     const sub = (args[0] || '').toLowerCase();
     if (sub === 'top') {
-      const rows = aura.top();
+      const effect = args[1] || '';
+      if (effect && !Object.hasOwn(aura.EFFECTS, effect)) return msg.reply('ID hiệu ứng không hợp lệ. Xem danh sách bằng aura help.');
+      const rows = aura.top(effect);
       return msg.reply({ embeds: [new EmbedBuilder().setColor(0xD4AF37).setTitle('✨ Aura · Top 10')
         .setDescription(rows.length ? rows.map((r, i) => `${i + 1}. **${r.name}** — ${describe(r)}`).join('\n') : 'Chưa có ai kích hoạt aura.')
         .setFooter({ text: 'Xếp theo % aura đang dùng; không phải tổng sức mạnh nhân vật.' })] });
@@ -34,8 +36,9 @@ module.exports = {
     return msg.reply({ embeds: [new EmbedBuilder().setColor(tierInfo(state?.active_tier).color).setTitle('✨ AURA · Khí lực')
       .setDescription(notice + `**Đang dùng**\n${describe(state)}\n\n**Ô chờ**\n${describe(state, 'pending')}`)
       .addFields({ name: 'Tỷ lệ & sức mạnh', value: aura.TIERS.map(t => `${t.id}: ${t.chance}% · +${t.min}–${t.max}%`).join('\n') },
-        { name: 'Quy tắc', value: 'ATK / DEF: 50–50, giá trị trong mỗi tier chia đều. Một aura duy nhất, không cộng dồn. Không pity hoặc bảo đảm nâng cấp. Bonus làm tròn xuống trên chỉ số cơ bản + trang bị. Ô chờ chưa buff.' },
-        { name: 'Cách dùng', value: `${p}aura roll confirm — ${aura.COST} vàng/lượt\n${p}aura accept — nhận ô chờ, mất aura đang dùng\n${p}aura discard — bỏ ô chờ\n${p}aura top — BXH\nĐã roll ${state?.rolls || 0} lượt · tiêu ${state?.gold_spent || 0} vàng` })] });
+        { name: 'Quy tắc', value: '16 hiệu ứng có xác suất bằng nhau (6,25% mỗi loại), độc lập tier. Một aura duy nhất; không pity. Drop nhân tỷ lệ cơ bản; extra/save cộng điểm %. Có trần công cụ + buff. HP theo tỷ lệ máu, không hồi miễn phí. Ô chờ chưa buff.' },
+        { name: 'Hiệu ứng', value: Object.entries(aura.EFFECTS).map(([id, e]) => `${id}: ${e.name}`).join('\n') },
+        { name: 'Cách dùng', value: `${p}aura roll confirm — ${aura.COST} vàng/lượt\n${p}aura accept — nhận ô chờ, mất aura đang dùng\n${p}aura discard — bỏ ô chờ\n${p}aura top [effect_id] — BXH theo hiệu ứng\nĐã roll ${state?.rolls || 0} lượt · tiêu ${state?.gold_spent || 0} vàng` })] });
   },
   describe,
 };

@@ -206,11 +206,12 @@ function bonus(userId, job, playerLevel = 999) {
   const jobTools = require('./job_tools');
   const tool = jobTools.bonus(userId, job, playerLevel);
   const buff = get(userId, job);
+  const aura = require('./aura').jobBonus(userId, job);
 
-  const drop = Math.min(CAPS.drop, (tool.dropMult - 1) + (buff ? buff.drop_bonus : 0));
+  const drop = Math.min(CAPS.drop, (tool.dropMult - 1) + (buff ? buff.drop_bonus : 0) + aura.drop);
   const qty = Math.min(CAPS.qty, (tool.qtyMult - 1) + (buff ? buff.qty_bonus : 0));
-  const extra = Math.min(CAPS.extra, tool.extraChance + (buff ? buff.extra_chance : 0));
-  const save = Math.min(CAPS.save, tool.saveChance + (buff ? buff.save_chance : 0));
+  const extra = Math.min(CAPS.extra, tool.extraChance + (buff ? buff.extra_chance : 0) + aura.extra);
+  const save = Math.min(CAPS.save, tool.saveChance + (buff ? buff.save_chance : 0) + aura.save);
 
   return {
     tool: tool.tool,

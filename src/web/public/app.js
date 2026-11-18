@@ -78,6 +78,7 @@ async function render() {
       const meta = el('div', undefined, 'profile-meta');
       meta.append(el('span', 'Lv. ' + p.level), el('span', classes[p.primary_class] || 'Tân thủ'), el('span', p.guild ? `[${p.guild.tag}] ${p.guild.name}` : 'Chưa có bang hội'));
       for (const a of p.appearance) meta.append(el('span', a.name));
+      if (p.aura) meta.append(el('span', `${p.aura.effect} · ${p.aura.tier} +${p.aura.percent}%`));
       card.append(meta, el('h3', 'Trang bị đang mặc'), table(['VỊ TRÍ', 'TRANG BỊ', 'PHẨM CHẤT'], p.equipment.map(e => [e.slot, e.name, e.tier]), 'Nhà thám hiểm chưa trang bị vật phẩm.'));
       card.append(el('p', 'Túi đồ, vàng cá nhân và tiến độ truyện không được công khai trên web.', 'muted'));
       $('profile').replaceChildren(card);

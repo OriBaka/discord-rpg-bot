@@ -140,6 +140,7 @@ module.exports = {
       dropText = '🎣 *Không cắn câu... thử lại lần sau!*';
     } else {
       for (const d of drops) {
+        if (tb.extraChance > 0 && Math.random() < tb.extraChance) d.qty++;
         addItem(msg.author.id, d.item_id, d.qty);
         gatherQty += d.qty;
         const it = getItem(d.item_id);
@@ -178,7 +179,7 @@ module.exports = {
     const embed = new EmbedBuilder().setColor(0x3498DB)
       .setTitle(`🎣 Câu tại ${zone.icon} ${zone.name}`)
       .setDescription(dropText + lvlText + `\n\n🧰 **${bestRod.name}** — ${jobTools.describe(toolStat)}` + buffText)
-      .setFooter({ text: `+${zone.base_xp} Fishing XP • Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
+      .setFooter({ text: `+${xpResult.xpGained} Fishing XP • Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
     return msg.reply({ embeds: [embed], components: [buildAgainRow('fish', msg.author.id, args)] });
   },
