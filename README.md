@@ -433,3 +433,25 @@ cũ sau roll/accept/discard sẽ bị từ chối, không trừ vàng hoặc nh�
 Làm mới mở lại trạng thái hiện tại. Các lệnh text/slash cũ vẫn dùng được; nhận
 trực tiếp bằng `%aura accept` vẫn là một thao tác có chủ ý, không thêm bước bắt buộc.
 Không đổi chi phí, tỷ lệ, buff hoặc giới hạn Aura.
+
+### 🛡️ Các dòng trang bị & hỗ trợ đầu game
+
+- **Dawnwatch Lv.1 / Trailwarden Lv.12 / Emberguard Lv.25**: 33 món mới trong các loại
+  hiện có (sword/wand/bow, 5 slot giáp, shield/focus/quiver).
+  Đây là các dòng song song theo ngân sách chỉ số hiện tại, không phải tier mới,
+  không có set bonus hoặc chỉ số ẩn, không thay thế/xóa đồ người chơi đang dùng.
+- Dawnwatch có bán shop và chế tạo; Trailwarden/Emberguard chế tạo. Mỗi món có
+  recipe/nguồn thực, tra `%find dawnwatch`, `%find trailwarden`, `%find emberguard`.
+  Giáp đều là light dùng được cho ba class; vũ khí/tay phụ theo class tương ứng.
+- **5 món giáp Dawnwatch tổng 300 vàng**: `dawnwatch_helm` 55, `dawnwatch_coat` 80,
+  `dawnwatch_leggings` 55, `dawnwatch_boots` 55, `dawnwatch_gloves` 55.
+  Mua bằng `%buy <id>`, rồi `%equip <id>`; không tự động lấy vàng hoặc ghi đè trang bị.
+- Chọn class vẫn nhận vũ khí miễn phí và mặc sẵn nếu slot trống. Không thêm buff quái
+  hay sửa HP/growth class; trần sức mạnh cùng bậc giữ nguyên.
+- Lv.1–5 nhận **3 potion_s một lần** khi start/chọn class. Người chơi cũ Lv.1–5 gõ
+  `%start` để nhận nếu chưa nhận. Đổi class/gõ lại không nhân quà; marker không xóa
+  khi admin reset nhân vật. Không tặng thêm vàng hoặc đồ cấp cao.
+- `%heal` Lv.1–5: 25% giá thường, làm tròn lên và chặn 5–20 vàng; cooldown mặc định
+  60 giây. Từ Lv.6 dùng giá/cooldown cũ (10 phút). Admin override cooldown vẫn ưu tiên.
+- Chỉ khuyến khích khởi đầu bằng `%hunt slime`, `%story start`, dùng bình máu khi cần;
+  `%hunt` auto vẫn giữ nguyên chọn quái để không âm thầm thay đổi trải nghiệm cũ.
