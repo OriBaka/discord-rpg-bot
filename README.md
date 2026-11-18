@@ -455,3 +455,38 @@ Không đổi chi phí, tỷ lệ, buff hoặc giới hạn Aura.
   60 giây. Từ Lv.6 dùng giá/cooldown cũ (10 phút). Admin override cooldown vẫn ưu tiên.
 - Chỉ khuyến khích khởi đầu bằng `%hunt slime`, `%story start`, dùng bình máu khi cần;
   `%hunt` auto vẫn giữ nguyên chọn quái để không âm thầm thay đổi trải nghiệm cũ.
+
+### 🔨 Trang bị chế tạo độc quyền & chiến lợi phẩm săn quái
+
+Các dòng mới dưới đây không bán ở shop NPC. “Độc quyền nguồn” chỉ cách tạo món
+đồ trong gameplay; người chơi vẫn có thể giao dịch theo cơ chế hiện có, admin vẫn
+có công cụ quản trị. Không đổi nguồn của các món cũ, không thêm set bonus/buff ẩn.
+
+**33 món chỉ chế tạo** (mỗi dòng 3 vũ khí theo class, 5 giáp light dùng chung,
+shield/focus/quiver):
+
+| Dòng | Cấp mặc | Crafting | Nguyên liệu mỗi món |
+| --- | --- | --- | --- |
+| Runeforged | 30 | 25 | 4 mithril_ingot + 2 gem_ruby |
+| Rimeforged | 40 | 35 | 7 mithril_ingot + 3 dragon_scale |
+| Starforged | 45 | 45 | 10 mithril_ingot + 4 dragon_bone |
+
+Tra `%find runeforged_sword` (hoặc wand/bow/helm/coat/leggings/boots/gloves/shield/focus/quiver).
+Ví dụ chế tạo: `%craft recipe_runeforged_sword`. Vũ khí ATK 34/48/62;
+giáp và tay phụ dùng ngân sách chỉ số cùng bậc hiện tại.
+
+**Dòng Trophy — chỉ rơi qua hunt**, không recipe, không shop NPC:
+
+| ID | Slot / cấp mặc | Quái cần săn | Tỷ lệ mỗi trận thắng |
+| --- | --- | --- | --- |
+| trophy_cinder_ring | Nhẫn / 25 | ember_phoenix | 6% |
+| trophy_obsidian_pendant | Dây chuyền / 25 | obsidian_golem | 5% |
+| trophy_abyss_pendant | Dây chuyền / 30 | abyss_leviathan | 8% |
+| trophy_glacier_sigil | Đặc biệt / 30 | glacier_wyrm | 5% |
+| trophy_void_pendant | Dây chuyền / 40 | void_harbinger | 5% |
+| trophy_star_ring | Nhẫn / 45 | star_devourer | 8% |
+
+Ví dụ `%hunt ember_phoenix`, `%find trophy_cinder_ring`. Star Devourer là quái
+mạnh trong Astral Ruins, không phải raid boss mới. Tỷ lệ trên là tỷ lệ gốc, không
+bảo đảm rơi sau số lượt cố định; modifier drop hiện có vẫn áp dụng. Trang bị nhận
+được vẫn cần đủ cấp để mặc. Không có bất kỳ nguồn nhận Kiếm Thất Đại Tội nào.
