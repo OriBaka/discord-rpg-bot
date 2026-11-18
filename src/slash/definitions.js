@@ -582,6 +582,15 @@ const definitions = [
       return a ? [a, i.options.getBoolean('confirm') ? 'confirm' : ''] : [];
     }),
   },
+  {
+    data: new SlashCommandBuilder().setName('find').setDescription('Tra nguồn kiếm và công dụng vật phẩm')
+      .addStringOption(o => o.setName('query').setDescription('ID hoặc tên vật phẩm').setRequired(true).setMaxLength(80)),
+    handler: simpleHandler('find', i => [i.options.getString('query')]),
+  },
+  {
+    data: new SlashCommandBuilder().setName('card').setDescription('Xuất profile card PNG của bạn'),
+    handler: simpleHandler('card'),
+  },
   // ====== Help ======
   {
     data: new SlashCommandBuilder().setName('help').setDescription('Hướng dẫn các lệnh'),

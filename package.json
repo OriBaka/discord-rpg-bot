@@ -13,6 +13,7 @@
     "db:benchmark": "node tools/db_benchmark.js"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^1.1.1",
     "better-sqlite3": "^11.3.0",
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.5"

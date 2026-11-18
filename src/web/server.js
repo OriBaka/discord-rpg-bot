@@ -50,6 +50,15 @@ function createDashboard({ db, logger = console }) {
         total: db.prepare(count).get(...args).n, page, pageSize: PAGE_SIZE };
     }
     try {
+      if (url.pathname === '/api/items') {
+        const where = " FROM items WHERE id LIKE ? ESCAPE '\\' OR name LIKE ? ESCAPE '\\'";
+        return send(200, paged('SELECT id,name,type,tier' + where + ' ORDER BY id', 'SELECT COUNT(*) n' + where, [like, like]));
+      }
+      const itemMatch = url.pathname.match(/^\/api\/items\/([A-Za-z0-9_-]{1,100})$/);
+      if (itemMatch) {
+        const result = require('../game/handbook').lookup(db, itemMatch[1]);
+        return send(result ? 200 : 404, result || { error: 'Không tìm thấy vật phẩm.' });
+      }
       if (url.pathname === '/api/overview') {
         return send(200, {
           players: db.prepare('SELECT COUNT(*) n FROM players').get().n,

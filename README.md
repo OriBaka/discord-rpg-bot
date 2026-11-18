@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **47 lệnh** prefix + **51 slash command** (36 người chơi + 15 admin)
+- **49 lệnh** prefix + **53 slash command** (38 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -369,3 +369,22 @@ Slash: `/aura action:roll confirm:True`, `/aura action:accept`.
 - `%buy coal 10`: mua 10 coal với **25 vàng/món**; bán NPC vẫn **8 vàng/món**.
 - Tỷ lệ là mỗi lượt thử, không bảo đảm lượt nào cũng có. Các nguyên liệu khác và nguồn coal từ quái không đổi.
 - Migration áp dụng cho DB cũ một lần; giữ các chỉnh sửa admin sau đó.
+
+
+### 📚 Sổ tay nguồn kiếm & profile card
+
+- `%find coal` / `/find query:coal`: tìm bằng ID hoặc một phần tên (tối đa 80 ký tự).
+  Tra shop, quái, khai thác, công thức, hộp quà, quest, thành tựu công khai và thưởng story;
+  xem cả công thức dùng vật phẩm làm nguyên liệu. Alias `%handbook`.
+- Nguồn đọc trực tiếp DB, không hardcode tỷ lệ cũ. Tỷ lệ trước bonus, không bảo đảm mỗi lượt rơi.
+  Đây không phải danh sách mọi cơ chế admin/sự kiện: không công khai redeem code hoặc phần thưởng thành tựu ẩn.
+  Kết quả dài trong Discord được rút gọn; xem đầy đủ trong **Sổ tay** trên dashboard.
+- `%card` / `/card`: tạo PNG 1000×600 cho chính nhân vật của bạn. Có nền pixel theo class,
+  tên, màu/danh hiệu đã mua, level/XP, HP/ATK/DEF, bang hội, pet, Aura đang dùng.
+  Chỉ số giống hàm effective stats (chưa cộng bonus pet riêng của PvP), không công khai vàng/túi đồ.
+- Ảnh ghép cục bộ bằng `@napi-rs/canvas`, font DejaVu Sans có license trong `assets/fonts`.
+  Không gọi AI, tải avatar hoặc cần API key lúc chạy. Cần cho bot quyền Attach Files.
+  Tối đa hai lượt dựng ảnh đồng thời mỗi process; gửi lại card để cập nhật dữ liệu.
+- Giữ `%me` dạng embed như trước. Chưa thêm hiệu ứng Aura mới hoặc cơ chế thần khí.
+
+Ảnh minh họa profile card: [xem PNG mẫu](docs/previews/profile-card.png) — dữ liệu nhân vật minh họa, không phải dữ liệu production.

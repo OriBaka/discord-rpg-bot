@@ -41,7 +41,7 @@ function buildSections(prefix) {
     {
       name: '👤 Nhân vật', terms: ['nhan vat', 'character', 'profile', 'toi'],
       lines: [
-        `\`${prefix}start\` tạo nhân vật`,
+        `\`${prefix}start\` tạo nhân vật • \`${prefix}card\` xuất profile card PNG`,
         `\`${prefix}me\` xem hồ sơ • \`${prefix}me cosmetics\` mua màu/danh hiệu`,
         `\`${prefix}inv [filter]\` xem túi đồ (vd \`${prefix}inv weapon\`, \`${prefix}inv ring\`)`,
         `\`${prefix}gear [@user]\` xem trang bị đang mặc`,
@@ -90,6 +90,7 @@ function buildSections(prefix) {
     {
       name: '📚 Tra cứu', terms: ['tra cuu', 'info', 'xem thong tin'],
       lines: [
+        `\`${prefix}find <id hoặc tên>\` tra nguồn kiếm & công dụng vật phẩm`,
         `\`${prefix}info help\` xem các lệnh tra cứu`,
         `\`${prefix}info item <id>\` chi tiết item`,
         `\`${prefix}info mob <id>\` chi tiết quái`,
