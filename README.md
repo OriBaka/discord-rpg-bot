@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **50 lệnh** prefix + **54 slash command** (39 người chơi + 15 admin)
+- **51 lệnh** prefix + **55 slash command** (40 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -552,3 +552,51 @@ có action status/start/leave/top/help và lựa chọn floor 1–15.
   30 phút không thao tác hoặc hòa sau 120 cặp lượt, không thưởng, thử lại miễn phí.
 - Quái Tháp không có trong danh sách hunt/battle: không thể lách nguồn thưởng.
   Không thêm bất kỳ cách nhận Kiếm Thất Đại Tội nào. Chương truyện 2 chưa thay đổi.
+
+
+### 📖 Kỹ năng chiến thuật v2
+
+`%skills` (alias `%skill`) xem chiêu, cấp mở, chi phí và gợi ý combo;
+`%skills info <id>` xem chi tiết; `%skills equip <1–4 id>` lưu bộ chiêu theo class;
+`%skills reset` trả về mặc định. Có slash `/skills action:… ids:…`.
+Mở chiêu tự động, miễn phí, không điểm kỹ năng, không phí đổi build.
+Ba chiêu cũ mở từ Lv.1; ba chiêu mới ở Lv.12/25/40. Mặc định lấy tối đa bốn chiêu
+đầu đã mở; có thể đổi để chọn các chiêu cấp cao. Loadout lưu riêng từng class.
+
+- **Chiến Binh:** Slash lấy Đà → Whirlwind tiêu Đà; Charge ngắt nhịp;
+  Guard Break (12) phá giáp, Iron Guard (25) thủ/lấy Đà, Execute (40) kết liễu.
+- **Pháp Sư:** Fireball thiêu đốt theo ATK thay vì 10 sát thương cố định;
+  Heal hồi/giải debuff, Freeze ngắt nhịp; Arcane Burst (12) tiêu Burn để tăng
+  sát thương, Barrier (25) chống đòn, Meteor (40) tiêu Burn để xuyên giáp.
+- **Cung Thủ:** Trap/Volley tạo Dấu săn → Aimed Shot tiêu dấu; Steady Aim (12)
+  tăng công/đánh dấu, Evasive Step (25) phòng thủ/thanh tẩy, Piercing Arrow (40)
+  xuyên giáp/tiêu dấu. Aimed Shot không còn mặc định 400% ATK.
+
+**Luật lượt mới áp dụng cho battle/tower mới:**
+
+- Đầu trận 60/100 năng lượng, +8 cuối mỗi lượt của mình. Attack/Defend hồi thêm
+  18; Slash/Fireball thêm 8. Kỹ năng mạnh tiêu 10–40; không còn spam miễn phí.
+- Attack/Defend/Flee luôn có, không chiếm ô loadout. Nút kỹ năng hiện chi phí/CD,
+  vô hiệu khi thiếu năng lượng hoặc đang hồi; server vẫn kiểm tra nếu giả nút.
+  `%battle resume` mở lại bảng trận đang có sau restart/mất tin nhắn, không reset
+  HP, cooldown hay năng lượng.
+- CD tính theo lượt của chính người dùng: CD3 nghĩa là phải đi ba lượt khác
+  trước khi dùng lại. Mất lượt vì khống chế vẫn giảm CD và hồi 8 năng lượng.
+- DoT gây sát thương đầu lượt người mang; chết do DoT không thể ra chiêu/hồi máu.
+  Chỉ hiệu ứng của người vừa đi mới giảm thời lượng cuối lượt; không tick cả hai
+  phía mỗi hành động nữa. Hiệu ứng mới được thêm sau bước tick.
+- Defend tồn tại qua đòn địch, giảm sát thương trực tiếp; không chặn DoT.
+  Hiệu ứng trùng tên làm mới, không cộng chồng nhiều bản. Tối đa giảm trực tiếp 60%.
+- Hết Choáng/Đóng băng sẽ có một lượt bản thân miễn khống chế tiếp; không khóa
+  đối thủ vô hạn bằng cách đổi loại CC. Không thể dùng Heal để bỏ qua lượt bị CC.
+- Sát thương trực tiếp dùng chung giảm thương tỷ lệ; chiêu xuyên giáp ghi rõ phần
+  DEF bị bỏ. Combo dùng trạng thái thật trong snapshot và tiêu dấu tương ứng.
+- Class/loadout/chỉ số chụp lúc bắt đầu, đổi ngoài trận không thêm chiêu vào trận
+  đang có. Nút battle mới có token vòng chống bấm lặp; boss hiện hành động dự kiến. Boss v2 Roar ở lượt riêng thứ 3 và Rage
+  ở lượt riêng thứ 6, lặp chu kỳ (sửa lỗi nhịp cũ khiến Roar không bao giờ ra).
+- Trận cũ lưu trước bản nâng cấp giữ rules v1 và ba chiêu cũ cho tới kết thúc;
+  không bị reset hoặc chuyển luật giữa trận. Loadout và năng lượng sống qua restart.
+
+Hunt nhanh, duel mô phỏng và raid tuần giữ cơ chế cũ, **không tự dùng bộ chiêu v2**;
+không sửa quái/growth class, không thêm nguồn nhận Kiếm Thất Đại Tội. Chương 2
+vẫn chưa triển khai. Xem `%skills info <id>` để lấy hệ số/chi phí chính xác hiện tại.

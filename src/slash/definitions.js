@@ -603,6 +603,12 @@ const definitions = [
       return action === 'start' && floor !== null ? [action, String(floor)] : [action];
     }),
   },
+  {
+    data: new SlashCommandBuilder().setName('skills').setDescription('Kỹ năng, combo và bộ chiêu theo class')
+      .addStringOption(o => o.setName('action').setDescription('Hành động').addChoices(...['list', 'info', 'equip', 'reset'].map(value => ({ name: value, value }))))
+      .addStringOption(o => o.setName('ids').setDescription('ID chiêu, cách nhau bằng khoảng trắng khi equip').setMaxLength(180)),
+    handler: simpleHandler('skills', i => [i.options.getString('action') || 'list', ...(i.options.getString('ids') || '').trim().split(/\s+/).filter(Boolean)]),
+  },
   // ====== Help ======
   {
     data: new SlashCommandBuilder().setName('help').setDescription('Hướng dẫn các lệnh'),

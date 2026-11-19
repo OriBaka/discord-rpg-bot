@@ -15,7 +15,7 @@ function render(b, notice = '') {
   }
   const rows = cmd.buildActionButtons(b.id, run.class_id);
   for (const row of rows) for (const button of row.components) {
-    const action = button.data.custom_id.split(':').at(-1);
+    const action = button.data.custom_id.split(':')[3];
     button.setCustomId(`tower:act:${b.id}:${b.round}:${action}`);
   }
   return { embeds: [embed], components: rows };

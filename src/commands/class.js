@@ -163,7 +163,7 @@ module.exports = {
           { name: '🗡️ Vũ khí khởi đầu', value: starterId
             ? (equipped ? `\`${starterId}\` **(đã mặc sẵn)**` : `\`${starterId}\` (đã vào túi — gõ \`${prefix}equip ${starterId}\`)`)
             : '—' },
-          { name: '💡 Tip', value: `Khởi đầu bằng \`${prefix}hunt slime\`. Bộ giáp Dawnwatch đủ 5 món chỉ 300 vàng: \`${prefix}find dawnwatch\`. Gói 3 potion_s hỗ trợ chỉ nhận một lần, dùng \`${prefix}use potion_s\`.` },
+          { name: '💡 Tip', value: `Khởi đầu bằng \`${prefix}hunt slime\`. Bộ giáp Dawnwatch đủ 5 món chỉ 300 vàng: \`${prefix}find dawnwatch\`. Xem kỹ năng: \`${prefix}skills\`. Gói 3 potion_s hỗ trợ chỉ nhận một lần, dùng \`${prefix}use potion_s\`.` },
         );
       return msg.reply({ embeds: [embed] });
     }

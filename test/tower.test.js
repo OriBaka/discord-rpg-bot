@@ -147,7 +147,7 @@ test('all three classes can clear every floor at recommended full-gear baseline 
         return (skill.id === 'heal' && b.hp_a < b.max_hp_a * 0.65 ? 9999 : 0) + (r.dmg || 0)
           + (r.applyBuff?.key === 'burn' ? 20 : 0) + (['stun', 'freeze'].includes(r.applyBuff?.key) ? b.atk_b : 0);
       };
-      const skill = skills.getSkillsForClass(cls).filter(s => !cooldowns[s.id]).sort((a, z) => score(z) - score(a))[0];
+      const skill = JSON.parse(b.skills_a).map(skills.getSkill).filter(s => !cooldowns[s.id] && b.energy_a >= (s.cost || 0)).sort((a, z) => score(z) - score(a))[0];
       const result = act(id, b, skill?.id || 'attack');
       assert.ok(!result.error, result.error); b = result.battle;
     }

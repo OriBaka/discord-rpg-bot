@@ -41,6 +41,17 @@ function migrate() {
   const columns = new Set(db.prepare('PRAGMA table_info(battles)').all().map(c => c.name));
   if (!columns.has('base_max_hp_a')) db.exec('ALTER TABLE battles ADD COLUMN base_max_hp_a INTEGER NOT NULL DEFAULT 0');
 
+  // Existing rows retain v1 rules; new rows opt into tactical rules explicitly.
+  const tacticalColumns = {
+    rules_version: 'INTEGER NOT NULL DEFAULT 1',
+    class_a: "TEXT NOT NULL DEFAULT ''", class_b: "TEXT NOT NULL DEFAULT ''",
+    skills_a: "TEXT NOT NULL DEFAULT '[]'", skills_b: "TEXT NOT NULL DEFAULT '[]'",
+    energy_a: 'INTEGER NOT NULL DEFAULT 60', energy_b: 'INTEGER NOT NULL DEFAULT 60',
+  };
+  for (const [name, type] of Object.entries(tacticalColumns)) {
+    if (!columns.has(name)) db.exec(`ALTER TABLE battles ADD COLUMN ${name} ${type}`);
+  }
+
   // Elite monsters — thêm cột elite_tier vào monsters
   try {
     db.prepare('SELECT elite_tier FROM monsters LIMIT 1').get();
@@ -55,18 +66,29 @@ function migrate() {
 // === CRUD ===
 function createBattle(data) {
   const db = getDb();
-  const info = db.prepare(`
-    INSERT INTO battles (mode, channel_id, user_a, user_b, monster_id, is_elite,
-      hp_a, hp_b, max_hp_a, max_hp_b, atk_a, atk_b, def_a, def_b, turn, base_max_hp_a)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    data.mode, data.channel_id, data.user_a, data.user_b || '',
-    data.monster_id || '', data.is_elite || 0,
-    data.hp_a, data.hp_b, data.max_hp_a, data.max_hp_b,
-    data.atk_a, data.atk_b, data.def_a, data.def_b,
-    data.turn || 'a', data.base_max_hp_a || 0
-  );
-  return info.lastInsertRowid;
+  return db.transaction(() => {
+    const info = db.prepare(`
+      INSERT INTO battles (mode, channel_id, user_a, user_b, monster_id, is_elite,
+        hp_a, hp_b, max_hp_a, max_hp_b, atk_a, atk_b, def_a, def_b, turn, base_max_hp_a)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      data.mode, data.channel_id, data.user_a, data.user_b || '',
+      data.monster_id || '', data.is_elite || 0,
+      data.hp_a, data.hp_b, data.max_hp_a, data.max_hp_b,
+      data.atk_a, data.atk_b, data.def_a, data.def_b,
+      data.turn || 'a', data.base_max_hp_a || 0
+    );
+    const id = info.lastInsertRowid;
+    const snapshots = {};
+    for (const side of ['a', 'b']) {
+      const user = data['user_' + side];
+      const p = user ? require('./player').getPlayer(user) : null;
+      snapshots['class_' + side] = p?.primary_class || '';
+      snapshots['skills_' + side] = JSON.stringify(p ? require('./skill_builds').get(user, p.primary_class, p.level) : []);
+    }
+    updateBattle(id, { ...snapshots, rules_version: 2 });
+    return id;
+  })();
 }
 
 function getBattle(id) {
@@ -90,7 +112,22 @@ function setMessageId(id, messageId) {
 // action: skill id ('slash', 'attack', 'defend', 'flee', ...)
 // actor: 'a' or 'b'
 // Returns: { newBattleState, log, ended }
-function processAction(battle, actor, actionId) {
+function processAction(snapshot, actor, actionId) {
+  const db = getDb();
+  return db.transaction(() => {
+    const current = getBattle(snapshot.id);
+    if (!current || current.status !== 'active' || current.round !== snapshot.round || current.turn !== actor || !['a', 'b'].includes(actor)) return { error: 'Lượt đã thay đổi hoặc trận đã kết thúc.' };
+    if (current.rules_version < 2) return processLegacyAction(current, actor, actionId);
+    const result = require('./tactical_turn').evaluate(current, actor, actionId);
+    if (result.error) return result;
+    updateBattle(current.id, result.updates);
+    if (result.winner) return endBattle(current.id, result.winner, result.log);
+    return { log: result.log, ended: false };
+  })();
+}
+
+function processLegacyAction(battle, actor, actionId) {
+  const skills = require('./legacy_skills');
   const skill = skills.getSkill(actionId);
   if (!skill) return { error: `Skill '${actionId}' không tồn tại` };
 
@@ -234,7 +271,7 @@ function processAction(battle, actor, actionId) {
 }
 
 function endBattle(id, winner, log) {
-  updateBattle(id, { status: 'ended', winner });
+  updateBattle(id, { status: 'ended', winner, last_log: (log || []).join('\n') });
   const battle = getBattle(id);
   return { log, ended: true, winner, battle };
 }
@@ -243,10 +280,11 @@ function endBattle(id, winner, log) {
 function pickMobAction(battle) {
   // Boss có AI đơn giản: turn 3 dùng roar (giảm atk player), turn 6 dùng rage
   if (battle.is_elite === 2) {
-    if (battle.round % 6 === 0) {
+    const turn = battle.rules_version >= 2 ? Math.ceil(battle.round / 2) : battle.round;
+    if (turn % 6 === 0) {
       return 'rage';
     }
-    if (battle.round % 3 === 0) {
+    if (turn % 3 === 0) {
       return 'roar';
     }
   }

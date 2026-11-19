@@ -555,6 +555,9 @@ async function handle(interaction) {
       const battleRow = battleModule.getBattle(battleId);
       if (!battleRow) return interaction.reply({ content: '❌ Battle không tồn tại.', ephemeral: true });
       if (battleRow.mode === 'tower') return interaction.reply({ content: 'Dùng bảng tower để thao tác trận Tháp.', ephemeral: true });
+      if (battleRow.rules_version >= 2 && (Number(rest[2]) !== battleRow.round || interaction.message?.id !== battleRow.message_id || (interaction.channelId || interaction.channel?.id) !== battleRow.channel_id)) {
+        return interaction.reply({ content: 'Bảng hoặc lượt đã cũ; dùng nút mới nhất hoặc battle resume để mở lại.', ephemeral: true });
+      }
       if (battleRow.status !== 'active') return interaction.reply({ content: '❌ Battle đã kết thúc.', ephemeral: true });
       if (battleRow.user_a !== interaction.user.id && battleRow.user_b !== interaction.user.id) {
         return interaction.reply({ content: '❌ Không phải trận của bạn.', ephemeral: true });
@@ -574,7 +577,8 @@ async function handle(interaction) {
       const skill = skills.getSkill(skillId);
       if (!skill) return interaction.reply({ content: '❌ Skill không tồn tại.', ephemeral: true });
       const player = require('./game/player').getPlayer(interaction.user.id);
-      if (skill.class && skill.class !== (player.primary_class || 'melee')) {
+      const battleClass = battleRow.rules_version >= 2 ? battleRow[isSideA ? 'class_a' : 'class_b'] : (player.primary_class || 'melee');
+      if (skill.class && skill.class !== battleClass) {
         return interaction.reply({ content: `❌ Skill này dành cho class ${skill.class}, bạn là ${player.primary_class || 'chưa chọn'}.`, ephemeral: true });
       }
 
