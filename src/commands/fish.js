@@ -25,10 +25,6 @@ function hasTool(userId, weaponType) {
   `).all(userId, weaponType);
 }
 
-function tierBonusMult(tier) {
-  return { common: 1.0, rare: 1.15, epic: 1.3, legendary: 1.5 }[tier] || 1.0;
-}
-
 function formatTime(ms) {
   const s = Math.ceil(ms / 1000);
   if (s < 60) return `${s}s`;
@@ -88,13 +84,14 @@ module.exports = {
       const lowest = rods.sort((a, b) => (a.min_level || 0) - (b.min_level || 0))[0];
       return msg.reply(`🔒 Fishing Rod của bạn (**${lowest.name}**) cần LV **${lowest.min_level}** để dùng (bạn LV ${p.level}). Mua rod thấp hơn ở shop.`);
     }
-    const bestRod = usable.sort((a, b) => {
-      const order = { legendary: 4, epic: 3, rare: 2, common: 1 };
-      return (order[b.tier] || 0) - (order[a.tier] || 0);
-    })[0];
-    // Bonus = công cụ (vĩnh viễn) + buff consumable (tạm thời), có trần
-    const toolStat = jobTools.getTool(bestRod.id) || { drop_bonus: 0, qty_bonus: 0 };
+    // Display the exact tool used by the shared bonus calculation. Tier alone
+    // cannot distinguish wooden/copper, iron/silver, or gold/mithril tools.
     const tb = jobBuffs.bonus(msg.author.id, JOB, p.level);
+    const bestRod = tb.tool || usable[0];
+    const toolStat = tb.tool || { drop_bonus: 0, qty_bonus: 0 };
+    const lockedTool = rods.filter(t => (t.min_level || 0) > p.level)
+      .sort((a, b) => a.min_level - b.min_level)[0];
+    const lockedText = lockedTool ? `\n🔒 ${lockedTool.name} cần cấp nhân vật ${lockedTool.min_level} (bạn Lv.${p.level}), chưa dùng được.` : '';
     const mult = tb.qtyMult;
     const dropMult = tb.dropMult;
 
@@ -178,7 +175,7 @@ module.exports = {
 
     const embed = new EmbedBuilder().setColor(0x3498DB)
       .setTitle(`🎣 Câu tại ${zone.icon} ${zone.name}`)
-      .setDescription(dropText + lvlText + `\n\n🧰 **${bestRod.name}** — ${jobTools.describe(toolStat)}` + buffText)
+      .setDescription(dropText + lvlText + `\n\n🧰 **${bestRod.name}** — ${jobTools.describe(toolStat)}${lockedText}` + buffText)
       .setFooter({ text: `+${xpResult.xpGained} Fishing XP • Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
     return msg.reply({ embeds: [embed], components: [buildAgainRow('fish', msg.author.id, args)] });
