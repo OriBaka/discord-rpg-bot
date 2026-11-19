@@ -186,7 +186,9 @@ function renderInventoryPage({ userId, filter, sort = 'default', page = 0, playe
       const eq = it.equipped ? ' 🟢' : '';
       const sb = it.soulbound ? ' 🔗' : '';
       const lvReq = it.min_level || 0;
-      const lvLock = (lvReq > 0 && playerLevel < lvReq) ? ` 🔒LV${lvReq}` : '';
+      const job = require('../game/level_req').jobRequirement(it);
+      const currentLevel = job ? require('../game/jobs').getJob(userId, job).level : playerLevel;
+      const lvLock = job ? ` ${currentLevel < lvReq ? '🔒' : '📗'}${job} Lv.${lvReq}` : (lvReq > 0 && currentLevel < lvReq) ? ` 🔒LV${lvReq}` : '';
       const val = sort === 'value' ? ` — ${it.free * it.sellPrice}💰` : '';
       return `${header}${t.emoji} ${it.name} ×${it.qty} \`${it.id}\`${eq}${sb}${lvLock}${val}`;
     },

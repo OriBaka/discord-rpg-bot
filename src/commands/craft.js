@@ -208,7 +208,7 @@ async function handleCommand(msg, args, type) {
     }
     if (missing) { stoppedEarly = true; break; }
 
-    const toolBonus = jobBuffs.bonus(msg.author.id, jobType, p.level);
+    const toolBonus = jobBuffs.bonus(msg.author.id, jobType, job.level);
     // Nguồn của hiệu ứng có thể là công cụ (búa/dao) hoặc buff consumable —
     // trước đây lấy thẳng toolBonus.tool.name nên crash khi chỉ có buff.
     const effectSource = () => 'Công cụ / buff / Aura';

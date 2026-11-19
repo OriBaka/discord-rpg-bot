@@ -304,6 +304,9 @@ test('%craft xN: buff có lượt chỉ áp cho đúng số lần còn lượt',
   const buffItems = jobBuffs.getBuffItemsByJob('crafting');
   assert.ok(buffItems.length > 0, 'DB không có vật phẩm bổ trợ crafting');
   const buffRow = buffItems.find(b => (b.charges || 0) > 0) || buffItems[0];
+  const jobs = require('../src/game/jobs');
+  jobs.getJob(uid, 'crafting');
+  jobs.updateJob(uid, 'crafting', { level: buffRow.min_level });
   const act = jobBuffs.activate(uid, buffRow.item_id);
   assert.ok(act.ok, `activate lỗi: ${act.error}`);
 

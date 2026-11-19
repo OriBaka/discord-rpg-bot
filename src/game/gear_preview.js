@@ -10,7 +10,8 @@ function preview(player, item, slotArg) {
   const stats = require('./player').getEffectiveStats;
   const warnings = [];
   if (!require('./classes').canEquipItem(player, item).ok) warnings.push('Không đáp ứng class.');
-  if (player.level < item.min_level) warnings.push(`Cần Lv.${item.min_level}.`);
+  const gate = require('./level_req').canUse(player, item);
+  if (!gate.ok) warnings.push(`Cần ${gate.job ? gate.job + ' ' : ''}Lv.${gate.req}.`);
   const owned = require('../db/database').prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(player.user_id, item.id)?.qty || 0;
   const needed = Object.values(next).filter(id => id === item.id).length;
   if (owned < needed) warnings.push(`Cần sở hữu ${needed} bản, đang có ${owned}.`);

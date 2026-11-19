@@ -31,7 +31,7 @@ function itemFieldValue(it) {
   // máu đều hiện như "không hồi gì" khi so sánh.
   const h = healText(it);
   if (h) stats.push(`❤️ ${h.replace('+', '')}`);
-  if (it.min_level) stats.push(`🔒LV${it.min_level}`);
+  if (it.min_level) stats.push(`🔒${require('../game/level_req').jobRequirement(it) || ''} LV${it.min_level}`);
   if (it.class_req) stats.push(`[${it.class_req}]`);
   return `${t.emoji} **${it.name}**\n${stats.join(' • ') || '_(no stats)_'}\n💰 ${it.price || '?'} • sell ${it.sell || '?'}\n${require('../game/gear_identity').describe(it)}`;
 }

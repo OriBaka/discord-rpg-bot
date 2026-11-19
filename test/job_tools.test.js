@@ -36,6 +36,11 @@ const newPlayer = (level = 50) => {
   const uid = `JT${++seq}`;
   player.createPlayer(uid, `j${seq}`);
   if (level) player.updatePlayer(uid, { level });
+  // Job fixtures now explicitly qualify for their profession tools/buffs.
+  for (const job of require('../src/game/jobs').JOB_TYPES) {
+    require('../src/game/jobs').getJob(uid, job);
+    require('../src/game/jobs').updateJob(uid, job, { level: level || 1 });
+  }
   return uid;
 };
 

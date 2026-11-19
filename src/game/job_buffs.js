@@ -161,12 +161,13 @@ function get(userId, job) {
 
 // Kích hoạt buff. Trả về { ok, buff, replaced, error }.
 // KHÔNG tự trừ item — command %use làm việc đó (để không mất item khi lỗi).
-function activate(userId, itemId, playerLevel = 999) {
+function activate(userId, itemId, jobLevel = null) {
   const stat = getBuffItem(itemId);
   if (!stat) return { ok: false, error: 'not_buff' };
   const item = db.prepare('SELECT * FROM items WHERE id = ?').get(itemId);
   if (!item) return { ok: false, error: 'no_item' };
-  if ((item.min_level || 1) > playerLevel) return { ok: false, error: 'level', item };
+  jobLevel ??= require('./jobs').getJob(userId, stat.job).level;
+  if ((item.min_level || 1) > jobLevel) return { ok: false, error: 'level', item, job: stat.job, current: jobLevel };
 
   const old = db.prepare('SELECT * FROM job_buffs WHERE user_id = ? AND job = ?').get(userId, stat.job);
   db.prepare(`INSERT INTO job_buffs
@@ -202,10 +203,14 @@ function clear(userId, job) {
 
 // Bonus TỔNG của một nghề = công cụ (vĩnh viễn) + buff (tạm thời), có trần.
 // Đây là cửa duy nhất để lấy hệ số — tránh mỗi lệnh tự cộng khác nhau.
-function bonus(userId, job, playerLevel = 999) {
+function bonus(userId, job, jobLevel = null) {
+  jobLevel ??= require('./jobs').getJob(userId, job).level;
   const jobTools = require('./job_tools');
-  const tool = jobTools.bonus(userId, job, playerLevel);
-  const buff = get(userId, job);
+  const tool = jobTools.bonus(userId, job, jobLevel);
+  const active = get(userId, job);
+  const required = active ? db.prepare('SELECT min_level FROM items WHERE id=?').get(active.item_id)?.min_level || 1 : 0;
+  // Existing buffs earned under the old character-level rule pause, not vanish.
+  const buff = active && jobLevel >= required ? active : null;
   const aura = require('./aura').jobBonus(userId, job);
 
   const drop = Math.min(CAPS.drop, (tool.dropMult - 1) + (buff ? buff.drop_bonus : 0) + aura.drop);

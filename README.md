@@ -655,3 +655,17 @@ slash `/skills action:events` hoặc `action:claim ids:<event_id>` cũng dùng �
 Hết hạn chỉ chặn **nhận mới**, không thu hồi sách đã nhận hoặc chiêu đã học.
 Limited là lựa chọn tình huống, không buff ẩn hay cộng chỉ số ngoài trận; không
 cần chiêu limited để hoàn thành Tháp. Không thêm cách nhận Kiếm Thất Đại Tội.
+
+### 🛠️ Cấp dùng đồ nghề
+
+Công cụ và vật phẩm buff nghề nay dùng **cấp nghề tương ứng**, không dùng cấp
+nhân vật: cuốc → Mining, cần câu → Fishing, giỏ → Foraging, dao/gia vị → Cooking,
+búa/dầu tôi → Crafting. Ví dụ Copper Pickaxe cần **Mining Lv.6**, nhân vật Lv.1
+vẫn dùng được nếu Mining đủ cấp; nhân vật Lv.99 nhưng Mining Lv.1 vẫn dùng cuốc
+khởi đầu. Không cần equip, tự chọn công cụ đủ cấp tốt nhất trong túi.
+
+Mốc yêu cầu, giá, chỉ số và đồ sở hữu giữ nguyên; không reset cấp/XP nghề.
+`%job`, `%shop`, `%inv`, `%info item` và thông báo khóa công cụ hiển thị cấp nghề.
+Trang bị chiến đấu/bí kíp kỹ năng vẫn dùng cấp nhân vật, không đổi theo nghề.
+Buff đã bật theo luật cấp nhân vật cũ mà nghề chưa đủ cấp được tạm ngưng bonus,
+không mất số lượt còn lại; tự hiệu lực lại khi nghề đủ cấp.

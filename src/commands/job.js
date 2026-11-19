@@ -65,7 +65,7 @@ module.exports = {
     // Không có dòng này thì người chơi mua công cụ xong không biết nó có tác
     // dụng gì, và cũng không biết nghề nào còn thiếu công cụ.
     const toolLines = jobs.JOB_TYPES.map(jt => {
-      const b = jobBuffs.bonus(target.id, jt, p.level);
+      const b = jobBuffs.bonus(target.id, jt, allJobs[jt].level);
       const weak = b.tool ? '' : ' *(chưa có — mua ở shop)*';
       let line = `${jobs.JOB_INFO[jt].icon} **${jt}**: ${b.tool ? b.tool.name : '—'}${weak}` +
         (b.tool ? ` — ${jobTools.describe(b.tool)}` : '');
