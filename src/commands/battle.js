@@ -24,7 +24,7 @@ function fmtBuffs(buffsJson) {
   const keys = Object.keys(b);
   if (keys.length === 0) return '';
   return keys.map(k => {
-    const emoji = { burn: '🔥', freeze: '❄️', stun: '💫', defend: '🛡️', def_down: '📉', atk_down: '⬇️', atk_up: '⬆️' }[k] || '❔';
+    const emoji = { burn: '🔥', freeze: '❄️', stun: '💫', defend: '🛡️', def_down: '📉', atk_down: '⬇️', atk_up: '⬆️', mark: '🎯', momentum: '⚔️', control_guard: '🔰' }[k] || '❔';
     return `${emoji}${b[k].turns}`;
   }).join(' ');
 }
@@ -70,33 +70,29 @@ function buildBattleEmbed(battleRow, playerName, mobName) {
         inline: false,
       },
     );
+  if (battleRow.rules_version >= 2) {
+    embed.addFields({ name: '⚡ Năng lượng & nhịp chiến đấu', value: `Bạn: ${battleRow.energy_a}/100 · +8 cuối lượt; Attack/Defend thêm +18.\nThời lượng hiệu ứng và CD tính theo lượt của chủ sở hữu.\n${battleRow.is_elite === 2 ? 'Boss dự kiến: ' + require('../game/skills').getSkill(battle.pickMobAction({ ...battleRow, round: battleRow.turn === 'a' ? battleRow.round + 1 : battleRow.round })).name : 'Địch: Attack'}` });
+  }
   if (cdA) embed.setFooter({ text: `Cooldowns: ${cdA}` });
   return embed;
 }
 
 function buildActionButtons(battleId, playerClass) {
-  const classSkills = skills.getSkillsForClass(playerClass);
-  const rows = [];
-
-  // Row 1: basic actions
-  const basicRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`bt:act:${battleId}:attack`).setLabel('Attack').setEmoji('⚔️').setStyle(ButtonStyle.Danger),
-    new ButtonBuilder().setCustomId(`bt:act:${battleId}:defend`).setLabel('Defend').setEmoji('🛡️').setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`bt:act:${battleId}:flee`).setLabel('Flee').setEmoji('🏃').setStyle(ButtonStyle.Secondary),
-  );
-  rows.push(basicRow);
-
-  // Row 2: class skills
-  if (classSkills.length > 0) {
-    const skillRow = new ActionRowBuilder();
-    for (const s of classSkills.slice(0, 5)) {
-      skillRow.addComponents(
-        new ButtonBuilder().setCustomId(`bt:act:${battleId}:${s.id}`).setLabel(s.name.replace(/^[^\w]+\s/, '')).setStyle(ButtonStyle.Primary),
-      );
-    }
-    rows.push(skillRow);
-  }
-
+  const b = battle.getBattle(battleId);
+  const modern = b?.rules_version >= 2;
+  const catalog = modern ? skills : require('../game/legacy_skills');
+  const selected = modern ? JSON.parse(b.skills_a).map(catalog.getSkill).filter(Boolean) : catalog.getSkillsForClass(playerClass);
+  const cooldowns = JSON.parse(b?.cooldowns_a || '{}');
+  const buttons = ['attack', 'defend', 'flee'].map(catalog.getSkill);
+  const make = s => {
+    const cd = cooldowns[s.id] || 0, cost = s.cost || 0;
+    return new ButtonBuilder().setCustomId(`bt:act:${battleId}:${s.id}${modern ? ':' + b.round : ''}`)
+      .setLabel(`${s.name.replace(/^[^\w]+\s/, '')}${modern && s.class ? ` · ${cost} NL` : ''}${cd ? ` · CD${cd}` : ''}`.slice(0, 80))
+      .setStyle(s.class ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setDisabled(!!(modern && s.class && (cd > 0 || b.energy_a < cost)));
+  };
+  const rows = [new ActionRowBuilder().addComponents(buttons.map(make))];
+  if (selected.length) rows.push(new ActionRowBuilder().addComponents(selected.slice(0, 4).map(make)));
   return rows;
 }
 
@@ -127,7 +123,9 @@ module.exports = {
           `**Phân biệt:**\n` +
           `• \`${prefix}hunt\` — đánh quái thường trong zone (nhanh, tự động)\n` +
           `• \`${prefix}battle\` — trận đánh theo lượt với elite/boss (có kỹ năng, buff)\n\n` +
-          `**Trong trận:** dùng nút bấm để Đánh / Kỹ năng / Thủ / Trốn.`
+          `**Trong trận:** dùng nút bấm để Đánh / Kỹ năng / Thủ / Trốn.\n` +
+          `\`${prefix}skills\` xem combo và chọn bộ chiêu (áp dụng trận mới).\n` +
+          `\`${prefix}battle resume\` mở lại bảng trận đang có; không hồi HP/tài nguyên.`
         )
         .setFooter({ text: `${prefix}battle list để xem danh sách` });
       return msg.reply({ embeds: [embed] });
@@ -151,6 +149,16 @@ module.exports = {
         .setDescription(lines.join('\n'))
         .setFooter({ text: `${prefix}battle <mob_id> để bắt đầu • ⭐ elite / 👑 boss` });
       return msg.reply({ embeds: [embed] });
+    }
+
+    // Reopen a persisted panel after restart/deleted message/failed Discord update.
+    if (sub === 'resume') {
+      const current = db.prepare("SELECT * FROM battles WHERE user_a=? AND mode='pve' AND status='active' ORDER BY id DESC LIMIT 1").get(p.user_id);
+      if (!current) return msg.reply('Không có trận battle đang diễn ra. Trận Tháp mở lại bằng tower.');
+      const opponent = db.prepare('SELECT name FROM monsters WHERE id=?').get(current.monster_id);
+      const sent = await msg.reply({ embeds: [buildBattleEmbed(current, p.name, opponent?.name || 'Địch')], components: buildActionButtons(current.id, p.primary_class) });
+      battle.updateBattle(current.id, { channel_id: msg.channel.id, message_id: sent.id });
+      return;
     }
 
     // === Admin seed ===

@@ -346,6 +346,7 @@ runMigrate('../game/aura', 'migrateAura');
 runMigrate('../game/adventurer_gear', 'migrateAdventurerGear');
 runMigrate('../game/exclusive_gear', 'migrateExclusiveGear');
 runMigrate('../game/tower', 'migrateTower');
+runMigrate('../game/skill_builds', 'migrateSkillBuilds');
 
 // Apply now for normal startup, then again after deferred circular migrations.
 const dbMaintenance = require('./optimize');
