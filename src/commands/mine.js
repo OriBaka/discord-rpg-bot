@@ -27,11 +27,6 @@ function hasTool(userId, weaponType) {
   `).all(userId, weaponType);
 }
 
-// Tier bonus: pickaxe cao hơn = qty +% khi drop
-function tierBonusMult(tier) {
-  return { common: 1.0, rare: 1.15, epic: 1.3, legendary: 1.5 }[tier] || 1.0;
-}
-
 function formatTime(ms) {
   const s = Math.ceil(ms / 1000);
   if (s < 60) return `${s}s`;
@@ -99,15 +94,14 @@ module.exports = {
       const lowest = picks.sort((a, b) => (a.min_level || 0) - (b.min_level || 0))[0];
       return msg.reply(`🔒 Pickaxe của bạn (**${lowest.name}**) cần LV **${lowest.min_level}** để dùng (bạn LV ${p.level}). Mua pickaxe thấp hơn ở shop.`);
     }
-    // Chọn pickaxe tier cao nhất trong số usable
-    const bestPick = usable.sort((a, b) => {
-      const order = { legendary: 4, epic: 3, rare: 2, common: 1 };
-      return (order[b.tier] || 0) - (order[a.tier] || 0);
-    })[0];
-    // Bonus = công cụ (vĩnh viễn) + buff consumable (tạm thời), có trần.
-    // Lấy qua jobBuffs.bonus để mọi lệnh dùng đúng một công thức.
-    const toolStat = jobTools.getTool(bestPick.id) || { drop_bonus: 0, qty_bonus: 0 };
+    // Display the exact tool used by the shared bonus calculation. Tier alone
+    // cannot distinguish wooden/copper, iron/silver, or gold/mithril tools.
     const tb = jobBuffs.bonus(msg.author.id, JOB, p.level);
+    const bestPick = tb.tool || usable[0];
+    const toolStat = tb.tool || { drop_bonus: 0, qty_bonus: 0 };
+    const lockedTool = picks.filter(t => (t.min_level || 0) > p.level)
+      .sort((a, b) => a.min_level - b.min_level)[0];
+    const lockedText = lockedTool ? `\n🔒 ${lockedTool.name} cần cấp nhân vật ${lockedTool.min_level} (bạn Lv.${p.level}), chưa dùng được.` : '';
     const mult = tb.qtyMult;
     const dropMult = tb.dropMult;
 
@@ -195,7 +189,7 @@ module.exports = {
 
     // Công cụ + thông số hiện trong DESCRIPTION (footer bị Discord thu nhỏ và
     // cắt, mà đây là thông tin người chơi cần thấy để biết mình nên nâng cấp gì)
-    let toolText = `\n\n🧰 **${bestPick.name}** — ${jobTools.describe(toolStat)}`;
+    let toolText = `\n\n🧰 **${bestPick.name}** — ${jobTools.describe(toolStat)}${lockedText}`;
     if (tb.buff) {
       const left = jobBuffs.consume(msg.author.id, JOB);
       toolText += `\n${jobBuffs.describeActive(tb.buff)}` + (left === 0 ? ' — **vừa hết lượt**' : '');
