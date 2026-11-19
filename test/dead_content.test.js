@@ -46,6 +46,12 @@ function collectSources() {
   for (const r of db.prepare('SELECT reward_item FROM quests').all()) {
     for (const part of (r.reward_item || '').split(',')) add(part.split(':')[0], 'quest');
   }
+  // Limited skill tomes are deliberately dormant templates until an admin
+  // opens a capped event. The claim path is exercised in skill_tomes.test.js;
+  // do not seed live events merely to satisfy this catalog audit.
+  for (const s of require('../src/game/skill_tomes').catalog()) {
+    if (s.source.kind === 'event') add(require('../src/game/skill_tomes').bookId(s.id), 'admin_skill_event_template');
+  }
   return src;
 }
 

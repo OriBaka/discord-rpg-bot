@@ -57,7 +57,7 @@ function buildSections(prefix) {
         `\`${prefix}hunt list\` xem các khu vực`,
         `\`${prefix}hunt <zone>\` săn ở khu vực cụ thể`,
         `\`${prefix}hunt <mob_id>\` săn quái chỉ định`,
-        `\`${prefix}skills\` xem kỹ năng/combo • skills equip <1–4 id> chọn bộ chiêu`,
+        `\`${prefix}skills\` xem kỹ năng/bí kíp • skills equip <1–4 id> • skills events/claim cho sự kiện`,
         `\`${prefix}tower\` Tháp Canh 15 tầng • start / leave / top`,
         `\`${prefix}battle list\` xem elite/boss`,
         `\`${prefix}battle <mob_id>\` trận turn-based có skill`,

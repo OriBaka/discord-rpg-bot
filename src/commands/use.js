@@ -21,6 +21,14 @@ module.exports = {
     }
     if (!hasItem(msg.author.id, id, qty)) return msg.reply(`❌ Bạn không có đủ ${qty}× vật phẩm này.`);
 
+    // Skill tomes are not healing consumables. Validate atomically before consuming.
+    const tomes = require('../game/skill_tomes');
+    if (tomes.fromBook(id)) {
+      if (qty !== 1) return msg.reply('Mỗi lần chỉ học một bí kíp; không tiêu sách trùng.');
+      const result = tomes.learn(msg.author.id, id);
+      return msg.reply(result.error || `📖 Đã học vĩnh viễn ${result.skill.name}. Dùng ${prefix}skills equip <1–4 id>, thêm ${result.skill.id} vào bộ chiêu. Áp dụng trận mới.`);
+    }
+
     // ===== LOOTBOX =====
     if (it.type === 'lootbox') {
       const table = lootbox.getLootTable(id);
