@@ -91,16 +91,24 @@ function migrate() {
   }
 }
 
+function jobRequirement(item) {
+  const id = item?.id || item?.item_id;
+  if (!id) return null;
+  return require('./job_tools').getTool(id)?.job || require('./job_buffs').getBuffItem(id)?.job || null;
+}
+
 // Runtime check helpers
 function canUse(player, item) {
   if (!item) return { ok: true };
   const req = item.min_level || 0;
   if (req <= 0) return { ok: true };
-  if (player.level < req) {
-    return { ok: false, req, current: player.level };
+  const job = jobRequirement(item);
+  const current = job ? require('./jobs').getJob(player.user_id, job).level : player.level;
+  if (current < req) {
+    return { ok: false, req, current, ...(job ? { job } : {}) };
   }
   return { ok: true };
 }
 
-module.exports = { migrate, inferMinLevel, canUse };
+module.exports = { migrate, inferMinLevel, canUse, jobRequirement };
  

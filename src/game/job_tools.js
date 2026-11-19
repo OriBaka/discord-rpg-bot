@@ -165,13 +165,14 @@ function getToolsByJob(job) {
 
 // Công cụ tốt nhất người chơi ĐANG CÓ và ĐỦ CẤP cho nghề này.
 // Không đòi equip: công cụ nằm trong túi, đúng quy ước của %mine/%fish.
-function bestTool(userId, job, playerLevel = 999) {
+function bestTool(userId, job, jobLevel = null) {
+  jobLevel ??= require('./jobs').getJob(userId, job).level;
   const rows = db.prepare(`SELECT jt.*, i.name, i.tier, i.min_level
     FROM inventory inv
     JOIN items i      ON i.id = inv.item_id
     JOIN job_tools jt ON jt.item_id = inv.item_id
     WHERE inv.user_id = ? AND inv.qty > 0 AND jt.job = ? AND COALESCE(i.min_level, 0) <= ?`)
-    .all(userId, job, playerLevel);
+    .all(userId, job, jobLevel);
   if (rows.length === 0) return null;
   rows.sort((a, b) => {
     const lv = (b.min_level || 0) - (a.min_level || 0);
@@ -183,8 +184,8 @@ function bestTool(userId, job, playerLevel = 999) {
 
 // Gói bonus đã chuẩn hoá để command dùng thẳng.
 // drop/qty là hệ số nhân (1 = không đổi) — tránh mỗi lệnh tự cộng trừ khác nhau.
-function bonus(userId, job, playerLevel = 999) {
-  const tool = bestTool(userId, job, playerLevel);
+function bonus(userId, job, jobLevel = null) {
+  const tool = bestTool(userId, job, jobLevel);
   const st = tool || { drop_bonus: 0, qty_bonus: 0, extra_chance: 0, save_chance: 0 };
   return {
     tool,

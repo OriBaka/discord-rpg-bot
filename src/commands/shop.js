@@ -72,11 +72,13 @@ function shopFilters(all) {
   return [{ key: 'all', label: 'All', emoji: '🏪' }, ...cats];
 }
 
-function formatShopLine(row, playerLevel) {
+function formatShopLine(row, playerLevel, userId) {
   const emoji = tierInfo(row.tier).emoji;
   const classTag = row.class_req ? ` [${row.class_req}]` : '';
   const lv = row.min_level || 0;
-  const lvTag = lv > 0 ? (playerLevel != null && playerLevel < lv ? ` 🔒LV${lv}` : ` 📗LV${lv}`) : '';
+  const job = require('../game/level_req').jobRequirement(row);
+  if (job) playerLevel = require('../game/jobs').getJob(userId, job).level;
+  const lvTag = job ? ` ${playerLevel < lv ? '🔒' : '📗'}${job} Lv.${lv}` : lv > 0 ? (playerLevel != null && playerLevel < lv ? ` 🔒LV${lv}` : ` 📗LV${lv}`) : '';
   return `${emoji} ${row.name}${classTag}${lvTag} — **${row.price}** 💰\n   \`${prefix()}buy ${row.item_id}\``;
 }
 function prefix() { return require('../game/prefix').getPrefix(); }
@@ -103,7 +105,7 @@ function renderShopPage({ msg, userId, filter, page, replyFn, playerGold, player
     page,
     title: `🏪 Cửa Hàng — ${filterLabel}`,
     color: 0xEB459E,
-    formatItem: (r) => formatShopLine(r, playerLevel),
+    formatItem: (r) => formatShopLine(r, playerLevel, userId),
     footer: `Vàng: ${playerGold} 💰${playerLevel != null ? ` • LV ${playerLevel}` : ''}`,
   });
   return replyFn({ embeds: [embed], components });

@@ -79,19 +79,19 @@ module.exports = {
     if (rods.length === 0) {
       return msg.reply(`🎣 Bạn cần **Fishing Rod** để câu! Mua ở shop (\`${require('../game/prefix').getPrefix()}shop\`).`);
     }
-    const usable = rods.filter(rd => (rd.min_level || 0) <= p.level);
+    const usable = rods.filter(rd => (rd.min_level || 0) <= job.level);
     if (usable.length === 0) {
       const lowest = rods.sort((a, b) => (a.min_level || 0) - (b.min_level || 0))[0];
-      return msg.reply(`🔒 Fishing Rod của bạn (**${lowest.name}**) cần LV **${lowest.min_level}** để dùng (bạn LV ${p.level}). Mua rod thấp hơn ở shop.`);
+      return msg.reply(`🔒 Fishing Rod của bạn (**${lowest.name}**) cần Fishing Lv.**${lowest.min_level}** để dùng (nghề Lv.${job.level}). Mua rod thấp hơn ở shop.`);
     }
     // Display the exact tool used by the shared bonus calculation. Tier alone
     // cannot distinguish wooden/copper, iron/silver, or gold/mithril tools.
-    const tb = jobBuffs.bonus(msg.author.id, JOB, p.level);
+    const tb = jobBuffs.bonus(msg.author.id, JOB, job.level);
     const bestRod = tb.tool || usable[0];
     const toolStat = tb.tool || { drop_bonus: 0, qty_bonus: 0 };
-    const lockedTool = rods.filter(t => (t.min_level || 0) > p.level)
+    const lockedTool = rods.filter(t => (t.min_level || 0) > job.level)
       .sort((a, b) => a.min_level - b.min_level)[0];
-    const lockedText = lockedTool ? `\n🔒 ${lockedTool.name} cần cấp nhân vật ${lockedTool.min_level} (bạn Lv.${p.level}), chưa dùng được.` : '';
+    const lockedText = lockedTool ? `\n🔒 ${lockedTool.name} cần cấp nghề Fishing ${lockedTool.min_level} (bạn Lv.${job.level}), chưa dùng được.` : '';
     const mult = tb.qtyMult;
     const dropMult = tb.dropMult;
 

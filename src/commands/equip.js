@@ -47,7 +47,7 @@ module.exports = {
     const { canUse } = require('../game/level_req');
     const lvCheck = canUse(p, it);
     if (!lvCheck.ok) {
-      return msg.reply(`🔒 **${it.name}** yêu cầu LV **${lvCheck.req}** để trang bị (bạn LV ${lvCheck.current}).`);
+      return msg.reply(`🔒 **${it.name}** yêu cầu ${lvCheck.job || 'nhân vật'} LV **${lvCheck.req}** để trang bị (hiện tại LV ${lvCheck.current}).`);
     }
 
     // Xác định slot

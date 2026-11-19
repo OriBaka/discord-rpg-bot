@@ -60,10 +60,10 @@ module.exports = {
     const buffStat = jobBuffs.getBuffItem(id);
     if (buffStat) {
       if (qty > 1) return msg.reply('💡 Vật phẩm bổ trợ chỉ dùng 1 cái mỗi lần.');
-      const res = jobBuffs.activate(msg.author.id, id, p.level);
+      const res = jobBuffs.activate(msg.author.id, id);
       if (!res.ok) {
         if (res.error === 'level') {
-          return msg.reply(`🔒 **${res.item.name}** cần Lv.${res.item.min_level} (bạn Lv.${p.level}).`);
+          return msg.reply(`🔒 **${res.item.name}** cần ${res.job} Lv.${res.item.min_level} (nghề hiện tại Lv.${res.current}).`);
         }
         return msg.reply('❌ Không dùng được vật phẩm này.');
       }

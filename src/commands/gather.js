@@ -96,7 +96,7 @@ module.exports = {
     jobs.setCooldown(msg.author.id, JOB);
     // Foraging KHÔNG bắt buộc công cụ (khác %mine/%fish) — giỏ hái chỉ là
     // bổ trợ: có thì tăng cơ hội rơi, không có vẫn hái được.
-    const toolBonus = jobBuffs.bonus(msg.author.id, JOB, p.level);
+    const toolBonus = jobBuffs.bonus(msg.author.id, JOB, job.level);
     const drops = gz.rollDrops(zoneId, { chanceMult: toolBonus.dropMult });
 
     // Chuỗi may mắn: chỉ tăng khi trúng, đứt khi trượt (giống mine/fish)

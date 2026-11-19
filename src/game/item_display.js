@@ -115,7 +115,8 @@ function statPairs(it) {
     // heal và heal_pct cùng mô tả "hồi máu" — chỉ hiện cái đang có tác dụng
     if (key === 'heal' && Number(it.heal_pct) > 0) continue;
     if (key === 'min_level' && Number(v) <= 1) continue;   // Lv.1 là mặc định, khỏi rườm
-    out.push({ name: label, value: fmt(v, it) });
+    const job = key === 'min_level' ? require('./level_req').jobRequirement(it) : null;
+    out.push({ name: job ? '🔒 Cấp nghề yêu cầu' : label, value: job ? `${job} Lv.${v}` : fmt(v, it) });
   }
   if (['weapon', 'armor', 'offhand', 'accessory'].includes(it.type)) out.push({ name: '⚖️ Hướng trang bị', value: require('./gear_identity').describe(it) });
   if (it.image_url) out.push({ name: '🖼️ Ảnh', value: 'đã gắn' });
@@ -147,7 +148,7 @@ function oneLine(it, { tierInfo, equipped = false, levelLock = 0 } = {}) {
   if (it.def) bits.push(`🛡️${it.def}`);
   const h = healText(it);
   if (h) bits.push(`❤️${h.replace('+', '')}`);
-  if (it.min_level > 1) bits.push(`Lv.${it.min_level}`);
+  if (it.min_level > 1) bits.push(`${require('./level_req').jobRequirement(it) || ''} Lv.${it.min_level}`.trim());
   if (levelLock) bits.push(`🔒LV${levelLock}`);
   if (equipped) bits.push('🟢');
   if (it.soulbound) bits.push('🔗');

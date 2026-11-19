@@ -36,6 +36,11 @@ const newPlayer = (level = 50) => {
   const uid = `JB${++seq}`;
   player.createPlayer(uid, `b${seq}`);
   if (level) player.updatePlayer(uid, { level });
+  // Job fixtures now explicitly qualify for their profession tools/buffs.
+  for (const job of require('../src/game/jobs').JOB_TYPES) {
+    require('../src/game/jobs').getJob(uid, job);
+    require('../src/game/jobs').updateJob(uid, job, { level: level || 1 });
+  }
   return uid;
 };
 // %mine cần cooldown hết hạn giữa các lần
@@ -92,7 +97,7 @@ test('%use từ chối khi thiếu cấp và KHÔNG trừ item', async () => {
   player.addItem(uid, 'torch_oil', 1);   // bậc 2 mở ở Lv.25
   const m = fakeMessage(uid);
   await useCmd.execute(m, ['torch_oil'], '%');
-  assert.match(out(m), /cần Lv\.25/, out(m));
+  assert.match(out(m), /cần mining Lv\.25/, out(m));
   assert.strictEqual(db.prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(uid, 'torch_oil').qty, 1);
   assert.strictEqual(jobBuffs.get(uid, 'mining'), null);
 });
