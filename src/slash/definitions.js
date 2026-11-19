@@ -593,6 +593,16 @@ const definitions = [
     data: new SlashCommandBuilder().setName('card').setDescription('Xuất profile card PNG của bạn'),
     handler: simpleHandler('card'),
   },
+  {
+    data: new SlashCommandBuilder().setName('tower').setDescription('Tháp Canh 15 tầng, thưởng lần đầu, không mất HP/vàng')
+      .addStringOption(o => o.setName('action').setDescription('Hành động').addChoices(...['status', 'start', 'leave', 'top', 'help'].map(value => ({ name: value, value }))))
+      .addIntegerOption(o => o.setName('floor').setDescription('Tầng muốn luyện lại hoặc tầng kế tiếp').setMinValue(1).setMaxValue(15)),
+    handler: simpleHandler('tower', i => {
+      const action = i.options.getString('action') || 'status';
+      const floor = i.options.getInteger('floor');
+      return action === 'start' && floor !== null ? [action, String(floor)] : [action];
+    }),
+  },
   // ====== Help ======
   {
     data: new SlashCommandBuilder().setName('help').setDescription('Hướng dẫn các lệnh'),

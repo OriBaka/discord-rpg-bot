@@ -57,6 +57,7 @@ function buildSections(prefix) {
         `\`${prefix}hunt list\` xem các khu vực`,
         `\`${prefix}hunt <zone>\` săn ở khu vực cụ thể`,
         `\`${prefix}hunt <mob_id>\` săn quái chỉ định`,
+        `\`${prefix}tower\` Tháp Canh 15 tầng • start / leave / top`,
         `\`${prefix}battle list\` xem elite/boss`,
         `\`${prefix}battle <mob_id>\` trận turn-based có skill`,
         `\`${prefix}heal\` nghỉ quán trọ (cooldown 10 phút)`,
