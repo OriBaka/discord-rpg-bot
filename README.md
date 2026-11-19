@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **49 lệnh** prefix + **53 slash command** (38 người chơi + 15 admin)
+- **50 lệnh** prefix + **54 slash command** (39 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -528,3 +528,27 @@ Trang bị cũ được áp hướng khi tính chỉ số, không cần xóa/nh�
 viết đè vật phẩm. Combat nhanh, battle theo lượt, duel và raid dùng chung chỉ số
 hiệu lực; trận theo lượt đang diễn ra giữ snapshot như trước. Kiếm Thất Đại Tội
 không có hướng mới và vẫn tuyệt đối chỉ ở lore.
+
+### 🏯 Tháp Canh — 15 tầng thử trang bị
+
+`%tower` xem hồ sơ hoặc mở lại trận; `%tower start [tầng]` vào tầng kế / luyện
+lại tầng đã mở; `%tower leave` rời trận; `%tower top` xem BXH. Slash `/tower`
+có action status/start/leave/top/help và lựa chọn floor 1–15.
+
+- 15 tầng cố định, boss ở tầng 5/10/15; cấp khuyến nghị tăng từ 5 tới 45 (không
+  khóa cấp cứng). Đánh theo lượt bằng Attack/Defend/Flee và kỹ năng class.
+- Đây là thử thách **HP mô phỏng**: bắt đầu đầy HP, không ghi HP trận về nhân vật,
+  không thu phí, không mất vàng khi thua hoặc thoát. Có thể luyện cả khi HP thật
+  đang cạn. Class và chỉ số hiệu lực (trang bị/nâng cấp/Aura) chụp lúc bắt đầu;
+  thay build chỉ có hiệu lực ở trận mới.
+- Lưu tầng cao nhất qua restart; chỉ mở tầng kế tiếp, thua không tụt tầng.
+- Mỗi tầng thưởng lần đầu **100 + 40 × tầng vàng**, nhận tự động và chỉ một lần
+  trên mỗi tài khoản; đánh lại không thưởng. Không XP, drop, quest kill hay GXP.
+- Mốc 5/10/15 có danh hiệu **Người nghe chuông / Người giữ lửa / Người giữ bình
+  minh**, chỉ trưng bày trong hồ sơ tower, không buff. BXH ưu tiên tầng cao rồi
+  thời gian chạm mốc sớm; không có thưởng BXH để farm.
+- Một trận theo lượt tại một thời điểm; `%tower` mở lại bảng đang đánh và vô hiệu
+  bảng cũ. Nút chỉ chủ trận dùng được, có kiểm tra vòng chống bấm lặp. Hết hạn sau
+  30 phút không thao tác hoặc hòa sau 120 cặp lượt, không thưởng, thử lại miễn phí.
+- Quái Tháp không có trong danh sách hunt/battle: không thể lách nguồn thưởng.
+  Không thêm bất kỳ cách nhận Kiếm Thất Đại Tội nào. Chương truyện 2 chưa thay đổi.

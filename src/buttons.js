@@ -96,6 +96,7 @@ async function finalizeBattle(interaction, battleRow, log) {
 
 async function handle(interaction) {
   const customId = interaction.customId;
+  if (customId.startsWith('tower:')) return require('./game/tower_ui').handle(interaction);
   if (customId.startsWith('aura:')) return require('./game/aura_ui').handle(interaction);
   const parts = customId.split(':');
   const [domain, action, ...rest] = parts;
@@ -553,6 +554,7 @@ async function handle(interaction) {
 
       const battleRow = battleModule.getBattle(battleId);
       if (!battleRow) return interaction.reply({ content: '❌ Battle không tồn tại.', ephemeral: true });
+      if (battleRow.mode === 'tower') return interaction.reply({ content: 'Dùng bảng tower để thao tác trận Tháp.', ephemeral: true });
       if (battleRow.status !== 'active') return interaction.reply({ content: '❌ Battle đã kết thúc.', ephemeral: true });
       if (battleRow.user_a !== interaction.user.id && battleRow.user_b !== interaction.user.id) {
         return interaction.reply({ content: '❌ Không phải trận của bạn.', ephemeral: true });
