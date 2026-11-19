@@ -30,6 +30,7 @@ const SKILLS = {
   evasive_step: { id: 'evasive_step', name: '💨 Evasive Step', class: 'ranged', level: 25, cd: 3, cost: 10, desc: 'Giảm 50% sát thương trực tiếp trong 1 lượt, xóa giảm DEF/ATK.', resolve: () => ({ log: '💨 Evasive Step: rút về vị trí an toàn.', cleanse: ['def_down', 'atk_down'], applyBuff: effect('self', 'defend', 1, 0.5) }) },
   piercing_arrow: hit('piercing_arrow', '🏹 Piercing Arrow', 'ranged', 40, 3, 30, 2, '200% ATK bỏ 60% DEF; tiêu Dấu săn để tăng 20% sát thương.', (a, t) => ({ pierce: 0.6, mult: t.buffs?.mark ? 1.2 : 1, combo: !!t.buffs?.mark, consumeTarget: ['mark'] })),
 };
+Object.assign(SKILLS, require('./skill_expansion').create({ hit, effect, mitigated }));
 const BASIC_ACTIONS = {
   attack: { id: 'attack', name: '⚔️ Attack', cost: 0, cd: 0, desc: '100% ATK, +18 năng lượng.', resolve: (a, t) => ({ dmg: mitigated(a.atk, t.def), gain: 18, log: '⚔️ Đánh thường (+18 năng lượng).' }) },
   defend: { id: 'defend', name: '🛡️ Defend', cost: 0, cd: 0, desc: 'Giảm 50% sát thương trực tiếp lượt địch kế, +18 năng lượng.', resolve: () => ({ gain: 18, log: '🛡️ Phòng thủ (+18 năng lượng).', applyBuff: effect('self', 'defend', 1, 0.5) }) },

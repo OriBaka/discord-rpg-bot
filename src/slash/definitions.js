@@ -605,7 +605,7 @@ const definitions = [
   },
   {
     data: new SlashCommandBuilder().setName('skills').setDescription('Kỹ năng, combo và bộ chiêu theo class')
-      .addStringOption(o => o.setName('action').setDescription('Hành động').addChoices(...['list', 'info', 'equip', 'reset'].map(value => ({ name: value, value }))))
+      .addStringOption(o => o.setName('action').setDescription('Hành động').addChoices(...['list', 'info', 'equip', 'reset', 'events', 'claim'].map(value => ({ name: value, value }))))
       .addStringOption(o => o.setName('ids').setDescription('ID chiêu, cách nhau bằng khoảng trắng khi equip').setMaxLength(180)),
     handler: simpleHandler('skills', i => [i.options.getString('action') || 'list', ...(i.options.getString('ids') || '').trim().split(/\s+/).filter(Boolean)]),
   },

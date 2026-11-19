@@ -600,3 +600,58 @@ Ba chiêu cũ mở từ Lv.1; ba chiêu mới ở Lv.12/25/40. Mặc định l�
 Hunt nhanh, duel mô phỏng và raid tuần giữ cơ chế cũ, **không tự dùng bộ chiêu v2**;
 không sửa quái/growth class, không thêm nguồn nhận Kiếm Thất Đại Tội. Chương 2
 vẫn chưa triển khai. Xem `%skills info <id>` để lấy hệ số/chi phí chính xác hiện tại.
+
+### 📜 Bí kíp theo cấp & nguồn kiếm kỹ năng
+
+Thêm **15 kỹ năng bí kíp**, nâng tổng lên **33 chiêu (11/class)**. 18 chiêu nền
+vẫn tự mở như trước; không thu lại hoặc khóa chiêu đã có. Bộ chiêu vẫn tối đa 4.
+Bí kíp là consumable `tome_<skill_id>`, nhưng **không phải bình máu**: dùng một
+cuốn để học vĩnh viễn, cần đúng class và đủ cấp. Thiếu cấp/sai class/đã học không
+mất sách. Học không tự đổi loadout và chỉ áp dụng từ trận mới. Reset loadout không
+xóa chiêu đã học. Sách thường giao dịch được; sách limited soulbound.
+
+| Cấp học | Nguồn | Melee | Magic | Ranged |
+| --- | --- | --- | --- | --- |
+| 8 | Quest riêng: nhận rồi thắng 5 wolf | riposte_cut | ember_spark | tracking_arrow |
+| 18 | Shop, 1800 vàng/cuốn | battle_cry | purifying_light | hunters_breath |
+| 30 | Hunt frost_revenant, 6% mỗi sách | blood_rend | frost_lance | barbed_arrow |
+| 40 | Ancient Wyrm (boss_wyrm), 8% mỗi sách | sundering_arc | void_pulse | falcon_dive |
+| 45 | Sự kiện limited do admin mở | lantern_oath | festival_flare | lantern_volley |
+
+Tỷ lệ là gốc mỗi lần thắng, từng sách roll riêng, không pity. Boss có thể đánh
+bằng battle hoặc hunt theo cơ chế hiện có; nhận sách sớm vẫn phải đủ cấp mới học.
+Nguồn trong bảng là nguồn hệ thống, admin vẫn có thể tự cấu hình quà/quest/code
+bằng công cụ có sẵn. Không tự tạo code hay sự kiện đang mở khi cập nhật.
+
+Ví dụ:
+```
+%quest accept study_riposte_cut
+%hunt wolf
+%quest claim study_riposte_cut
+%use tome_riposte_cut
+%skills equip slash whirlwind charge riposte_cut
+%skills info frost_lance
+%find tome_frost_lance
+```
+Quest là custom một lần/tài khoản theo cơ chế quest hiện có. Hãy thắng đủ 5 wolf
+sau khi nhận quest. `%skills` hiện khóa do cấp/chưa học và nguồn của từng bí kíp;
+`%find tome_<id>` hiện nguồn item và lệnh học.
+
+**Admin limited, theo từng server:**
+```
+%skills event create denlong_melee lantern_oath 72 100
+%skills event create denlong_magic festival_flare 72 100
+%skills event create denlong_ranged lantern_volley 72 100
+%skills event close denlong_melee
+```
+Chỉ admin/owner hoặc ADMIN_IDS mới quản lý; tạo ID mới (chữ/số/_/-, tối đa 40 ký
+ tự), chọn một chiêu limited, 1–720 giờ, 1–100000 suất. Thời gian tính từ lúc tạo.
+Không dùng lại ID đã đóng/hết hạn để reset log. Mỗi tài khoản nhận một lần mỗi sự
+kiện, đúng class, có thể giữ sách tới đủ cấp. Đã học thì không chiếm thêm suất.
+Không mở sự kiện cho chiêu nền, không lách nhận từ server khác. Không phí nhận.
+
+Người chơi: `%skills events` xem thời hạn/số suất, `%skills claim <event_id>` nhận;
+slash `/skills action:events` hoặc `action:claim ids:<event_id>` cũng dùng được.
+Hết hạn chỉ chặn **nhận mới**, không thu hồi sách đã nhận hoặc chiêu đã học.
+Limited là lựa chọn tình huống, không buff ẩn hay cộng chỉ số ngoài trận; không
+cần chiêu limited để hoàn thành Tháp. Không thêm cách nhận Kiếm Thất Đại Tội.
