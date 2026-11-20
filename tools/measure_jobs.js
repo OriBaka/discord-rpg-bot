@@ -3,14 +3,9 @@
 //
 // Chạy: node tools/measure_jobs.js [level]   (mặc định 50)
 //
-// Mô hình (khớp code thật):
-//   gold mỗi lượt = Σ  chance_eff × E[số lượng] × giá bán
-//   chance_eff    = min(1, chance × (1 + drop_bonus))
-//   E[số lượng]   = trung bình(qty_min..qty_max) × (1 + qty_bonus) × levelBonusMult
-//   gold/phút     = gold mỗi lượt × 60000 / cooldown_ms
-// Bỏ qua chuỗi may mắn / mạch giàu / kho báu: chúng nhân như nhau cho mọi nghề
-// nên không đổi thứ hạng tương đối (đã ghi rõ để không ai đọc số này như tuyệt đối).
-const path = require('path');
+// Exact discrete quantity expectation for a neutral action (no streak/vein,
+// treasure, aura, buff purchase/travel costs or XP valuation). These omissions
+// can change relative rankings; this is NOT total player income per minute.
 const db = require('../src/db/database');
 const gz = require('../src/game/gather_zones');
 const jobTools = require('../src/game/job_tools');
@@ -37,7 +32,9 @@ function bestToolRow(job, level) {
 function goldPerAction(zone, level, stats) {
   const drops = gz.getDrops(zone.id);
   const dropMult = 1 + (stats?.drop_bonus || 0);
-  const qtyMult = 1 + (stats?.qty_bonus || 0);
+  // Foraging currently applies level bonus, not qtyMult (matches gather.js).
+  const qtyMult = zone.job_type === 'foraging' ? 1 : 1 + (stats?.qty_bonus || 0);
+  const extra = Math.min(jobBuffs.CAPS.extra, stats?.extra_chance || 0);
   const lvlMult = zone.job_type === 'foraging' ? levelBonusMult(level, zone.min_job_level) : 1;
 
   let gold = 0;
@@ -45,8 +42,12 @@ function goldPerAction(zone, level, stats) {
     const it = db.prepare('SELECT sell FROM items WHERE id = ?').get(d.item_id);
     if (!it) continue;
     const chance = Math.min(1, d.chance * dropMult);
-    const avgQty = (d.qty_min + d.qty_max) / 2;
-    gold += chance * avgQty * qtyMult * lvlMult * (it.sell || 0);
+    let expectedQty = 0;
+    for (let qty = d.qty_min; qty <= d.qty_max; qty++) {
+      expectedQty += Math.max(1, Math.round(qty * qtyMult * lvlMult)) + extra;
+    }
+    expectedQty /= d.qty_max - d.qty_min + 1;
+    gold += chance * expectedQty * (it.sell || 0);
   }
   return gold;
 }
@@ -62,7 +63,8 @@ function combinedBonus(job, level, withBuff) {
   const C = jobBuffs.CAPS;
   const drop = Math.min(C.drop, (tool?.drop_bonus || 0) + (buffs?.drop_bonus || 0));
   const qty = Math.min(C.qty, (tool?.qty_bonus || 0) + (buffs?.qty_bonus || 0));
-  return { drop_bonus: drop, qty_bonus: qty, tool, buff: buffs };
+  const extra = Math.min(C.extra, (tool?.extra_chance || 0) + (buffs?.extra_chance || 0));
+  return { drop_bonus: drop, qty_bonus: qty, extra_chance: extra, tool, buff: buffs };
 }
 
 // Buff mạnh nhất NGƯỜI CHƠI ĐỦ CẤP dùng (min_level) — đo bằng buff Lv.10 khi

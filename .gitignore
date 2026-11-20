@@ -13,3 +13,6 @@ backups/
 *.db.partial
 
 .venv/
+
+# Reproducible local audit outputs
+.cache/
