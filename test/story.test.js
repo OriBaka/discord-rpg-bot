@@ -23,7 +23,7 @@ function eventFor(user, step) {
     case 'gather': quests.onGather(user, step.target, step.qty); break;
     case 'craft': quests.onCraft(user, 'a_recipe', step.qty); break;
     case 'boss': quests.onKillBoss(user, step.target, 1); break;
-    case 'item': player.addItem(user, step.target, step.qty); break;
+    case 'item': if (!player.hasItem(user, step.target, step.qty)) player.addItem(user, step.target, step.qty); break;
   }
 }
 
@@ -101,7 +101,7 @@ test('entire story awards exact one-time rewards and never resets on migrate/sta
     assert.equal(story.claim(id).step.id, step.id);
   }
   const finalPlayer = player.getPlayer(id);
-  assert.equal(finalPlayer.gold, initialGold + 1120);
+  assert.equal(finalPlayer.gold, initialGold + story.STEPS.reduce((sum, step) => sum + step.gold, 0));
   const mark = player.getInventory(id).find(i => i.item_id === 'story_watchers_mark');
   assert.equal(mark.qty, 1);
   assert.equal(story.status(id).current, undefined);
@@ -226,4 +226,132 @@ test('slash story action routes to the shared prefix handler', () => {
     assert.deepEqual(def.handler.extractArgs({ options: { getString: () => action } }), [action]);
   }
   assert.deepEqual(def.handler.extractArgs({ options: { getString: () => 'view' } }), []);
+});
+
+test('chapter 2 is appended at the old completion cursor without replaying rewards', () => {
+  const oldIds = ['prologue_watch', 'prologue_tracks', 'prologue_supplies', 'chapter1_fangs', 'chapter1_offering', 'chapter1_prepare', 'chapter1_alpha', 'chapter1_return'];
+  assert.deepEqual(story.STEPS.slice(0, 8).map(s => s.id), oldIds);
+  assert.equal(story.STEPS.length, 18);
+  const id = newPlayer(); story.start(id);
+  db.prepare('UPDATE player_story SET step=8,progress=0 WHERE user_id=?').run(id);
+  const before = player.getPlayer(id);
+  story.migrate(); story.migrate();
+  assert.equal(story.start(id), false);
+  assert.equal(story.status(id).current.id, 'chapter2_departure');
+  assert.deepEqual(player.getPlayer(id), before);
+  assert.equal(story.claim(id).step.id, 'chapter2_departure');
+  assert.equal(player.getPlayer(id).gold, before.gold + 100);
+});
+
+test('chapter 2 exact rewards, unique keepsake and letter handover survive restart/migrations', () => {
+  const id = newPlayer(); story.start(id);
+  db.prepare('UPDATE player_story SET step=8 WHERE user_id=?').run(id);
+  player.addItem(id, 'story_watchers_mark', 1);
+  const before = player.getPlayer(id);
+  const steps = story.STEPS.slice(8);
+  assert.equal(steps.reduce((n, s) => n + s.gold, 0), 1830);
+  assert.equal(steps.reduce((n, s) => n + s.xp, 0), 650);
+  for (const step of steps) {
+    eventFor(id, step);
+    assert.equal(story.claim(id).step.id, step.id);
+  }
+  assert.equal(player.getPlayer(id).gold, before.gold + 1830);
+  assert.ok(!player.hasItem(id, 'story_whitepost_letters', 1));
+  assert.ok(player.hasItem(id, 'story_dawn_whistle', 1));
+  assert.ok(player.hasItem(id, 'story_watchers_mark', 1));
+  const end = player.getPlayer(id);
+  story.migrate();
+  assert.ok(story.claim(id).error);
+  assert.equal(story.start(id), false);
+  assert.deepEqual(player.getPlayer(id), end);
+  assert.equal(player.getInventory(id).find(i => i.item_id === 'story_dawn_whistle').qty, 1);
+});
+
+test('chapter 2 elite requires a matching win on the active step, not tower or old kills', () => {
+  const id = newPlayer(); story.start(id);
+  quests.onKillBoss(id, 'elite_whitepost_keeper', 1);
+  db.prepare('UPDATE player_story SET step=14 WHERE user_id=?').run(id);
+  assert.equal(story.status(id).current.id, 'chapter2_guardian');
+  for (const [mob, tier] of [['elite_wolf', 1], ['tower_15', 2], ['elite_whitepost_keeper', 0]]) quests.onKillBoss(id, mob, tier);
+  quests.onKillMonster(id, 'elite_whitepost_keeper');
+  assert.equal(story.status(id).progress, 0);
+  assert.ok(story.claim(id).error);
+  quests.onKillBoss(id, 'elite_whitepost_keeper', 1);
+  assert.equal(story.status(id).progress, 1);
+  assert.equal(story.claim(id).step.id, 'chapter2_guardian');
+});
+
+test('chapter 2 letter handover rolls back completely if granting rewards fails', () => {
+  const id = newPlayer(); story.start(id);
+  db.prepare('UPDATE player_story SET step=16 WHERE user_id=?').run(id);
+  player.addItem(id, 'story_whitepost_letters', 1);
+  const before = player.getPlayer(id);
+  const saved = player.addXpAndLevel;
+  player.addXpAndLevel = () => { throw new Error('chapter2 rollback'); };
+  try { assert.throws(() => story.claim(id), /chapter2 rollback/); }
+  finally { player.addXpAndLevel = saved; }
+  assert.equal(story.status(id).current.id, 'chapter2_delivery');
+  assert.ok(player.hasItem(id, 'story_whitepost_letters', 1));
+  assert.deepEqual(player.getPlayer(id), before);
+});
+
+test('chapter 2 items are noncombat soulbound story-only rewards, not repeat drops or shop gear', async () => {
+  const id = newPlayer();
+  for (const itemId of ['story_whitepost_letters', 'story_dawn_whistle']) {
+    const item = require('../src/game/items').getItem(itemId);
+    assert.equal(item.soulbound, 1); assert.equal(item.sell, 0);
+    assert.equal(item.atk + item.def, 0); assert.equal(item.type, 'material');
+    assert.equal(db.prepare('SELECT 1 FROM shop WHERE item_id=?').get(itemId), undefined);
+    assert.equal(db.prepare('SELECT 1 FROM monster_drops WHERE item_id=?').get(itemId), undefined);
+    assert.equal(db.prepare('SELECT 1 FROM recipes WHERE output_id=?').get(itemId), undefined);
+    player.addItem(id, itemId, 1);
+    const msg = fakeMessage(id);
+    await commands.get('sell').execute(msg, [itemId]);
+    assert.match(msg._text(), /soulbound/);
+    assert.ok(player.hasItem(id, itemId, 1));
+    assert.ok(require('../src/game/handbook').lookup(db, itemId).sources.some(s => s.includes('Chương 2')));
+  }
+});
+
+test('chapter 2 commands show availability, continuation, journal and honest completion', async () => {
+  const id = newPlayer(), msg = fakeMessage(id), cmd = commands.get('story');
+  await cmd.execute(msg, []);
+  assert.match(msg._text(), /chương 2/);
+  story.start(id);
+  db.prepare('UPDATE player_story SET step=8 WHERE user_id=?').run(id);
+  await cmd.execute(msg, []);
+  assert.match(msg._text(), /Những lá thư dưới tuyết/);
+  await cmd.execute(msg, ['journal']);
+  assert.match(msg._text(), /Đèn cho người đi tới/);
+  db.prepare('UPDATE player_story SET step=18 WHERE user_id=?').run(id);
+  await cmd.execute(msg, []);
+  assert.match(msg._text(), /hết Chương 2/);
+  assert.match(msg._text(), /Kho Tro/);
+});
+
+test('chapter 2 elite can be beaten by each class at recommended level using ordinary skills', () => {
+  const audit = require('../tools/build_audit');
+  const target = db.prepare("SELECT * FROM monsters WHERE id='elite_whitepost_keeper'").get();
+  assert.equal(target.elite_tier, 1);
+  for (const cls of audit.CLASSES) {
+    quiet();
+    let f;
+    try { f = audit.makeFixture(db, cls, 18, 'neutral', `C2_BALANCE_${cls}`); }
+    finally { loud(); }
+    const ids = require('../src/game/skills').getSkillsForClass(cls).filter(s => !s.book && s.level <= 18).slice(0, 4).map(s => s.id);
+    const result = audit.fight(audit.initial(f, target, ids), 'tactical');
+    assert.equal(result.winner, 'a', `${cls}: ${JSON.stringify(result)}`);
+    assert.ok(result.turns <= 12);
+  }
+});
+
+test('real hunts of chapter 2 mobs deliver active kill and elite story events', async () => {
+  for (const [cursor, mob] of [[9, 'rime_hound'], [14, 'elite_whitepost_keeper']]) {
+    const id = newPlayer(); story.start(id);
+    db.prepare('UPDATE player_story SET step=? WHERE user_id=?').run(cursor, id);
+    player.updatePlayer(id, { level: 18, atk: 100000, def: 100000, hp: 10000, max_hp: 10000 });
+    const msg = fakeMessage(id);
+    await commands.get('hunt').execute(msg, [mob]);
+    assert.equal(story.status(id).progress, 1, msg._text());
+  }
 });

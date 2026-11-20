@@ -24,13 +24,13 @@ module.exports = {
       return msg.reply(`Dùng \`${p}story\`, \`${p}story start\`, \`${p}story claim\`, \`${p}story journal\`.`);
     }
     const state = story.status(uid);
-    if (!state) return msg.reply(`📖 **Thất Đại Tội — Những người đứng đợi**\nChương mở đầu và chương 1 đã có sẵn. Không khóa zone, không reset nhân vật.\nBắt đầu bằng \`${p}story start\`. Chỉ hành động sau khi nhận từng bước mới được tính; mục tiêu giao đồ kiểm tra túi hiện tại.`);
+    if (!state) return msg.reply(`📖 **Thất Đại Tội — Những người đứng đợi**\nChương mở đầu, chương 1 và chương 2 đã có sẵn. Không khóa zone, không reset nhân vật.\nBắt đầu bằng \`${p}story start\`. Chỉ hành động sau khi nhận từng bước mới được tính; mục tiêu giao đồ kiểm tra túi hiện tại.`);
     if (action === 'journal') {
       return msg.reply({ embeds: [new EmbedBuilder().setColor(0xD4AF37).setTitle('📔 Sổ hành trình')
         .setDescription(story.STEPS.map((s, i) => `${i < state.step ? '✅' : i === state.step ? '📍' : '🔒'} ${s.chapter.split(' — ')[0]} · ${s.title}`).join('\n'))
         .setFooter({ text: `${p}story để đọc bước hiện tại. Các bước sau mở lần lượt, không khóa zone.` })] });
     }
-    if (!state.current) return msg.reply(notice + '🏁 Đã hoàn thành chương mở đầu và chương 1. Khe băng phía bắc đang chờ trong chương tiếp theo (chưa phát hành). Xem lại các mốc bằng `' + p + 'story journal`.');
+    if (!state.current) return msg.reply(notice + '🏁 Đã hoàn thành chính tuyến đến hết Chương 2 — Những lá thư dưới tuyết. Manh mối Kho Tro đang chờ trong chương tiếp theo (chưa phát hành). Xem lại các mốc bằng `' + p + 'story journal`.');
     const step = state.current;
     return msg.reply({ content: notice || undefined, embeds: [new EmbedBuilder().setColor(0xD4AF37)
       .setTitle(`📖 ${step.chapter}`).setDescription(`**${step.title}**\n\n${step.text}`)
