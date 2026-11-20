@@ -147,9 +147,9 @@ test('mỗi level cần 6–20 kill (không bị kẹt cày)', () => {
 // ─────────────────────────────────────────────────────────────
 // 5. Nội dung mở rộng còn nguyên
 // ─────────────────────────────────────────────────────────────
-test('nội dung mở rộng đầy đủ: 9 zone, 45 quái, vũ khí mới', () => {
+test('nội dung mở rộng đầy đủ: 9 zone, 46 quái thường, vũ khí mới', () => {
   assert.strictEqual(db.prepare('SELECT COUNT(*) c FROM zones').get().c, 9);
-  assert.strictEqual(db.prepare('SELECT COUNT(*) c FROM monsters WHERE elite_tier=0').get().c, 45);
+  assert.strictEqual(db.prepare('SELECT COUNT(*) c FROM monsters WHERE elite_tier=0').get().c, 46);
   // 6 vũ khí lấp lỗ hổng tier (Pháp Sư/Cung Thủ từng không có vũ khí Lv.1)
   for (const id of ['apprentice_wand', 'short_bow', 'staff_ash', 'bow_windcut', 'staff_voidsong', 'bow_dragonbone']) {
     assert.ok(db.prepare('SELECT 1 FROM items WHERE id=?').get(id), `thiếu vũ khí ${id}`);

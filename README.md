@@ -284,16 +284,20 @@ mỗi push/PR qua GitHub Actions (`.github/workflows/test.yml`):
 
 ### 📖 Chính tuyến — Những người đứng đợi
 
-`%story start` bắt đầu **chương mở đầu + chương 1**; `%story` đọc truyện/mục tiêu,
+`%story start` bắt đầu **chương mở đầu + chương 1 + chương 2**; `%story` đọc truyện/mục tiêu,
 `%story claim` bàn giao/nhận thưởng và mở bước kế, `%story journal` xem các mốc.
 Slash tương ứng: `/story action:…`. Alias prefix: `%cottruyen`.
 
-- 8 bước nối tiếp: trò chuyện → săn Slime → hái lượm → săn sói → giao nanh → chế/nấu → hạ Alpha Wolf → trở về.
+- Mở đầu + Chương 1: 8 bước nối tiếp: trò chuyện → săn Slime → hái lượm → săn sói → giao nanh → chế/nấu → hạ Alpha Wolf → trở về.
 - Chỉ bước đang mở nhận tiến độ; không cộng các lần săn/chế trước đó. Mục tiêu giao đồ kiểm tra túi hiện tại và tiêu hao đúng số lượng khi nhận thưởng.
 - Người chơi cũ bắt đầu từ đầu chính tuyến, giữ nguyên level/trang bị và mọi zone. Không có thời hạn hay reset ngày.
-- Thưởng một lần mỗi bước (tổng 1.120 vàng, 300 XP, 2 bình nhỏ, 2 bình vừa) và kỷ vật soulbound **Dấu Chỉ Người Canh Đèn**, không cộng chỉ số chiến đấu.
+- Thưởng mở đầu + Chương 1 một lần mỗi bước (tổng 1.120 vàng, 300 XP, 2 bình nhỏ, 2 bình vừa) và kỷ vật soulbound **Dấu Chỉ Người Canh Đèn**, không cộng chỉ số chiến đấu.
 - Alpha Wolf là elite hiện có (`elite_wolf`); dùng `%battle elite_wolf` hoặc `%hunt elite_wolf`. Chuẩn bị trang bị/hồi máu, có thể quay lại sau nếu còn yếu.
-- Không trao kiếm Thất Đại Tội ngay chương đầu. Chương 2 chưa phát hành; hoàn thành không tự mở nội dung chưa có.
+- **Chương 2 — Những lá thư dưới tuyết**: 10 bước tại trạm Bạch Đăng, từ cứu người đưa thư, đọc thư tồn đọng đến kết thúc ca gác và mang tin về thị trấn. Hướng tới Lv.15–18; không khóa zone hay bắt nghề cấp cao.
+- Săn `rime_hound`, hái lượm, giao 3 `coal`, chế/nấu và hạ elite `elite_whitepost_keeper` bằng `%battle` hoặc `%hunt`. Nguồn vật liệu tra bằng `%item coal`. Không yêu cầu vật phẩm rơi hiếm.
+- Chương 2 thưởng một lần tổng **1.830 vàng, 650 XP, 2 potion_m**, Túi Thư Bạch Đăng (soulbound, bàn giao gần cuối chương) và kỷ vật **Còi Gọi Bình Minh** (soulbound, không tăng chỉ số).
+- Người đã hết Chương 1 tự tiếp tục Chương 2 bằng `%story`, không cần reset hoặc nhận lại thưởng cũ. Cả tuyến hiện có 18 bước.
+- Kiếm Thất Đại Tội vẫn chỉ là lore; không mở nguồn nhận kiếm ở Chương 2. Manh mối Kho Tro dành cho chương sau, chưa có nhiệm vụ tại đó.
 
 ### 🎨 Ngoại hình hồ sơ & công trình bang hội
 
