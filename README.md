@@ -284,7 +284,7 @@ mỗi push/PR qua GitHub Actions (`.github/workflows/test.yml`):
 
 ### 📖 Chính tuyến — Những người đứng đợi
 
-`%story start` bắt đầu **chương mở đầu + chương 1 + chương 2**; `%story` đọc truyện/mục tiêu,
+`%story start` bắt đầu **chương mở đầu + chương 1–3**; `%story` đọc truyện/mục tiêu,
 `%story claim` bàn giao/nhận thưởng và mở bước kế, `%story journal` xem các mốc.
 Slash tương ứng: `/story action:…`. Alias prefix: `%cottruyen`.
 
@@ -296,8 +296,13 @@ Slash tương ứng: `/story action:…`. Alias prefix: `%cottruyen`.
 - **Chương 2 — Những lá thư dưới tuyết**: 10 bước tại trạm Bạch Đăng, từ cứu người đưa thư, đọc thư tồn đọng đến kết thúc ca gác và mang tin về thị trấn. Hướng tới Lv.15–18; không khóa zone hay bắt nghề cấp cao.
 - Săn `rime_hound`, hái lượm, giao 3 `coal`, chế/nấu và hạ elite `elite_whitepost_keeper` bằng `%battle` hoặc `%hunt`. Nguồn vật liệu tra bằng `%item coal`. Không yêu cầu vật phẩm rơi hiếm.
 - Chương 2 thưởng một lần tổng **1.830 vàng, 650 XP, 2 potion_m**, Túi Thư Bạch Đăng (soulbound, bàn giao gần cuối chương) và kỷ vật **Còi Gọi Bình Minh** (soulbound, không tăng chỉ số).
-- Người đã hết Chương 1 tự tiếp tục Chương 2 bằng `%story`, không cần reset hoặc nhận lại thưởng cũ. Cả tuyến hiện có 18 bước.
-- Kiếm Thất Đại Tội vẫn chỉ là lore; không mở nguồn nhận kiếm ở Chương 2. Manh mối Kho Tro dành cho chương sau, chưa có nhiệm vụ tại đó.
+- Người đã hết Chương 1 tự tiếp tục Chương 2 bằng `%story`, không cần reset hoặc nhận lại thưởng cũ. Cả tuyến cá nhân hiện có 28 bước.
+- **Chương 3 — Kho Tro không giữ được tên người**: 10 bước, hướng tới Lv.23–25. Điều tra dấu vết bị xóa, gặp người giữ sổ còn sống, bảo vệ chứng cứ và khép tuyến **Những người đứng đợi**.
+- Săn `ash_moth`, giao 3 `iron_ore`, chế/nấu và hạ boss `boss_ash_registrar` bằng `%battle` hoặc `%hunt`. Boss có Roar/Rage; không yêu cầu sách hiếm hay sách event. Tra nguyên liệu bằng `%item iron_ore`.
+- Chương 3 thưởng một lần tổng **2.180 vàng, 820 XP, 2 potion_m**; Sổ Gốc Kho Tro để bàn giao và kỷ vật **Ấn Người Làm Chứng** đều soulbound, không tăng chỉ số.
+- Người đã hết Chương 2 tự tiếp tục Chương 3 bằng `%story`; giữ nguyên tiến độ và kỷ vật cũ. Hoàn thành Chương 3 là việc cá nhân, mọi người đều làm được, không có quyền lợi về nhất.
+- **Ranh giới Chương 4:** định hướng một lịch sử duy nhất cho toàn bộ người chơi bot, không tách theo server. Chưa phát hành nội dung, luật đua hay giờ mở; Chương 3 không mở đua, không giữ chỗ và không ghi nhận người quyết định lịch sử.
+- Kiếm Thất Đại Tội vẫn chỉ là lore; không có nguồn nhận kiếm ở cả ba chương.
 
 ### 🎨 Ngoại hình hồ sơ & công trình bang hội
 

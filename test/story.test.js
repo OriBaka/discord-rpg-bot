@@ -231,7 +231,7 @@ test('slash story action routes to the shared prefix handler', () => {
 test('chapter 2 is appended at the old completion cursor without replaying rewards', () => {
   const oldIds = ['prologue_watch', 'prologue_tracks', 'prologue_supplies', 'chapter1_fangs', 'chapter1_offering', 'chapter1_prepare', 'chapter1_alpha', 'chapter1_return'];
   assert.deepEqual(story.STEPS.slice(0, 8).map(s => s.id), oldIds);
-  assert.equal(story.STEPS.length, 18);
+  assert.equal(story.STEPS.length, 28);
   const id = newPlayer(); story.start(id);
   db.prepare('UPDATE player_story SET step=8,progress=0 WHERE user_id=?').run(id);
   const before = player.getPlayer(id);
@@ -248,7 +248,7 @@ test('chapter 2 exact rewards, unique keepsake and letter handover survive resta
   db.prepare('UPDATE player_story SET step=8 WHERE user_id=?').run(id);
   player.addItem(id, 'story_watchers_mark', 1);
   const before = player.getPlayer(id);
-  const steps = story.STEPS.slice(8);
+  const steps = story.STEPS.slice(8, 18);
   assert.equal(steps.reduce((n, s) => n + s.gold, 0), 1830);
   assert.equal(steps.reduce((n, s) => n + s.xp, 0), 650);
   for (const step of steps) {
@@ -261,7 +261,7 @@ test('chapter 2 exact rewards, unique keepsake and letter handover survive resta
   assert.ok(player.hasItem(id, 'story_watchers_mark', 1));
   const end = player.getPlayer(id);
   story.migrate();
-  assert.ok(story.claim(id).error);
+  assert.equal(story.status(id).current.id, 'chapter3_summons');
   assert.equal(story.start(id), false);
   assert.deepEqual(player.getPlayer(id), end);
   assert.equal(player.getInventory(id).find(i => i.item_id === 'story_dawn_whistle').qty, 1);
@@ -325,8 +325,8 @@ test('chapter 2 commands show availability, continuation, journal and honest com
   assert.match(msg._text(), /Đèn cho người đi tới/);
   db.prepare('UPDATE player_story SET step=18 WHERE user_id=?').run(id);
   await cmd.execute(msg, []);
-  assert.match(msg._text(), /hết Chương 2/);
-  assert.match(msg._text(), /Kho Tro/);
+  assert.match(msg._text(), /Chương 3/);
+  assert.match(msg._text(), /Mực chưa kịp khô/);
 });
 
 test('chapter 2 elite can be beaten by each class at recommended level using ordinary skills', () => {
@@ -354,4 +354,156 @@ test('real hunts of chapter 2 mobs deliver active kill and elite story events', 
     await commands.get('hunt').execute(msg, [mob]);
     assert.equal(story.status(id).progress, 1, msg._text());
   }
+});
+
+test('chapter 3 appends after all 18 old cursors and resumes completed chapter 2 without reset', () => {
+  const c2 = require('../src/game/story_chapter2').STEPS;
+  assert.deepEqual(story.STEPS.slice(8, 18).map(s => s.id), c2.map(s => s.id));
+  assert.equal(story.STEPS.length, 28);
+  const id = newPlayer(); story.start(id);
+  db.prepare('UPDATE player_story SET step=18 WHERE user_id=?').run(id);
+  const before = player.getPlayer(id);
+  story.migrate(); story.migrate();
+  assert.equal(story.status(id).current.id, 'chapter3_summons');
+  assert.equal(story.start(id), false);
+  assert.deepEqual(player.getPlayer(id), before);
+  assert.equal(story.claim(id).step.id, 'chapter3_summons');
+  assert.equal(player.getPlayer(id).gold, before.gold + 150);
+});
+
+test('chapter 3 is independently completable by multiple players with exact once-only rewards', () => {
+  const steps = require('../src/game/story_chapter3').STEPS;
+  assert.equal(steps.reduce((n, s) => n + s.gold, 0), 2180);
+  assert.equal(steps.reduce((n, s) => n + s.xp, 0), 820);
+  for (let n = 0; n < 2; n++) {
+    const id = newPlayer(); story.start(id);
+    db.prepare('UPDATE player_story SET step=18 WHERE user_id=?').run(id);
+    player.addItem(id, 'story_watchers_mark', 1); player.addItem(id, 'story_dawn_whistle', 1);
+    const before = player.getPlayer(id);
+    for (const step of steps) {
+      assert.equal(story.status(id).current.id, step.id);
+      eventFor(id, step);
+      assert.equal(story.claim(id).step.id, step.id);
+    }
+    assert.equal(player.getPlayer(id).gold, before.gold + 2180);
+    assert.ok(!player.hasItem(id, 'story_ash_ledger', 1));
+    assert.ok(player.hasItem(id, 'story_watchers_mark', 1));
+    assert.ok(player.hasItem(id, 'story_dawn_whistle', 1));
+    assert.equal(player.getInventory(id).find(i => i.item_id === 'story_witness_seal').qty, 1);
+    const end = player.getPlayer(id);
+    assert.equal(story.status(id).current, undefined);
+    assert.ok(story.claim(id).error);
+    story.migrate(); assert.equal(story.start(id), false);
+    assert.deepEqual(player.getPlayer(id), end);
+  }
+});
+
+test('chapter 3 ledger handover rechecks inventory and rolls back reward failures', () => {
+  const id = newPlayer(); story.start(id);
+  db.prepare('UPDATE player_story SET step=25 WHERE user_id=?').run(id);
+  assert.equal(story.status(id).current.id, 'chapter3_record');
+  assert.ok(story.claim(id).error);
+  player.addItem(id, 'story_ash_ledger', 1);
+  const before = player.getPlayer(id), saved = player.addXpAndLevel;
+  player.addXpAndLevel = () => { throw new Error('ledger rollback'); };
+  try { assert.throws(() => story.claim(id), /ledger rollback/); }
+  finally { player.addXpAndLevel = saved; }
+  assert.deepEqual(player.getPlayer(id), before);
+  assert.equal(story.status(id).current.id, 'chapter3_record');
+  assert.ok(player.hasItem(id, 'story_ash_ledger', 1));
+  assert.equal(story.claim(id).step.id, 'chapter3_record');
+  assert.ok(!player.hasItem(id, 'story_ash_ledger', 1));
+});
+
+test('chapter 3 progression ignores old, wrong, ordinary and tower boss events', () => {
+  const id = newPlayer(); story.start(id);
+  quests.onKillBoss(id, 'boss_ash_registrar', 2);
+  db.prepare('UPDATE player_story SET step=23 WHERE user_id=?').run(id);
+  assert.equal(story.status(id).current.id, 'chapter3_warden');
+  quests.onKillMonster(id, 'boss_ash_registrar');
+  quests.onKillBoss(id, 'boss_ash_registrar', 0);
+  quests.onKillBoss(id, 'elite_whitepost_keeper', 1);
+  quests.onKillBoss(id, 'tower_15', 2);
+  assert.equal(story.status(id).progress, 0);
+  quests.onKillBoss(id, 'boss_ash_registrar', 2);
+  assert.equal(story.claim(id).step.id, 'chapter3_warden');
+});
+
+test('chapter 3 story items remain soulbound noncombat and story-only', async () => {
+  const id = newPlayer();
+  for (const itemId of ['story_ash_ledger', 'story_witness_seal']) {
+    const item = require('../src/game/items').getItem(itemId);
+    assert.equal(item.soulbound, 1); assert.equal(item.sell, 0);
+    assert.equal(item.type, 'material'); assert.equal(item.atk + item.def, 0);
+    assert.equal(db.prepare('SELECT 1 FROM shop WHERE item_id=?').get(itemId), undefined);
+    assert.equal(db.prepare('SELECT 1 FROM monster_drops WHERE item_id=?').get(itemId), undefined);
+    assert.equal(db.prepare('SELECT 1 FROM recipes WHERE output_id=?').get(itemId), undefined);
+    assert.ok(require('../src/game/handbook').lookup(db, itemId).sources.some(s => s.includes('Chương 3')));
+    player.addItem(id, itemId, 1);
+    const msg = fakeMessage(id);
+    await commands.get('sell').execute(msg, [itemId]);
+    assert.match(msg._text(), /soulbound/);
+    assert.ok(player.hasItem(id, itemId, 1));
+  }
+});
+
+test('chapter 3 completion makes the unreleased global boundary explicit and journal fits Discord', async () => {
+  const id = newPlayer(); story.start(id);
+  db.prepare('UPDATE player_story SET step=28 WHERE user_id=?').run(id);
+  const msg = fakeMessage(id);
+  await commands.get('story').execute(msg, []);
+  assert.match(msg._text(), /hết Chương 3/);
+  assert.match(msg._text(), /toàn bộ người chơi bot/);
+  assert.match(msg._text(), /chưa phát hành/);
+  assert.match(msg._text(), /không giữ chỗ/);
+  assert.ok(story.STEPS.every(s => !s.id.startsWith('chapter4')));
+  const payloads = []; msg.reply = async p => { payloads.push(p); };
+  await commands.get('story').execute(msg, ['journal']);
+  assert.ok(payloads[0].embeds[0].data.description.length <= 4096);
+  assert.match(payloads[0].embeds[0].data.description, /Lịch sử chưa có người viết/);
+  for (const s of story.STEPS) assert.ok(s.text.length + s.title.length + 10 < 4096);
+});
+
+test('chapter 3 boss is beatable at Lv25 with baseline skills for each class', () => {
+  const audit = require('../tools/build_audit');
+  const target = db.prepare("SELECT * FROM monsters WHERE id='boss_ash_registrar'").get();
+  assert.equal(target.elite_tier, 2);
+  for (const cls of audit.CLASSES) {
+    quiet(); let f;
+    try { f = audit.makeFixture(db, cls, 25, 'neutral', `C3_BALANCE_${cls}`); }
+    finally { loud(); }
+    const ids = require('../src/game/skills').getSkillsForClass(cls).filter(s => !s.book && s.level <= 25).slice(0, 4).map(s => s.id);
+    const b = audit.initial(f, target, ids);
+    assert.equal(b.is_elite, 2);
+    const result = audit.fight(b, 'tactical');
+    assert.equal(result.winner, 'a', `${cls}: ${JSON.stringify(result)}`);
+    assert.ok(result.turns <= 15);
+  }
+});
+
+test('real chapter 3 hunts deliver story events for both new monsters', async () => {
+  for (const [cursor, mob] of [[19, 'ash_moth'], [23, 'boss_ash_registrar']]) {
+    const id = newPlayer(); story.start(id);
+    db.prepare('UPDATE player_story SET step=? WHERE user_id=?').run(cursor, id);
+    player.updatePlayer(id, { level: 25, atk: 100000, def: 100000, hp: 10000, max_hp: 10000 });
+    const msg = fakeMessage(id);
+    await commands.get('hunt').execute(msg, [mob]);
+    assert.equal(story.status(id).progress, 1, msg._text());
+  }
+});
+
+test('completed chapter 2 cursor survives a process restart and opens chapter 3 on the existing DB', () => {
+  const id = newPlayer(); story.start(id);
+  db.prepare('UPDATE player_story SET step=18,progress=0 WHERE user_id=?').run(id);
+  const before = player.getPlayer(id);
+  const { execFileSync } = require('node:child_process');
+  const result = execFileSync(process.execPath, ['-e', `
+    console.log = () => {};
+    const story = require('./src/game/story');
+    const state = story.status(${JSON.stringify(id)});
+    process.stdout.write(JSON.stringify({ step: state.step, current: state.current.id,
+      startedAgain: story.start(${JSON.stringify(id)}) }));
+  `], { cwd: require('./harness').ROOT, encoding: 'utf8', env: { ...process.env } });
+  assert.deepEqual(JSON.parse(result), { step: 18, current: 'chapter3_summons', startedAgain: false });
+  assert.deepEqual(player.getPlayer(id), before);
 });
