@@ -27,11 +27,13 @@ const STEPS = [
     text: 'Bà An lau tấm đồng bạn mang về. Mặt sau chỉ còn một câu: “Chúng tôi ở lại để họ được trở về.” Bà im lặng rất lâu rồi khâu một dấu chỉ lên cuốn sổ của bạn. “Thị trấn này không được dựng lên để bán hàng. Có lẽ chúng ta là con cháu của những người đứng đợi.” Ở trang kế tiếp, một địa danh hiện ra: khe băng phía bắc. Bảy vạch khắc vẫn chưa có tên. Bạn chưa tìm thấy thanh kiếm nào.',
     goal: 'Trở về báo tin: {p}story claim. Nhận kỷ vật Dấu Chỉ Người Canh Đèn.', gold: 200, xp: 50, item: 'story_watchers_mark', itemQty: 1 },
   ...require('./story_chapter2').STEPS,
+  ...require('./story_chapter3').STEPS,
 ];
 
 function migrate() {
   const db = getDb();
   require('./story_chapter2').seed(db);
+  require('./story_chapter3').seed(db);
   db.exec(`CREATE TABLE IF NOT EXISTS player_story (
     user_id TEXT PRIMARY KEY REFERENCES players(user_id) ON DELETE CASCADE,
     step INTEGER NOT NULL DEFAULT 0,
