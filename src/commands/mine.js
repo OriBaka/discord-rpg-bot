@@ -200,6 +200,7 @@ module.exports = {
       .setDescription(dropText + lvlText + toolText)
       .setFooter({ text: `+${xpResult.xpGained} Mining XP • Total Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
-    return msg.reply({ embeds: [embed], components: [buildAgainRow('mine', msg.author.id, args)] });
+    const files = require('../game/gather_art').applyGatherArt(embed, zone);
+    return msg.reply({ embeds: [embed], files, components: [buildAgainRow('mine', msg.author.id, args)] });
   },
 };
