@@ -141,7 +141,6 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 | `%mine [zone]` | Đào mỏ (alias: `%dao`) |
 | `%fish [zone]` | Câu cá (alias: `%cau`) |
 | `%gather [zone]` | Hái lượm gỗ/thảo dược (foraging, alias: `%forage`, `%hai`) |
-
 | `%craft list` / `%craft <id> [xN]` | Chế tạo, lặp N lần vd `%craft iron_ingot x10` (dừng khi hết nguyên liệu) |
 | `%cook list` / `%cook <id>` | Nấu ăn |
 | `%job [@user]` | Xem level các nghề, `%job top <type>` |
