@@ -32,6 +32,7 @@ function collectSources() {
     src.get(id).push(where);
   };
 
+  for (const r of require('../src/game/weather_rares').RARES) add(r.id, 'conditional_weather_roll');
   for (const step of require('../src/game/story').STEPS) {
     if (step.item) add(step.item, 'story');
   }

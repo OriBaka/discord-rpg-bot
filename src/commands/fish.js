@@ -100,6 +100,8 @@ module.exports = {
     if (remain > 0) return msg.reply(`⏳ Còn **${formatTime(remain)}** nữa mới câu tiếp được.`);
 
     jobs.setCooldown(msg.author.id, JOB);
+    const world = require('../game/world_weather');
+    const conditions = world.current();
     const drops = gz.rollDrops(zoneId, { chanceMult: dropMult });
     // --- Cơ chế vui (chuỗi / luồng cá / kho báu) ---
     // Chuỗi chỉ tăng khi TRÚNG, đứt khi TRƯỢT — nếu không nó là buff vĩnh viễn.
@@ -152,6 +154,12 @@ module.exports = {
       }
     }
     dropText += bonusText;
+    for (const rare of require('../game/weather_rares').roll(zone.id, conditions)) {
+      addItem(msg.author.id, rare.id, 1);
+      gatherQty++;
+      dropText += `\n✨ **HIẾM THEO THỜI TIẾT!** +1× ${rare.name}`;
+    }
+    dropText += `\n\n${world.describe(conditions)}`;
 
     // Quest 'gather': tính theo SỐ NGUYÊN LIỆU, không phải số lần bấm lệnh
     require('../game/quests').onGather(msg.author.id, JOB, gatherQty);

@@ -81,6 +81,7 @@ client.once('ready', async () => {
 
   // Local daily snapshots + optional off-volume Discord copy.
   require('./game/backup').getService(client).start();
+  require('./game/world_weather').start(client);
 
   // Deploy slash commands
   try {
@@ -185,6 +186,7 @@ async function shutdown(signal) {
     if (dashboard) {
       await new Promise(resolve => { dashboard.close(resolve); dashboard.closeIdleConnections(); });
     }
+    await require('./game/world_weather').stop();
     await require('./game/backup').getService(client).stop();
     client.destroy();
     const db = require('./db/database');

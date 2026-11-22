@@ -8,7 +8,7 @@ function search(db, query, limit = 20, offset = 0) {
 function lookup(db, id) {
   const item = db.prepare('SELECT id,name,type,tier,desc,sell FROM items WHERE id=?').get(id);
   if (!item) return null;
-  const sources = [];
+  const sources = require('./weather_rares').sources(id);
   const tome = require('./skill_tomes').fromBook(id);
   if (tome?.source.kind === 'event') sources.push('Sự kiện limited do admin server mở · skills events / skills claim <id>; không có nguồn thường trực.');
   const shop = db.prepare('SELECT price FROM shop WHERE item_id=?').get(id);

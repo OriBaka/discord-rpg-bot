@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **51 lệnh** prefix + **55 slash command** (40 người chơi + 15 admin)
+- **52 lệnh** prefix + **56 slash command** (40 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -688,3 +688,15 @@ luồng phản hồi, bao gồm ảnh. Ảnh PNG đóng gói trong `assets/minin
 Danh sách khu và thông báo lỗi/cooldown không gửi ảnh để tránh tải thừa.
 Khu admin tự tạo chưa có ảnh vẫn trả kết quả bình thường; catalog ánh xạ
 được khai báo trong `src/game/gather_art.js`, không suy đường dẫn từ input.
+
+### 🌦️ Thời tiết toàn thế giới & vật sưu tầm hiếm
+
+- `%weather` (alias `%thoitiet`) / `/weather args:...`: xem thời tiết và đồng hồ chung toàn bot, không theo server.
+- Mặc định bốc đều một trong trời quang/mưa/giông/sương/tuyết mỗi **30 phút**, có thể trùng. Trạng thái/lần bốc tiếp lưu SQLite, restart không tự reroll. Nếu offline quá kỳ, bốc một lần khi trở lại, không phát lại hàng loạt bản tin cũ.
+- Ngày **06:00–18:00** theo **UTC+7 Việt Nam**, còn lại là đêm. Đồng hồ vẫn chạy liên tục sau khi admin chỉnh, không phải ngày/đêm random.
+- Admin bot trong `ADMIN_IDS`: `%weather interval 30` đổi chu kỳ (1–1440 phút); `%weather time 21:30` đặt giờ hiện tại bằng offset so với UTC+7; `%weather time reset` về giờ Việt Nam; `%weather dayhours 6 18` đổi khung ngày (giờ nguyên, đầu < cuối). Cấu hình này ảnh hưởng tất cả server; admin server không tự chỉnh được.
+- Admin server có Manage Server/Administrator: `%weather channel #kenh` đăng ký kênh của server đó; `%weather channel off` tắt. Bot cần View Channel + Send Messages. Mỗi server một kênh nhận cùng điều kiện thế giới. Bản tin kiểm tra mỗi 30 giây, gửi lúc đăng ký, bốc thời tiết (kể cả lặp) hoặc đổi buổi; không ping mọi người. Kênh lỗi được retry ở lượt poll tiếp, không chặn các server khác.
+- `%weather rares`: 10 cây/cá hiếm, mỗi zone gather/fish mặc định có một loại. Tỷ lệ **0,3–0,8%** mỗi lượt hợp lệ, chỉ khi đúng **zone + thời tiết + ngày/đêm**; ngoài điều kiện = **0%**. Tra `%item <id>` cũng hiện nguồn và điều kiện.
+- Roll riêng sau drop thường, có thể trúng dù lượt thường không có đồ. Mỗi lần trúng **1 món**, không chịu tool, buff, aura, streak, vein hay extra-drop; không tiêu lượt roll khi lệnh bị khóa/cooldown. Không áp dụng mine.
+- Đây là material sưu tầm epic, tradable, bán NPC 90–400 vàng, chưa có recipe hay bonus chiến đấu. Không đưa vào shop/drop thường/lootbox, không thay tỷ lệ vật liệu hiện có.
+- Bản tin dùng delivery best-effort: lưu khóa sau khi Discord gửi thành công để tránh gửi lại khi restart; nếu process chết giữa gửi và ghi nhận có thể lặp một bản tin. Chỉ chạy một bot scheduler với cùng DB, không hỗ trợ nhiều replica gửi thông báo đồng thời.
