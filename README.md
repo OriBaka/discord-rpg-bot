@@ -678,3 +678,13 @@ Mốc yêu cầu, giá, chỉ số và đồ sở hữu giữ nguyên; không re
 Trang bị chiến đấu/bí kíp kỹ năng vẫn dùng cấp nhân vật, không đổi theo nghề.
 Buff đã bật theo luật cấp nhân vật cũ mà nghề chưa đủ cấp được tạm ngưng bonus,
 không mất số lượt còn lại; tự hiệu lực lại khi nghề đủ cấp.
+
+### Ảnh khu vực nghề thu thập
+
+Kết quả `%mine`, `%fish`, `%gather` đính kèm ảnh pixel art đúng khu đang làm
+(5 khu mặc định mỗi nghề, tổng 15 ảnh). Tự chọn khu và nút Again dùng cùng
+luồng phản hồi, bao gồm ảnh. Ảnh PNG đóng gói trong `assets/mining`,
+`assets/fishing`, `assets/foraging`, mỗi ảnh dưới 1 MiB, không cần URL ngoài.
+Danh sách khu và thông báo lỗi/cooldown không gửi ảnh để tránh tải thừa.
+Khu admin tự tạo chưa có ảnh vẫn trả kết quả bình thường; catalog ánh xạ
+được khai báo trong `src/game/gather_art.js`, không suy đường dẫn từ input.

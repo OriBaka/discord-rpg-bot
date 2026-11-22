@@ -176,6 +176,7 @@ module.exports = {
         : '🧺 *Chưa có giỏ hái — mua ở shop để tăng cơ hội rơi.*') + buffText)
       .setFooter({ text: `+${xpResult.xpGained} Foraging XP • Total Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
-    return msg.reply({ embeds: [embed], components: [buildAgainRow('gather', msg.author.id, args)] });
+    const files = require('../game/gather_art').applyGatherArt(embed, zone);
+    return msg.reply({ embeds: [embed], files, components: [buildAgainRow('gather', msg.author.id, args)] });
   },
 };

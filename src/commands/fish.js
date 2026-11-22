@@ -178,6 +178,7 @@ module.exports = {
       .setDescription(dropText + lvlText + `\n\n🧰 **${bestRod.name}** — ${jobTools.describe(toolStat)}${lockedText}` + buffText)
       .setFooter({ text: `+${xpResult.xpGained} Fishing XP • Lv.${xpResult.level} (${xpResult.xp}/${xpResult.xpToNext})` });
     const { buildAgainRow } = require('../game/again_button');
-    return msg.reply({ embeds: [embed], components: [buildAgainRow('fish', msg.author.id, args)] });
+    const files = require('../game/gather_art').applyGatherArt(embed, zone);
+    return msg.reply({ embeds: [embed], files, components: [buildAgainRow('fish', msg.author.id, args)] });
   },
 };
