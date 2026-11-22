@@ -129,6 +129,7 @@ function buildSections(prefix) {
         `\`${prefix}mine [zone]\` đào mỏ (mining)`,
         `\`${prefix}fish [zone]\` câu cá (fishing)`,
         `\`${prefix}gather [zone]\` hái lượm gỗ/thảo dược (foraging)`,
+        `\`${prefix}weather\` thời tiết/giờ thế giới; \`${prefix}weather rares\` cây và cá hiếm theo điều kiện`,
         `\`${prefix}craft list\` / \`${prefix}craft <recipe> [xN]\` chế tạo (vd \`${prefix}craft iron_ingot x10\`)`,
         `\`${prefix}cook list\` / \`${prefix}cook <recipe>\` nấu ăn`,
       ],

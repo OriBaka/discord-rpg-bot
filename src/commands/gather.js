@@ -94,6 +94,8 @@ module.exports = {
     }
 
     jobs.setCooldown(msg.author.id, JOB);
+    const world = require('../game/world_weather');
+    const conditions = world.current();
     // Foraging KHÔNG bắt buộc công cụ (khác %mine/%fish) — giỏ hái chỉ là
     // bổ trợ: có thì tăng cơ hội rơi, không có vẫn hái được.
     const toolBonus = jobBuffs.bonus(msg.author.id, JOB, job.level);
@@ -148,6 +150,12 @@ module.exports = {
       }
     }
     dropText += bonusText;
+    for (const rare of require('../game/weather_rares').roll(zone.id, conditions)) {
+      addItem(msg.author.id, rare.id, 1);
+      gatherQty++;
+      dropText += `\n✨ **HIẾM THEO THỜI TIẾT!** +1× ${rare.name}`;
+    }
+    dropText += `\n\n${world.describe(conditions)}`;
 
     // Quest 'gather': tính theo SỐ NGUYÊN LIỆU, không phải số lần bấm lệnh
     require('../game/quests').onGather(msg.author.id, JOB, gatherQty);

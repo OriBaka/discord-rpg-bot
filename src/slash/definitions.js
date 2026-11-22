@@ -54,6 +54,9 @@ const JOB_CHOICES = jobChoicesModule.JOB_TYPES.map(t => ({
 }));
 
 const definitions = [
+  { data: new SlashCommandBuilder().setName('weather').setDescription('Thời tiết, giờ thế giới và vật sưu tầm hiếm')
+      .addStringOption(o => o.setName('args').setDescription('rares / channel ID / interval phút / time HH:MM / dayhours 6 18')),
+    handler: simpleHandler('weather', i => (i.options.getString('args') || '').trim().split(/\s+/).filter(Boolean)) },
   // ====== Player profile ======
   {
     data: new SlashCommandBuilder().setName('start').setDescription('Tạo nhân vật mới'),
