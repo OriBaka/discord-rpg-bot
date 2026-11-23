@@ -54,6 +54,9 @@ const JOB_CHOICES = jobChoicesModule.JOB_TYPES.map(t => ({
 }));
 
 const definitions = [
+  { data: new SlashCommandBuilder().setName('contract').setDescription('Hợp đồng tổ đội 2–4 người: săn và thu thập chung')
+      .addStringOption(o => o.setName('args').setDescription('help | create | join <mã> | start | status [mã] | cancel | profile')),
+    handler: simpleHandler('contract', i => (i.options.getString('args') || '').trim().split(/\s+/).filter(Boolean)) },
   { data: new SlashCommandBuilder().setName('casino').setDescription('Sòng chip miễn phí: slot, blackjack, dice, rps')
       .addStringOption(o => o.setName('args').setDescription('daily | balance | slot 10 | blackjack 10 | dice/rps @user 10 | accept/status <id>')),
     handler: simpleHandler('casino', i => (i.options.getString('args') || '').trim().split(/\s+/).filter(Boolean)) },

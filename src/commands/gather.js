@@ -179,6 +179,11 @@ module.exports = {
       buffText = '\n' + jobBuffs.describeActive(toolBonus.buff) + (left === 0 ? ' — **vừa hết lượt**' : '');
     }
 
+    if (gatherQty > 0) {
+      const contract = require('../game/contracts').recordAction(msg, JOB);
+      if (contract) dropText += `\n🤝 Hợp đồng ${contract.id}: ${contract.progress.reduce((s,p)=>s+p.amount,0)}/40${contract.status==='completed'?' — hoàn thành, công trạng đã ghi!':''}`;
+    }
+
     const embed = new EmbedBuilder().setColor(0x57F287)
       .setTitle(`🌿 Hái lượm tại ${zone.icon} ${zone.name}`)
       .setDescription(dropText + lvlText + '\n\n' + (toolBonus.tool

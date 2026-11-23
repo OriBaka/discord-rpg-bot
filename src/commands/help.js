@@ -57,6 +57,7 @@ function buildSections(prefix) {
         `\`${prefix}hunt list\` xem các khu vực`,
         `\`${prefix}hunt <zone>\` săn ở khu vực cụ thể`,
         `\`${prefix}hunt <mob_id>\` săn quái chỉ định`,
+        `\`${prefix}contract help\` — hợp đồng tổ đội 2–4 người, công trạng & huy hiệu`,
         `\`${prefix}casino help\` — slot, blackjack, RPS/xúc xắc PvP (chip riêng miễn phí)`,
         `\`${prefix}worldstory\` trạng thái lịch sử chung (Chương 4 chưa mở) • worldstory rules/history`,
         `\`${prefix}skills\` xem kỹ năng/bí kíp • skills equip <1–4 id> • skills presets/save/load/delete <tên> • skills events/claim cho sự kiện`,

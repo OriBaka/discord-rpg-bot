@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **55 lệnh** prefix + **59 slash command** (40 người chơi + 15 admin)
+- **56 lệnh** prefix + **60 slash command** (40 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -797,3 +797,34 @@ cần timer tồn tại qua restart. Không có broadcast chủ động: dùng s
 Nếu Discord gửi phản hồi thất bại sau commit, ván vẫn lưu, không thử nhận thưởng
 lại. Chip PvP vẫn có thể bị chuyển gián tiếp bằng cố tình thua: không có giá trị
 RPG, chưa có bảng xếp hạng hoặc phần thưởng để tránh khuyến khích farm alt.
+
+### 🤝 Hợp đồng tổ đội
+
+`%contract help` (alias `%coop`, `%hopdong`), slash `/contract args:...`.
+Một đội 2–4 người, chung toàn bot, không bắt buộc online cùng lúc/cùng guild:
+
+1. `%contract create` lấy mã ngắn, bạn bè `%contract join <mã>`.
+2. Trưởng đội `%contract start` khóa danh sách; trước start chưa tính tiến độ.
+3. Trong 24h **từ lúc lập**, cùng thắng 10 lần `%hunt`, thành công có nguyên liệu
+   10 lần `%fish`, 10 lần `%mine`, 10 lần `%gather`. Mỗi hành động chỉ +1,
+   không theo số đồ rơi; mua/bán/tặng/admin cấp đồ, craft, battle/tower không tính.
+   Nút Again và slash của bốn lệnh này cũng tính. Mục tiêu đầy không tính thêm.
+4. Mỗi người tối đa 20/40 lượt để buộc ít nhất hai thành viên góp sức.
+   `%contract status [mã]` xem tiến độ, đóng góp (bảng công khai, không lộ túi đồ).
+5. Đủ mục tiêu tự chốt và ghi thưởng nguyên tử: **5 công trạng/lượt** được ghi,
+   không góp không thưởng. `%contract profile` xem điểm và huy hiệu ở mốc
+   1 **Chung Sức**, 10 **Bạn Đồng Hành**, 25 **Trụ Cột Đồng Đội** hợp đồng hoàn thành
+   có đóng góp. Chỉ là danh hiệu trong hồ sơ hợp tác, không buff hoặc title `%me`.
+
+Không phát vàng/XP/vật phẩm/kiếm, không liên quan cuộc đua Chương 4. Mỗi user
+tham gia một hợp đồng mỗi 24h, kể cả hủy/thất bại. Trưởng đội chỉ hủy khi tuyển;
+không kick/rời/hủy/thay thành viên sau start. Đội hết giờ đóng ở lần gọi hợp đồng
+hoặc gameplay hook tiếp theo, không cần timer; không tự gửi thông báo.
+
+DB lưu tiến độ/thành viên/điểm qua restart; reset nhân vật không xóa hợp đồng,
+điểm hay cooldown để tránh farm lại hoặc phá đóng góp đồng đội. Ghi event theo
+Discord message/interaction ID, dedupe trong transaction IMMEDIATE cùng progress
+và thưởng; retry hook không thưởng hai lần. Hook nằm sau thành công của gameplay;
+**không có outbox replay** khi process chết giữa settlement gameplay và hook, nên
+lượt ấy có thể chưa được ghi. Không đòi vật phẩm hiếm/thời tiết, không tiêu vật phẩm
+để góp; người nhiều tài khoản vẫn có thể tự lập đội, điểm chỉ mang tính sưu tầm.

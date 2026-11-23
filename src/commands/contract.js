@@ -1,0 +1,12 @@
+const contracts=require('../game/contracts');
+const {getPrefix}=require('../game/prefix');
+module.exports={name:'contract',aliases:['hopdong','coop'],description:'Hợp đồng hợp tác 2–4 người',async execute(msg,args){
+ const p=getPrefix(), action=(args[0]||'status').toLowerCase();
+ if(['help','rules'].includes(action))return msg.reply(`🤝 **Hợp đồng tổ đội**\n${p}contract create — lập đội, nhận mã 6 ký tự\n${p}contract join <mã> — tham gia (không cần cùng server)\n${p}contract start — trưởng đội bắt đầu khi có 2–4 người\n${p}contract status [mã] — xem đội/tiến độ\n${p}contract cancel — hủy khi chưa bắt đầu\n${p}contract profile — công trạng và huy hiệu\n**Trong 24h từ khi lập:** thắng 10 lần hunt, 10 lần fish, 10 lần mine, 10 lần gather có nguyên liệu. Chỉ tính sau start; mỗi hành động +1, không theo số vật phẩm. Mỗi người góp tối đa 20/40 lượt nên phải hợp tác. Mỗi lượt được ghi = 5 công trạng khi hoàn thành; không góp không thưởng. Huy hiệu ở 1/10/25 hợp đồng có đóng góp. Không thưởng vàng/XP/đồ, không tác động Chương 4.\nMỗi người vào tối đa 1 hợp đồng mỗi 24h, kể cả hủy/hết hạn. Bắt đầu sẽ khóa thành viên, không kick/rời/hủy; hết giờ tự đóng khi có hoạt động. Reset nhân vật không xóa đội, công trạng hoặc thời gian chờ. Không cần ở online cùng lúc.`);
+ try{
+  const r=contracts.getService().act(msg.author.id,action,args[1]);
+  if(action==='profile')return msg.reply(`🤝 **Hồ sơ hợp tác**\nCông trạng: **${r.merit}** · Hợp đồng có đóng góp hoàn thành: **${r.completed}**\n🏅 ${r.badge}`);
+  const labels={hunt:'🗡️ Thắng hunt',fishing:'🎣 Lần câu có cá',mining:'⛏️ Lần đào có quặng',foraging:'🌿 Lần hái có nguyên liệu'};
+  return msg.reply({content:`🤝 **Hợp đồng ${r.id}** · ${r.status}\nHạn: <t:${Math.floor(r.expires/1000)}:R>\n${r.progress.map(x=>`${labels[x.kind]}: **${x.amount}/${contracts.GOALS[x.kind]}**`).join('\n')}\n**Thành viên (${r.members.length}/4):**\n${r.members.map(m=>`<@${m.user_id}>${m.user_id===r.leader?' 👑':''}: ${m.points}/20 lượt${r.rewards.some(x=>x.user_id===m.user_id)?` · +${r.rewards.find(x=>x.user_id===m.user_id).merit} công trạng`:''}`).join('\n')}\n${r.status==='recruiting'?`${p}contract join ${r.id} · Trưởng đội: ${p}contract start`:r.status==='active'?'Dùng hunt / fish / mine / gather để cùng góp sức.':''}`,allowedMentions:{parse:[]}});
+ }catch(e){if(e.code){console.error('[contract]',e);return msg.reply('⚠️ Chưa xử lý được. Dùng contract status để kiểm tra trước khi thử lại.');}return msg.reply(`❌ ${e.message}`);}
+}};

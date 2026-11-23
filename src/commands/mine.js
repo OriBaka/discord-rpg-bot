@@ -195,6 +195,11 @@ module.exports = {
       toolText += `\n${jobBuffs.describeActive(tb.buff)}` + (left === 0 ? ' — **vừa hết lượt**' : '');
     }
 
+    if (gatherQty > 0) {
+      const contract = require('../game/contracts').recordAction(msg, JOB);
+      if (contract) dropText += `\n🤝 Hợp đồng ${contract.id}: ${contract.progress.reduce((s,p)=>s+p.amount,0)}/40${contract.status==='completed'?' — hoàn thành, công trạng đã ghi!':''}`;
+    }
+
     const embed = new EmbedBuilder().setColor(0x95A5A6)
       .setTitle(`⛏️ Đào tại ${zone.icon} ${zone.name}`)
       .setDescription(dropText + lvlText + toolText)
