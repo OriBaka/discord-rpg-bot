@@ -54,6 +54,9 @@ const JOB_CHOICES = jobChoicesModule.JOB_TYPES.map(t => ({
 }));
 
 const definitions = [
+  { data: new SlashCommandBuilder().setName('casino').setDescription('Sòng chip miễn phí: slot, blackjack, dice, rps')
+      .addStringOption(o => o.setName('args').setDescription('daily | balance | slot 10 | blackjack 10 | dice/rps @user 10 | accept/status <id>')),
+    handler: simpleHandler('casino', i => (i.options.getString('args') || '').trim().split(/\s+/).filter(Boolean)) },
   { data: new SlashCommandBuilder().setName('worldstory').setDescription('Lịch sử thế giới chung và khung luật Chương 4 (chưa mở)')
       .addStringOption(o => o.setName('args').setDescription('status / rules / history [trang]; Chapter 4 chưa phát hành')),
     handler: simpleHandler('worldstory', i => (i.options.getString('args') || '').trim().split(/\s+/).filter(Boolean)) },
