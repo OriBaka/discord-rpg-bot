@@ -266,6 +266,10 @@ function checkAndGrant(userId, context = null) {
       case 'quest_complete':
         pass = stats.total_quests >= ach.target_qty;
         break;
+      case 'collection_discovery': {
+        pass = require('./collections').has(userId, ach.target_id);
+        break;
+      }
       case 'item_collect': {
         const row = db.prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(userId, ach.target_id);
         pass = row && row.qty >= ach.target_qty;

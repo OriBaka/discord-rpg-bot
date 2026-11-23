@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **52 lệnh** prefix + **56 slash command** (40 người chơi + 15 admin)
+- **53 lệnh** prefix + **57 slash command** (40 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -700,3 +700,11 @@ Khu admin tự tạo chưa có ảnh vẫn trả kết quả bình thường; ca
 - Roll riêng sau drop thường, có thể trúng dù lượt thường không có đồ. Mỗi lần trúng **1 món**, không chịu tool, buff, aura, streak, vein hay extra-drop; không tiêu lượt roll khi lệnh bị khóa/cooldown. Không áp dụng mine.
 - Đây là material sưu tầm epic, tradable, bán NPC 90–400 vàng, chưa có recipe hay bonus chiến đấu. Không đưa vào shop/drop thường/lootbox, không thay tỷ lệ vật liệu hiện có.
 - Bản tin dùng delivery best-effort: lưu khóa sau khi Discord gửi thành công để tránh gửi lại khi restart; nếu process chết giữa gửi và ghi nhận có thể lặp một bản tin. Chỉ chạy một bot scheduler với cùng DB, không hỗ trợ nhiều replica gửi thông báo đồng thời.
+
+### 📚 Bộ sưu tập Fish & Gather
+
+- `%collection` / `%collection fish [trang]` / `%collection gather [trang]` (alias `%bosuutap`, slash `/collection kind:fish page:1`): xem danh mục thường và hiếm, dấu đã nhận/chưa nhận, khu nguồn, điều kiện hiếm và số loại đã sưu tập. Mỗi trang 8 món.
+- Ghi nhận **đã từng nhận từ bất kỳ nguồn nào**, kể cả mua/chợ/trao đổi/quà, không phải chứng nhận tự câu/hái. Bán, giao dịch đi hoặc dùng hết vẫn giữ dấu. Không cộng số lượng hay ghi lại lần đầu khi nhận trùng.
+- 10 thành tựu `first_<item_id>` cho 10 cây/cá hiếm theo thời tiết, mỗi cái **15 điểm thành tựu**, không thưởng vàng/XP/vật phẩm để tránh ảnh hưởng kinh tế. Hiện trong `%ach`; khi tự câu/hái lần đầu có dòng thông báo tại kết quả và dùng kênh achievement hiện có nếu cấu hình.
+- Khi nâng cấp, backfill một lần từ inventory hiện còn của người chơi. Không thể suy ra những món đã bán/dùng hết trước khi có hệ thống này. Ngày backfill là ngày ghi nhận, không phải ngày thu thập thực tế.
+- Reset nhân vật xóa dấu sưu tập và các thành tựu first-item mới. Chỉ track material thuộc nguồn Gather/Fish và các rare thời tiết, không đổi drop, thời tiết hay quy tắc nguồn trang bị/kiếm.

@@ -69,6 +69,8 @@ function addItem(userId, itemId, qty = 1, context = null) {
     db.prepare('INSERT INTO inventory (user_id, item_id, qty) VALUES (?, ?, ?)')
       .run(userId, itemId, qty);
   }
+  // Lifetime fish/foraging discoveries, before achievement evaluation.
+  require('./collections').record(userId, itemId, qty);
   // Hook: quest item collection
   try {
     const quests = require('./quests');
