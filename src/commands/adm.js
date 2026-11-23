@@ -50,7 +50,7 @@ const GROUPS = {
     desc: 'Sửa dữ liệu người chơi (vàng, XP, item, HP, level, class)',
     to: 'admin',
     args: (sub, rest) => [sub, ...rest],
-    subs: ['gold', 'xp', 'item', 'takeitem', 'sethp', 'setlevel', 'heal', 'reset', 'look',
+    subs: ['gold', 'xp', 'item', 'takeitem', 'sethp', 'setlevel', 'setjoblevel', 'joblevel', 'heal', 'reset', 'look',
            'giveclass', 'takeclass', 'setclass'],
     danger: ['reset'],
   },
@@ -189,6 +189,7 @@ function renderHelp(prefix, msg) {
   lines.push(`\`${prefix}adm player item @user <id> [qty]\` — tặng item`);
   lines.push(`\`${prefix}adm player takeitem @user <id> [qty]\` — lấy lại item`);
   lines.push(`\`${prefix}adm player setlevel @user <lv>\` — đặt cấp`);
+  lines.push(`\`${prefix}adm player setjoblevel @user <nghề> <lv>\` — đặt cấp nghề (1–100)`);
   lines.push(`\`${prefix}adm player sethp @user <hp>\` — đặt HP`);
   lines.push(`\`${prefix}adm player heal @user\` — hồi đầy HP`);
   lines.push(`\`${prefix}adm player look @user\` — xem chi tiết`);
