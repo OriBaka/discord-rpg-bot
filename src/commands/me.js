@@ -92,6 +92,8 @@ module.exports = {
       )
       .setFooter({ text: `${prefix}gear xem chi tiết • ${prefix}inv xem túi đồ` });
 
+    const achievementTitle = require('../game/achievements').getPlayerStats(msg.author.id).current_title;
+    if (achievementTitle) embed.addFields({ name: '🎖️ Danh hiệu thành tựu', value: achievementTitle.slice(0, 256) });
     const auraState = require('../game/aura').get(msg.author.id);
     if (auraState?.active_stat) embed.addFields({ name: '✨ Aura', value: require('./aura').describe(auraState) });
     return msg.reply({ embeds: [embed] });

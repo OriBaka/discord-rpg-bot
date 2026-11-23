@@ -31,7 +31,7 @@ test('all ten first-item achievements grant exactly once and survive inventory r
     const a = ach.getAchievement(`first_${r.id}`);
     assert.equal(a.points, 15); assert.equal(a.reward_gold + a.reward_xp, 0); assert.equal(a.reward_item, '');
   }
-  assert.equal(ach.getPlayerStats(id).ach_points - before, 150);
+  assert.equal(ach.getPlayerStats(id).ach_points - before, 350);
 });
 
 test('ordinary lifetime discoveries are isolated per player; invalid quantities and unrelated items do not count', () => {

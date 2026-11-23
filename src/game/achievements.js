@@ -266,6 +266,10 @@ function checkAndGrant(userId, context = null) {
       case 'quest_complete':
         pass = stats.total_quests >= ach.target_qty;
         break;
+      case 'collection_rare_complete': {
+        pass = require('./collections').complete(userId, ach.target_id);
+        break;
+      }
       case 'collection_discovery': {
         pass = require('./collections').has(userId, ach.target_id);
         break;
