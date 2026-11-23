@@ -651,6 +651,7 @@ async function handle(interaction) {
 
       // Build fake msg giả từ interaction
       const fakeMsg = {
+        id: interaction.id,
         author: interaction.user,
         member: interaction.member,
         guild: interaction.guild,
