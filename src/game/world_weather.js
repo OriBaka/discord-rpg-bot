@@ -61,7 +61,7 @@ async function tick(client) {
       try {
         const channel = await client.channels.fetch(sub.channel_id);
         if (!channel || channel.guildId !== sub.guild_id || !channel.isTextBased() || typeof channel.send !== 'function') continue;
-        await channel.send({ content: `🌍 Bản tin thế giới\n${describe(state)}\nBốc thời tiết tiếp: <t:${Math.floor(state.next_at / 1000)}:R> (có thể trùng).`, allowedMentions: { parse: [] } });
+        await channel.send({ content: `🌍 Bản tin thế giới\n${describe(state)}\nBốc thời tiết tiếp: <t:${Math.floor(state.next_at / 1000)}:R> (có thể trùng).\n${require('./weather_rares').availableText(state)}`, allowedMentions: { parse: [] } });
         db().prepare('UPDATE weather_channels SET last_key=? WHERE guild_id=? AND channel_id=?').run(state.key, sub.guild_id, sub.channel_id);
       } catch (err) { console.error('[weather notification]', sub.guild_id, err.message); }
     }

@@ -23,4 +23,11 @@ function sources(id) {
   const weather = require('./world_weather');
   return RARES.filter(r => r.id === id).map(r => `${r.zone} · ${weather.WEATHER[r.weather]} · ${r.period === 'day' ? 'ban ngày' : 'ban đêm'}: ${(r.chance * 100).toFixed(1)}% ×1 mỗi lượt hợp lệ; không bonus, ngoài điều kiện = 0%. Xem weather rares.`);
 }
-module.exports = { RARES, migrate, roll, sources };
+function availableText(state) {
+  const prefix = require('./prefix').getPrefix();
+  const available = RARES.filter(r => r.weather === state.weather && r.period === state.period);
+  return '🔎 Đang có thể tìm (vẫn cần đủ cấp/dụng cụ và roll hiếm):\n' + (available.map(r =>
+    `${r.name} · ${(r.chance * 100).toFixed(1)}% · ${prefix}${r.zone === 'sunlit_meadow' || r.zone === 'whisper_woods' || r.zone === 'mossy_marsh' || r.zone === 'ancient_grove' || r.zone === 'world_tree_roots' ? 'gather' : 'fish'} ${r.zone}`
+  ).join('\n') || 'Chưa có cây/cá hiếm theo thời tiết phù hợp lúc này.');
+}
+module.exports = { availableText, RARES, migrate, roll, sources };

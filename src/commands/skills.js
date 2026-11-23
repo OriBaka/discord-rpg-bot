@@ -13,7 +13,7 @@ const COMBOS = {
 };
 module.exports = {
   name: 'skills', aliases: ['skill', 'kynang'],
-  description: 'Kỹ năng: skills | skills info <id> | skills equip <1–4 id> | skills reset',
+  description: 'Kỹ năng: skills | skills info <id> | skills equip <1–4 id> | skills reset | skills presets/save/load/delete',
   async execute(msg, args = []) {
     const p = require('../game/player').getPlayer(msg.author.id);
     if (!p?.primary_class) return msg.reply('Hãy tạo nhân vật và chọn class trước.');
@@ -40,6 +40,15 @@ module.exports = {
       if (args[1] === 'close') return msg.reply(tomes.closeEvent(guild, args[2]) ? 'Đã đóng sự kiện, không xóa chiêu/sách đã nhận.' : 'Không có sự kiện này trong server.');
       return msg.reply(`Admin: ${prefix}skills event create <id> <limited_skill> <giờ> <suất> | ${prefix}skills event close <id>. Tối đa 720 giờ; không tạo lại ID cũ.`);
     }
+    if (action === 'presets') {
+      const rows = builds.presets(p.user_id, p.primary_class);
+      return msg.reply(`📚 Bộ chiêu đã lưu · ${p.primary_class} (${rows.length}/3)\n` + (rows.map(r => `**${r.name}**: ${r.skills}`).join('\n') || 'Chưa lưu bộ nào.') + `\n${prefix}skills save boss · load boss · delete boss. Đặt bộ hiện tại bằng skills equip rồi save; chỉ đổi ngoài trận.`);
+    }
+    if (['save', 'load', 'delete'].includes(action)) {
+      const result = builds.preset(p.user_id, action, args[1]);
+      return msg.reply(result.error || `✅ ${action === 'save' ? 'Đã lưu' : action === 'load' ? 'Đã áp dụng' : 'Đã xóa'} bộ ${result.name} · ${p.primary_class}${result.skills ? ': ' + result.skills.join(', ') : ''}. Không đổi trận đã bắt đầu.`);
+    }
+    if (['equip', 'reset'].includes(action) && builds.inBattle(p.user_id)) return msg.reply('Hãy kết thúc trận đang hoạt động trước khi đổi bộ chiêu.');
     if (action === 'equip') {
       const ids = args.slice(1).flatMap(s => s.split(',')).filter(Boolean);
       const result = builds.set(p.user_id, p.primary_class, p.level, ids);
@@ -57,6 +66,6 @@ module.exports = {
     return msg.reply({ embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle(`📖 Kỹ năng · ${p.primary_class} · Lv.${p.level}`)
       .setDescription(`Mang tối đa 4 kỹ năng, không cần trang bị Attack/Defend/Flee. 18 chiêu nền mở miễn phí theo cấp; chiêu bí kíp cần kiếm sách và học. Không phí đổi bộ chiêu.\nBộ hiện tại: ${equipped.join(', ')}\n\n${COMBOS[p.primary_class] || ''}`)
       .addFields(catalog.getSkillsForClass(p.primary_class).map(s => ({ name: `${p.level < s.level || (s.book && !tomes.knows(p.user_id, s.id)) ? '🔒' : equipped.includes(s.id) ? '✅' : '▫️'} ${s.name} · Lv.${s.level}`, value: `\`${s.id}\` · ${s.cost} NL · CD ${s.cd}\n${s.desc}${s.book ? `\n📜 ${tomes.knows(p.user_id, s.id) ? 'Đã học' : 'Chưa học'} · ${tomes.sourceText(s)}` : ''}` })))
-      .setFooter({ text: `${prefix}skills equip id1 id2 id3 id4 • skills info <id> • skills events / claim <id>. Chỉ battle/tower; hunt nhanh, duel và raid tuần chưa dùng bộ chiêu.` })] });
+      .setFooter({ text: `${prefix}skills equip id1 id2 id3 id4 • skills info <id> • skills events / claim <id>. skills presets/save/load/delete <tên> • Chỉ battle/tower; hunt nhanh, duel và raid tuần chưa dùng bộ chiêu.` })] });
   },
 };

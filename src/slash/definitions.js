@@ -56,8 +56,9 @@ const JOB_CHOICES = jobChoicesModule.JOB_TYPES.map(t => ({
 const definitions = [
   { data: new SlashCommandBuilder().setName('collection').setDescription('Bộ sưu tập cá và cây cỏ đã từng nhận')
       .addStringOption(o => o.setName('kind').setDescription('Sổ sưu tập').addChoices({ name: 'Fish', value: 'fish' }, { name: 'Gather', value: 'gather' }))
-      .addIntegerOption(o => o.setName('page').setDescription('Trang').setMinValue(1)),
-    handler: simpleHandler('collection', i => { const kind = i.options.getString('kind'); return kind ? [kind, String(i.options.getInteger('page') || 1)] : []; }) },
+      .addIntegerOption(o => o.setName('page').setDescription('Trang').setMinValue(1))
+      .addStringOption(o => o.setName('filter').setDescription('Lọc bộ sưu tập').addChoices(...['all','missing','owned','rare'].map(value => ({ name: value, value })))),
+    handler: simpleHandler('collection', i => { const kind = i.options.getString('kind'); const filter = i.options.getString('filter'); return kind ? [kind, String(i.options.getInteger('page') || 1), ...(filter && ['all','missing','owned','rare'].includes(filter) ? [filter] : [])] : []; }) },
   { data: new SlashCommandBuilder().setName('weather').setDescription('Thời tiết, giờ thế giới và vật sưu tầm hiếm')
       .addStringOption(o => o.setName('args').setDescription('rares / channel ID / interval phút / time HH:MM / dayhours 6 18')),
     handler: simpleHandler('weather', i => (i.options.getString('args') || '').trim().split(/\s+/).filter(Boolean)) },
@@ -612,8 +613,8 @@ const definitions = [
   },
   {
     data: new SlashCommandBuilder().setName('skills').setDescription('Kỹ năng, combo và bộ chiêu theo class')
-      .addStringOption(o => o.setName('action').setDescription('Hành động').addChoices(...['list', 'info', 'equip', 'reset', 'events', 'claim'].map(value => ({ name: value, value }))))
-      .addStringOption(o => o.setName('ids').setDescription('ID chiêu, cách nhau bằng khoảng trắng khi equip').setMaxLength(180)),
+      .addStringOption(o => o.setName('action').setDescription('Hành động').addChoices(...['list', 'info', 'equip', 'reset', 'events', 'claim', 'presets', 'save', 'load', 'delete'].map(value => ({ name: value, value }))))
+      .addStringOption(o => o.setName('ids').setDescription('ID chiêu khi equip; tên bộ khi save/load/delete').setMaxLength(180)),
     handler: simpleHandler('skills', i => [i.options.getString('action') || 'list', ...(i.options.getString('ids') || '').trim().split(/\s+/).filter(Boolean)]),
   },
   // ====== Help ======

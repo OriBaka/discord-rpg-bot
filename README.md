@@ -719,3 +719,22 @@ Khu admin tự tạo chưa có ảnh vẫn trả kết quả bình thường; ca
 - Sau ngày 30, phần thưởng quay lại ngày 1 nhưng streak/total/best không reset. Mỗi chu kỳ đều có các mốc này. Ngày lẻ trong chu kỳ hồi đầy HP nếu đang thiếu.
 - Vẫn chờ 24h/lượt; từ lần nhận gần nhất tới đủ 44h thì đứt chuỗi, lượt tới về ngày 1. `%daily xem` xem đủ 30 ngày, không tiêu lượt.
 - Không reset dữ liệu khi nâng cấp: ngày tiếp theo tính từ streak hiện tại modulo 30. Không phát bù các mốc đã vượt trước cập nhật. Thưởng và tiến độ lưu trong cùng transaction.
+
+### Bộ sưu tập & bộ chiêu nhanh
+
+- `%collection fish [trang] [all/missing/owned/rare]` và `%collection gather ...`: nút trang trước/sau, lọc Tất cả / Chưa có / Đã có / Hiếm; chỉ chủ sổ điều khiển được. Khi bấm, đọc tiến độ mới nhất. `/collection` có thêm tùy chọn `filter`. Sổ trống vẫn chuyển bộ lọc được.
+- Mốc **5/5 cá hiếm**: 50 điểm thành tựu + danh hiệu **Người Đọc Sóng**; **5/5 cây hiếm**: 50 điểm + **Người Nghe Rừng**; **10/10**: 100 điểm + **Kẻ Theo Dấu Thiên Nhiên**. Không thưởng vàng/XP/stats hay nguồn vật phẩm mới. Mỗi thành tựu một lần, tính theo dấu đã từng nhận, không đòi giữ trong túi. Backfill người đã đủ mốc một lần khi nâng cấp.
+- Chọn danh hiệu đã mở bằng `%collection title fish`, `%collection title gather`, `%collection title all`. Hiện ở `%ach`, bảng điểm thành tựu và trường danh hiệu thành tựu trên `%me`; không thay danh hiệu ngoại hình đã mua.
+- Bản tin thời tiết và `%weather` thêm **Đang có thể tìm**: tên cây/cá phù hợp với thời tiết + buổi hiện tại, tỷ lệ và lệnh đi tìm. Đây không phải bảo đảm nhận được; vẫn cần đủ cấp/dụng cụ. Nếu không có điều kiện phù hợp thì thông báo rõ.
+
+Lưu bộ chiêu nhanh (tối đa **3 tên mỗi class**, không mất phí):
+```text
+%skills equip slash whirlwind charge guard_break
+%skills save boss
+%skills presets
+%skills load boss
+%skills delete boss
+```
+Tên 1–20 ký tự a-z/0-9/_/-. `save` lưu bộ đang trang bị, trùng tên thì ghi đè; `load` kiểm tra lại toàn bộ cấp/class/chiêu đã học, không tự bỏ chiêu chưa hợp lệ. Có thể đặt tên `boss`, `tower`, `combo` hoặc tên khác. Bộ lưu độc lập theo người và class, tồn tại qua restart. `/skills action:save/load/delete ids:boss` và `action:presets` tương ứng.
+
+Trong trận theo lượt đang active (PvE/Tháp/PvP ở bất kỳ phía nào), chặn save/load/delete và equip/reset; cần kết thúc trận trước. Không viết lại snapshot trận đã bắt đầu. Chỉ hỗ trợ battle/tower như bộ kỹ năng hiện hành, không đổi cơ chế hunt nhanh/duel/raid tuần. Reset nhân vật xóa cả các preset/bộ trang bị kỹ năng đã lưu. Chưa mở nội dung Chương 4.

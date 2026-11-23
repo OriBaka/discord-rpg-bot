@@ -1,4 +1,14 @@
 const db = () => require('../db/database');
+const MILESTONES = [
+  { kind: 'fish', id: 'collection_rare_fish', title: 'Người Đọc Sóng', points: 50 },
+  { kind: 'gather', id: 'collection_rare_gather', title: 'Người Nghe Rừng', points: 50 },
+  { kind: 'all', id: 'collection_rare_all', title: 'Kẻ Theo Dấu Thiên Nhiên', points: 100 },
+];
+function complete(user, kind) {
+  if (!['fish', 'gather', 'all'].includes(kind)) return false;
+  const items = (kind === 'all' ? [...catalog('fish'), ...catalog('gather')] : catalog(kind)).filter(i => i.rare);
+  return items.length === (kind === 'all' ? 10 : 5) && items.every(i => has(user, i.id));
+}
 const JOBS = { fish: 'fishing', gather: 'foraging' };
 function catalog(kind) {
   if (!Object.hasOwn(JOBS, kind)) return [];
@@ -35,6 +45,9 @@ function migrate() {
   const ach = db().prepare(`INSERT OR IGNORE INTO achievements
     (id,name,desc,icon,objective,target_id,target_qty,points) VALUES (?,?,?,'🏆','collection_discovery',?,1,15)`);
   for (const r of require('./weather_rares').RARES) ach.run(`first_${r.id}`, `Lần đầu: ${r.name}`, `Lần đầu nhận ${r.name} từ bất kỳ nguồn nào. Dấu sưu tập vẫn giữ sau khi bán hoặc dùng hết.`, r.id);
+  const milestone = db().prepare(`INSERT OR IGNORE INTO achievements
+    (id,name,desc,icon,objective,target_id,target_qty,points,title) VALUES (?,?,?,'🏅','collection_rare_complete',?,1,?,?)`);
+  for (const m of MILESTONES) milestone.run(m.id, m.title, `Hoàn thành bộ ${m.kind === 'all' ? '10/10' : '5/5'} vật phẩm hiếm ${m.kind}. Chỉ vinh danh, không tăng chỉ số.`, m.kind, m.points, m.title);
   db().transaction(() => {
     if (db().prepare("SELECT 1 FROM meta WHERE key='collections_backfill_v1'").get()) return;
     const insert = db().prepare(`INSERT OR IGNORE INTO player_collections(user_id,item_id,discovered_at)
@@ -45,11 +58,20 @@ function migrate() {
     for (const r of require('./weather_rares').RARES) for (const row of db().prepare('SELECT user_id FROM player_collections WHERE item_id=?').all(r.id)) achievements.grantAchievement(row.user_id, `first_${r.id}`);
     db().prepare("INSERT INTO meta(key,value) VALUES ('collections_backfill_v1','1')").run();
   })();
+  db().transaction(() => {
+    if (db().prepare("SELECT 1 FROM meta WHERE key='collection_milestones_v1'").get()) return;
+    for (const row of db().prepare('SELECT DISTINCT c.user_id FROM player_collections c JOIN players p ON p.user_id=c.user_id').all()) {
+      for (const m of MILESTONES) if (complete(row.user_id, m.kind)) require('./achievements').grantAchievement(row.user_id, m.id);
+    }
+    db().prepare("INSERT INTO meta(key,value) VALUES ('collection_milestones_v1','1')").run();
+  })();
 }
 function reset(user) {
+  const stats = require('./achievements').getPlayerStats(user);
+  if (MILESTONES.some(m => m.title === stats.current_title)) require('./achievements').updatePlayerStats(user, { current_title: '' });
   db().prepare('DELETE FROM player_collections WHERE user_id=?').run(user);
-  const points = db().prepare(`SELECT COALESCE(SUM(a.points),0) n FROM player_achievements p JOIN achievements a ON a.id=p.achievement_id WHERE p.user_id=? AND a.objective='collection_discovery'`).get(user).n;
+  const points = db().prepare(`SELECT COALESCE(SUM(a.points),0) n FROM player_achievements p JOIN achievements a ON a.id=p.achievement_id WHERE p.user_id=? AND a.objective IN ('collection_discovery','collection_rare_complete')`).get(user).n;
   db().prepare('UPDATE player_stats SET ach_points=MAX(0,ach_points-?) WHERE user_id=?').run(points, user);
-  db().prepare("DELETE FROM player_achievements WHERE user_id=? AND achievement_id IN (SELECT id FROM achievements WHERE objective='collection_discovery')").run(user);
+  db().prepare("DELETE FROM player_achievements WHERE user_id=? AND achievement_id IN (SELECT id FROM achievements WHERE objective IN ('collection_discovery','collection_rare_complete'))").run(user);
 }
-module.exports = { JOBS, catalog, has, record, list, migrate, reset };
+module.exports = { MILESTONES, complete, JOBS, catalog, has, record, list, migrate, reset };

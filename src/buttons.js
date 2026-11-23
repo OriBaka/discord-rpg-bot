@@ -388,6 +388,11 @@ async function handle(interaction) {
         return interaction.reply({ content: '❌ Chỉ người gọi lệnh mới điều khiển được. Gõ lệnh riêng của bạn để dùng.', ephemeral: true });
       }
 
+      if (decoded.domain === 'collection') {
+        const [kind, filter] = decoded.filter.split('.');
+        return await require('./commands/collection').render({ userId: decoded.userId, kind, filter, page: decoded.page, replyFn: opts => interaction.update(opts) });
+      }
+
       // Route theo domain
       if (decoded.domain === 'craft' || decoded.domain === 'cook') {
         const craftCmd = require('./commands/craft');

@@ -38,6 +38,6 @@ module.exports = {
     const s = world.current();
     const db = require('../db/database');
     const channel = msg.guild && db.prepare('SELECT channel_id FROM weather_channels WHERE guild_id=?').get(msg.guild.id);
-    return msg.reply({ content: `🌍 ${world.describe(s)}\nThời tiết chung toàn bot, bốc đều ngẫu nhiên mỗi ${s.interval_ms / 60000} phút, có thể lặp. Lần tới <t:${Math.floor(s.next_at / 1000)}:R>.\nNgày ${s.day_start}:00–${s.day_end}:00; ngoài khung là đêm. Đồng hồ: UTC+7${s.clock_offset ? `, lệch admin ${s.clock_offset / 60000} phút` : ' (giờ Việt Nam)'}.\nKênh bản tin server: ${channel ? `<#${channel.channel_id}>` : 'chưa đặt'}.\n${p}weather rares xem cây/cá hiếm; ${p}weather help xem cấu hình.`, allowedMentions: { parse: [] } });
+    return msg.reply({ content: `🌍 ${world.describe(s)}\nThời tiết chung toàn bot, bốc đều ngẫu nhiên mỗi ${s.interval_ms / 60000} phút, có thể lặp. Lần tới <t:${Math.floor(s.next_at / 1000)}:R>.\nNgày ${s.day_start}:00–${s.day_end}:00; ngoài khung là đêm. Đồng hồ: UTC+7${s.clock_offset ? `, lệch admin ${s.clock_offset / 60000} phút` : ' (giờ Việt Nam)'}.\nKênh bản tin server: ${channel ? `<#${channel.channel_id}>` : 'chưa đặt'}.\n${require('../game/weather_rares').availableText(s)}\n${p}weather rares xem cây/cá hiếm; ${p}weather help xem cấu hình.`, allowedMentions: { parse: [] } });
   },
 };
