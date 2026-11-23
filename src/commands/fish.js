@@ -155,8 +155,10 @@ module.exports = {
     }
     dropText += bonusText;
     for (const rare of require('../game/weather_rares').roll(zone.id, conditions)) {
-      addItem(msg.author.id, rare.id, 1);
+      const first = !require('../game/collections').has(msg.author.id, rare.id);
+      addItem(msg.author.id, rare.id, 1, { client: msg.client, guildId: msg.guild?.id });
       gatherQty++;
+      if (first) dropText += `\n🏆 **Lần đầu sưu tập!** +15 điểm thành tựu`;
       dropText += `\n✨ **HIẾM THEO THỜI TIẾT!** +1× ${rare.name}`;
     }
     dropText += `\n\n${world.describe(conditions)}`;

@@ -337,6 +337,7 @@ renameAll();
 runMigrate('../game/story', 'migrateStory');
 runMigrate('../game/world_weather', 'migrateWorldWeather');
 runMigrate('../game/weather_rares', 'migrateWeatherRares');
+runMigrate('../game/collections', 'migrateCollections');
 
 runMigrate('../game/gold_sinks', 'migrateGoldSinks');
 

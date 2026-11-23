@@ -427,6 +427,7 @@ module.exports = {
         db.prepare('DELETE FROM aura_job_xp WHERE user_id=?').run(target.id);
         db.prepare('DELETE FROM player_aura WHERE user_id=?').run(target.id);
         db.prepare('DELETE FROM player_story WHERE user_id=?').run(target.id);
+        require('../game/collections').reset(target.id);
         db.prepare('DELETE FROM players WHERE user_id=?').run(target.id);
         db.prepare('DELETE FROM inventory WHERE user_id=?').run(target.id);
       })();

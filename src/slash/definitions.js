@@ -54,6 +54,10 @@ const JOB_CHOICES = jobChoicesModule.JOB_TYPES.map(t => ({
 }));
 
 const definitions = [
+  { data: new SlashCommandBuilder().setName('collection').setDescription('Bộ sưu tập cá và cây cỏ đã từng nhận')
+      .addStringOption(o => o.setName('kind').setDescription('Sổ sưu tập').addChoices({ name: 'Fish', value: 'fish' }, { name: 'Gather', value: 'gather' }))
+      .addIntegerOption(o => o.setName('page').setDescription('Trang').setMinValue(1)),
+    handler: simpleHandler('collection', i => { const kind = i.options.getString('kind'); return kind ? [kind, String(i.options.getInteger('page') || 1)] : []; }) },
   { data: new SlashCommandBuilder().setName('weather').setDescription('Thời tiết, giờ thế giới và vật sưu tầm hiếm')
       .addStringOption(o => o.setName('args').setDescription('rares / channel ID / interval phút / time HH:MM / dayhours 6 18')),
     handler: simpleHandler('weather', i => (i.options.getString('args') || '').trim().split(/\s+/).filter(Boolean)) },
