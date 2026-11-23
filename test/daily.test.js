@@ -1,11 +1,10 @@
-// Test cho hệ thống điểm danh mới (%daily — chuỗi 7 ngày).
+// Test cho hệ thống điểm danh mới (%daily — chu kỳ 30 ngày).
 // Chạy: npm test
 //
 // Ba thứ dễ vỡ nhất và đều đã từng vỡ trong lúc phát triển:
 //   1. Chuỗi đứt/không đứt theo đúng mốc thời gian.
 //   2. Ngày 7 tặng vật phẩm theo bậc level (không phải item cố định).
-//   3. Streak > 7 vẫn hiển thị đúng "ngày thứ mấy của chu kỳ" — nếu tính sai
-//      thì người chơi ngày thứ 8 sẽ thấy "0/7".
+//   3. Chu kỳ 30 ngày quay vòng nhưng streak và kỷ lục vẫn tiếp tục.
 const { test, before } = require('node:test');
 const assert = require('node:assert');
 const { ROOT, loadCommands, fakeMessage, quiet, loud } = require('./harness');
@@ -108,8 +107,8 @@ test('daily: getStatus — mốc canClaim/broken chính xác', () => {
   assert.strictEqual(b.nextDay, 1);
 });
 
-// ── Chu kỳ 7 ngày ────────────────────────────────────────────────────────────
-test('daily: streak > 7 quay vòng đúng về ngày 1 (không ra 0/7)', async () => {
+// ── Chu kỳ 30 ngày ────────────────────────────────────────────────────────────
+test('daily: ngày 8 tiếp tục chu kỳ 30 ngày, không reset chuỗi', async () => {
   const uid = freshPlayer();
   for (let i = 0; i < 8; i++) {
     await claim(uid);
@@ -120,14 +119,14 @@ test('daily: streak > 7 quay vòng đúng về ngày 1 (không ra 0/7)', async (
   assert.strictEqual(p.daily_total, 8);
   assert.strictEqual(p.daily_best, 8);
 
-  // Bảng phải nói "1/7 ngày của chu kỳ này", không phải "0/7"
+  // Ngày 8 không quay vòng sớm như chu kỳ 7 ngày cũ.
   const msg = fakeMessage(uid);
   await cmd.execute(msg, ['xem']);
-  assert.ok(/Đã nhận 1\/7/.test(msg._text()),
-    `phải hiện 1/7 của chu kỳ, nhận: ${msg._text().slice(0, 120)}`);
+  assert.ok(/Đã nhận 8\/30/.test(msg._text()),
+    `phải hiện 8/30 của chu kỳ, nhận: ${msg._text().slice(0, 120)}`);
 });
 
-test('daily: bảng xem có đủ 7 ngày và đánh dấu ngày hiện tại', async () => {
+test('daily: bảng xem giữ đủ tuần đầu và đánh dấu ngày hiện tại', async () => {
   const uid = freshPlayer({ level: 12 });
   const msg = fakeMessage(uid);
   await cmd.execute(msg, ['xem']);
@@ -136,7 +135,7 @@ test('daily: bảng xem có đủ 7 ngày và đánh dấu ngày hiện tại', 
     assert.ok(new RegExp(`Ngày ${d}\\b`).test(txt), `bảng thiếu ngày ${d}`);
   }
   assert.ok(txt.includes('👉'), 'phải đánh dấu ngày tiếp theo');
-  assert.ok(/Điểm danh 7 ngày/.test(txt));
+  assert.ok(/Điểm danh 30 ngày/.test(txt));
 });
 
 test('daily: xem bảng KHÔNG điểm danh (không đổi state)', async () => {
@@ -200,7 +199,7 @@ test('daily: XP được cộng và có thể lên cấp', async () => {
 test('daily: 7 ngày ≈ 15–30 kill ở zone tương ứng (không phá kinh tế)', () => {
   for (const lv of [1, 10, 20, 30, 40, 50]) {
     const rate = daily.zoneRate(lv);
-    const total = daily.REWARDS.reduce((a, r) => a + Math.round(rate.gold * r.goldKill), 0);
+    const total = daily.REWARDS.slice(0, 7).reduce((a, r) => a + Math.round(rate.gold * r.goldKill), 0);
     const kills = total / rate.gold;
     assert.ok(kills >= 15 && kills <= 30,
       `Lv.${lv}: 7 ngày = ${kills.toFixed(1)} kill (phải trong 15–30)`);
@@ -239,4 +238,75 @@ test('daily: thông báo LÊN CẤP thực sự hiện khi đủ XP', async () =
     rewind(uid, 24.1);
   }
   assert.fail('7 ngày điểm danh phải đủ XP để lên ít nhất 1 cấp');
+});
+
+test('daily: các mốc 14/21/30 có thưởng và số lượng quà tăng dần, không nhận lặp', async () => {
+  for (const [day, count] of [[14, 2], [21, 3], [30, 5]]) {
+    const uid = freshPlayer({ level: 25, daily_streak: day - 1, daily_best: day - 1, last_daily: Date.now() - daily.DAY_MS - 1000 });
+    const initial = player.getPlayer(uid), rate = daily.zoneRate(initial.level), reward = daily.REWARDS[day - 1];
+    const item = daily.day7Item(initial.level);
+    const txt = await claim(uid);
+    assert.ok(txt.includes(`Ngày ${day}/30`));
+    assert.ok(txt.includes(`${count}×`));
+    assert.strictEqual(player.getPlayer(uid).gold, initial.gold + Math.round(rate.gold * reward.goldKill));
+    assert.strictEqual(player.getPlayer(uid).daily_streak, day);
+    const qty = () => db.prepare('SELECT qty FROM inventory WHERE user_id=? AND item_id=?').get(uid, item)?.qty || 0;
+    assert.strictEqual(qty(), count);
+    await claim(uid);
+    assert.strictEqual(qty(), count);
+    assert.strictEqual(player.getPlayer(uid).daily_streak, day);
+  }
+  assert.ok(daily.REWARDS[13].goldKill < daily.REWARDS[20].goldKill);
+  assert.ok(daily.REWARDS[20].goldKill < daily.REWARDS[29].goldKill);
+});
+
+test('daily: qua ngày 30 quay lại ngày 1 nhưng giữ streak, total và best', async () => {
+  const uid = freshPlayer({ daily_streak: 29, daily_total: 49, daily_best: 29, last_daily: Date.now() - daily.DAY_MS - 1000 });
+  await claim(uid); rewind(uid, 24.1);
+  assert.strictEqual(daily.getStatus(player.getPlayer(uid)).nextDay, 1);
+  const txt = await claim(uid);
+  assert.ok(txt.includes('Ngày 1/30'));
+  const p = player.getPlayer(uid);
+  assert.strictEqual(p.daily_streak, 31); assert.strictEqual(p.daily_best, 31); assert.strictEqual(p.daily_total, 51);
+  const msg = fakeMessage(uid); await cmd.execute(msg, ['xem']);
+  assert.ok(msg._text().includes('Đã nhận 1/30'));
+});
+
+test('daily: đứt chuỗi trước mốc 14/21/30 trở về ngày 1, không nhận quà mốc', async () => {
+  for (const day of [14, 21, 30]) {
+    const uid = freshPlayer({ daily_streak: day - 1, daily_best: day - 1, last_daily: Date.now() - daily.BREAK_MS - 1000 });
+    const txt = await claim(uid);
+    assert.ok(txt.includes('Ngày 1/30'));
+    assert.strictEqual(player.getPlayer(uid).daily_streak, 1);
+    assert.strictEqual(player.getPlayer(uid).daily_best, day - 1);
+    assert.strictEqual(player.getInventory(uid).length, 0);
+  }
+});
+
+test('daily: bảng đủ 30 ngày, đúng lượng quà và nằm trong giới hạn Discord', async () => {
+  const uid = freshPlayer({ level: 99 });
+  const msg = fakeMessage(uid); let payload;
+  msg.reply = async p => { payload = p; };
+  const before = player.getPlayer(uid);
+  await cmd.execute(msg, ['xem']);
+  const data = payload.embeds[0].data;
+  const text = JSON.stringify(data);
+  for (let day = 1; day <= 30; day++) assert.ok(text.includes(`Ngày ${day}**`), `thiếu ngày ${day}`);
+  assert.ok(text.includes('2×')); assert.ok(text.includes('3×')); assert.ok(text.includes('5×'));
+  assert.ok(data.description.length <= 4096);
+  assert.ok(data.fields.every(f => f.value.length <= 1024));
+  const size = data.title.length + data.description.length + data.footer.text.length + data.fields.reduce((n, f) => n + f.name.length + f.value.length, 0);
+  assert.ok(size <= 6000, `embed size ${size}`);
+  assert.deepStrictEqual(player.getPlayer(uid), before);
+});
+
+test('daily: lỗi thưởng mốc rollback vàng, XP, quà và tiến độ cùng nhau', async () => {
+  const uid = freshPlayer({ level: 25, daily_streak: 29, daily_best: 29, last_daily: Date.now() - daily.DAY_MS - 1000 });
+  const before = player.getPlayer(uid), saved = player.addItem;
+  player.addItem = () => { throw new Error('daily reward failure'); };
+  try { await assert.rejects(() => claim(uid), /daily reward failure/); }
+  finally { player.addItem = saved; }
+  assert.deepStrictEqual(player.getPlayer(uid), before);
+  assert.strictEqual(player.getInventory(uid).length, 0);
+  assert.ok((await claim(uid)).includes('Ngày 30/30'));
 });

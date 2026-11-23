@@ -21,14 +21,14 @@
 // ---------------------------------------------------------------------------
 // HỆ THỐNG MỚI
 // ---------------------------------------------------------------------------
-//   • CHUỖI 7 NGÀY: ngày 1→7 phần thưởng leo thang. Ngày 7 là mốc lớn.
+//   • CHU KỲ 30 NGÀY: giữ thưởng tuần đầu, thêm mốc 14/21/30.
 //     Đứt chuỗi (bỏ >1 ngày) thì quay về ngày 1 — đây là thứ tạo lý do
 //     quay lại đều, giống mọi game mobile.
 //   • PHẦN THƯỞNG THEO BẬC: mỗi ngày có vàng + (XP / item / hồi máu),
 //     và có một "ngày đặc biệt" trong tuần tặng item thật.
 //   • KHÔNG PHẠT NẶNG: bỏ 1 ngày chỉ mất streak, KHÔNG mất gì đã có.
 //     Người chơi bận việc quay lại vẫn nhận được thưởng ngày 1 ngay.
-//   • CÓ THỂ XEM TRƯỚC: `%daily xem` hiện cả 7 ngày + đang ở đâu.
+//   • CÓ THỂ XEM TRƯỚC: `%daily xem` hiện cả 30 ngày + đang ở đâu.
 //
 // Cân bằng: tổng vàng 7 ngày ≈ 15–20 kill ở zone tương ứng level người chơi,
 // để daily là "thu nhập thụ động có ý nghĩa" chứ không phải nguồn thu chính.
@@ -51,13 +51,13 @@ const GRACE_MS = 20 * 60 * 60 * 1000;
 const BREAK_MS = DAY_MS + GRACE_MS;   // 44h
 
 // ---------------------------------------------------------------------------
-// PHẦN THƯỞNG 7 NGÀY
+// PHẦN THƯỞNG: tuần đầu + chu kỳ mở rộng 30 ngày
 //
 // `goldKill` = phần thưởng vàng tính bằng "số kill tương đương" — rồi nhân
 // với vàng/kill của zone phù hợp level người chơi. Nhờ vậy daily không bị vô
 // nghĩa ở cấp cao (lỗi của hệ thống cũ) mà cũng không phá kinh tế cấp thấp.
 // ---------------------------------------------------------------------------
-const REWARDS = [
+const WEEK_REWARDS = [
   { day: 1, goldKill: 1.5, xpKill: 0.5, label: 'Khởi động' },
   { day: 2, goldKill: 2.0, xpKill: 0.5, label: 'Đều đặn' },
   { day: 3, goldKill: 2.5, xpKill: 0.8, label: 'Bám trụ' },
@@ -66,6 +66,17 @@ const REWARDS = [
   { day: 6, goldKill: 4.0, xpKill: 1.0, label: 'Gần đích' },
   { day: 7, goldKill: 6.0, xpKill: 1.5, label: 'Trọn tuần', item: true },
 ];
+
+// Extend the existing week without changing rewards on days 1–7.
+const CYCLE_DAYS = 30;
+const MILESTONES = [7, 14, 21, 30];
+const REWARDS = Array.from({ length: CYCLE_DAYS }, (_, i) => {
+  const day = i + 1, base = WEEK_REWARDS[i % 7];
+  return { ...base, day, label: day <= 7 ? base.label : (day % 7 === 0 ? 'Trọn tuần' : 'Bền bỉ'), itemQty: base.item ? 1 : 0 };
+});
+Object.assign(REWARDS[13], { goldKill: 8, xpKill: 2, label: 'Hai tuần gắn bó', item: true, itemQty: 2 });
+Object.assign(REWARDS[20], { goldKill: 10, xpKill: 2.5, label: 'Ba tuần bền bỉ', item: true, itemQty: 3 });
+Object.assign(REWARDS[29], { goldKill: 12, xpKill: 3, label: 'Trọn 30 ngày', item: true, itemQty: 5 });
 
 // Phần thưởng vật phẩm của ngày 7 — vật phẩm hồi máu theo BẬC LEVEL.
 //
@@ -127,8 +138,8 @@ function getStatus(player, now = Date.now()) {
   const broken = since >= BREAK_MS;
   const streak = broken ? 0 : (player.daily_streak || 0);
 
-  // Ngày tiếp theo trong chuỗi 7 ngày: 1..7
-  const nextDay = (streak % 7) + 1;
+  // Ngày tiếp theo trong chu kỳ 30 ngày: 1..30
+  const nextDay = (streak % CYCLE_DAYS) + 1;
 
   return {
     canClaim,
@@ -151,7 +162,7 @@ function grantReward(userId, player, day, opts = {}) {
   const gold = Math.round(rate.gold * r.goldKill);
   const xp = Math.round(rate.xp * r.xpKill);
 
-  const granted = { gold, xp, item: null, healed: false };
+  const granted = { gold, xp, item: null, itemQty: 0, healed: false };
 
   // Vàng + XP. addXpAndLevel nhận (userId, xpGain) và tự đọc lại player,
   // nên phải truyền userId chứ không phải object player.
@@ -168,16 +179,17 @@ function grantReward(userId, player, day, opts = {}) {
     granted.healed = true;
   }
 
-  // Ngày 7: tặng vật phẩm theo bậc level
-  if (day === 7 && !opts.dryRun) {
+  // Các ngày có quà: tặng đúng số lượng theo bậc level
+  if (r.item && !opts.dryRun) {
     const pick = day7Item(player.level);
     const it = itemMod().getItem(pick);
     if (it) {
-      addItem(userId, pick, 1);
+      addItem(userId, pick, r.itemQty);
       granted.item = pick;
+      granted.itemQty = r.itemQty;
     } else {
       // Fallback: không có item thì cộng thêm vàng, KHÔNG im lặng bỏ thưởng
-      const extra = Math.round(rate.gold * 3);
+      const extra = Math.round(rate.gold * 3 * r.itemQty);
       updatePlayer(userId, { gold: (player.gold || 0) + gold + extra });
       granted.gold += extra;
     }
@@ -189,6 +201,6 @@ function grantReward(userId, player, day, opts = {}) {
 module.exports = {
   migrate,
   DAY_MS, GRACE_MS, BREAK_MS,
-  REWARDS, DAY7_ITEMS, day7Item,
+  REWARDS, CYCLE_DAYS, MILESTONES, DAY7_ITEMS, day7Item,
   getStatus, grantReward, zoneRate,
 };

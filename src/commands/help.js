@@ -170,8 +170,8 @@ function buildSections(prefix) {
     {
       name: '🎁 Khác', terms: ['khac', 'daily', 'diem danh', 'code', 'redeem'],
       lines: [
-        `\`${prefix}daily\` điểm danh — chuỗi 7 ngày, thưởng leo thang`,
-        `\`${prefix}daily xem\` xem bảng 7 ngày + đang ở đâu`,
+        `\`${prefix}daily\` điểm danh — chu kỳ 30 ngày, mốc quà 7/14/21/30`,
+        `\`${prefix}daily xem\` xem bảng 30 ngày + đang ở đâu`,
         `\`${prefix}redeem <code>\` nhập code nhận thưởng`,
       ],
     },
