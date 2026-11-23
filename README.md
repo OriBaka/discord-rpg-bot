@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **54 lệnh** prefix + **58 slash command** (40 người chơi + 15 admin)
+- **55 lệnh** prefix + **59 slash command** (40 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -761,3 +761,38 @@ Trong trận theo lượt đang active (PvE/Tháp/PvP ở bất kỳ phía nào)
 Hỗ trợ `mining`, `fishing`, `foraging`, `cooking`, `crafting`, số nguyên **1–100**; có thể tăng hoặc hạ cấp. XP nghề đặt về **0**, giữ nguyên cooldown, các nghề khác và dữ liệu nhân vật (không dùng công thức setlevel chiến đấu). Quyền giống admin người chơi hiện có: ADMIN_IDS, chủ server hoặc Administrator. Có alias `%admin joblevel`.
 
 Thành tựu được kiểm tra như khi lên cấp nghề bình thường, thưởng thành tựu chỉ cấp một lần (có thể có vàng/XP nhân vật theo cấu hình thành tựu). Hạ cấp không thu hồi thành tựu/thưởng đã nhận; điều kiện công cụ/buff/khu nghề tự áp dụng theo cấp mới, buff không đủ cấp được pause theo cơ chế hiện có. Chưa có cuộc đua Chương 4 được mở bởi thao tác này.
+
+### 🎰 Casino — chip giải trí tách biệt RPG
+
+`%casino help` (alias `%songbac`), slash `/casino args:...`. Không mua chip,
+không chuyển chip trực tiếp, không đổi sang vàng/XP/vật phẩm/tiền thật.
+
+- `%casino daily`: 1.000 chip miễn phí mỗi 24h, `%casino balance` xem ví.
+- `%casino slot 10`: 3 ô, mỗi ô 6 biểu tượng đều xác suất. Bộ ba trả tổng 10×,
+  đúng một đôi hoàn 1×, còn lại mất cược; RTP lý thuyết 69,44%.
+- `%casino blackjack 20`: bộ bài riêng 52 lá; `%casino hit <id>` rút,
+  `%casino stand <id>` dừng. A=1/11, J/Q/K=10, nhà cái dừng cả soft17.
+  Blackjack tự nhiên trả tổng 2,5×, thắng thường 2×, hòa hoàn cược.
+  Không split/double/insurance. Hết 5 phút cố định từ lúc chia: xử thua.
+- `%casino dice @user 50` / `%casino rps @user 50`: giữ chip chủ kèo;
+  đối thủ `%casino accept <id>` sẽ giữ cùng tiền cược. Dice tung ngay hai
+  xúc xắc 1–6. RPS mỗi người **DM bot** `%casino pick <id> rock|paper|scissors`,
+  chọn một lần không sửa; kết quả mới công khai hai lựa chọn. Không nhận pick
+  tại server. Nếu DM bot bị chặn, không nhận kèo RPS cho đến khi mở được DM.
+- `%casino status [id]`: xem lại ván của mình (bỏ ID lấy ván gần nhất, kể cả
+  khi phản hồi Discord trước đó bị mất); pending có thể `%casino cancel <id>`
+  bởi chủ kèo, hoặc `%casino decline <id>` bởi người được mời; cả hai hoàn chủ kèo.
+- Kèo chờ hết 5 phút hoàn chip. RPS hết 5 phút sau nhận: chỉ một người chọn thì
+  người đó thắng; cả hai chưa chọn hoàn cả hai. PvP không phí, thắng nhận cả quỹ
+  2×, hòa hoàn từng người. Không thể hủy sau khi đối thủ nhận.
+
+Cược nguyên 10–500 chip (blackjack số chẵn); một kèo/ván mở mỗi tài khoản toàn
+bot, kể cả người mới được mời. RNG dùng node:crypto; tiền cược/hoàn/thanh toán
+cùng giao dịch SQLite IMMEDIATE, status done chặn nhận thưởng hai lần. Mã
+yêu cầu Discord được lưu receipt cùng transaction để delivery lặp không quay/trừ lại. Ví và
+ván lưu DB, độc lập nhân vật và reset RPG để không farm lại trợ cấp hoặc mất
+quỹ của đối thủ. Hết hạn được đối soát **khi có lệnh casino tiếp theo**, không
+cần timer tồn tại qua restart. Không có broadcast chủ động: dùng status xem kết quả.
+Nếu Discord gửi phản hồi thất bại sau commit, ván vẫn lưu, không thử nhận thưởng
+lại. Chip PvP vẫn có thể bị chuyển gián tiếp bằng cố tình thua: không có giá trị
+RPG, chưa có bảng xếp hạng hoặc phần thưởng để tránh khuyến khích farm alt.
