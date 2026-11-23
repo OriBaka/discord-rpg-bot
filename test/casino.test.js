@@ -85,3 +85,35 @@ test('two processes accepting the same dice wager settle escrow exactly once',as
  const child=()=>new Promise((resolve,reject)=>execFile(process.execPath,['-e',script,f.b,g.id],{cwd:h.ROOT,env:process.env},(e)=>e?reject(e):resolve()));
  await Promise.all([child(),child()]);assert.equal(balance(f,f.a),1000);assert.equal(balance(f,f.b),1000);assert.equal(f.run(f.a,'status',[g.id]).status,'done');
 });
+test('blackjack hit/stand resolve own active game without ID, including after service restart',()=>{
+ const f=fixture((lo,hi)=>hi-1);
+ const g=f.run(f.a,'blackjack',['100']);
+ const restarted=casino.createService(db,()=>1000000,(lo,hi)=>hi-1);
+ assert.throws(()=>restarted.run(f.b,'stand'),/không có ván blackjack/);
+ assert.equal(restarted.run(f.a,'stand').id,g.id);
+ assert.throws(()=>restarted.run(f.a,'stand'),/không có ván blackjack/);
+ const next=f.run(f.a,'blackjack',['100']);
+ assert.equal(restarted.run(f.a,'hit').id,next.id);
+ assert.equal(f.run(f.a,'status',[next.id]).status,'done');
+});
+test('ID-free blackjack actions do not select PvP or expired games',()=>{
+ const f=fixture((lo,hi)=>hi-1);
+ const duel=f.run(f.a,'rps',['100',f.b]);
+ assert.throws(()=>f.run(f.a,'hit'),/không có ván blackjack/);
+ assert.equal(f.run(f.a,'status',[duel.id]).status,'pending');
+ f.run(f.a,'cancel',[duel.id]);
+ const bj=f.run(f.a,'blackjack',['100']);f.time(300000);
+ assert.throws(()=>f.run(f.a,'stand'),/không có ván blackjack/);
+ assert.equal(f.run(f.a,'status',[bj.id]).status,'done');
+ assert.equal(balance(f,f.a),900);
+});
+test('blackjack command help and live prompt show short hit/stand syntax',async()=>{
+ const m=h.fakeMessage('BJ_SHORT_HELP');await commands.get('casino').execute(m,['help']);
+ assert.match(m._text(),/casino hit hoặc %casino stand/);
+ assert.doesNotMatch(m._text(),/hit\/stand <mã-ván>/);
+ // Use a pre-created deterministic hand to exercise command rendering without a new deal.
+ const id='BJ_SHORT_PROMPT';const service=casino.createService(db,Date.now,(lo,hi)=>hi-1);
+ service.run(id,'daily');service.run(id,'blackjack',['100']);
+ const live=h.fakeMessage(id);await commands.get('casino').execute(live,['status']);
+ assert.match(live._text(),/casino hit hoặc %casino stand \(không cần mã ván\)/);
+});

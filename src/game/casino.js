@@ -72,9 +72,13 @@ function createService(db, clock = Date.now, rng = randomInt) {
         if(score(player)===21 || score(dealer)===21) settle(g,score(player)===score(dealer)?'draw':score(player)===21?u:null,'Blackjack tự chốt bài tự nhiên.');
         return view(g);
       }
-      const row=action==='status' && !args[0]
+      const autoBlackjack=['hit','stand'].includes(action) && !args[0];
+      const row=autoBlackjack
+        ? db.prepare("SELECT * FROM casino_games WHERE a=? AND kind='blackjack' AND status='active' ORDER BY rowid DESC LIMIT 1").get(u)
+        : action==='status' && !args[0]
         ? db.prepare('SELECT * FROM casino_games WHERE a=? OR b=? ORDER BY rowid DESC LIMIT 1').get(u,u)
         : db.prepare('SELECT * FROM casino_games WHERE id=?').get(args[0]);
+      if(autoBlackjack && !row) fail('Bạn không có ván blackjack đang chơi. Dùng casino blackjack <cược> để mở ván.');
       if(!row || ![row.a,row.b].includes(u)) fail('Không tìm thấy ván của bạn.');
       const g={...row,data:JSON.parse(row.data)};
       if(action==='status') return view(g);
