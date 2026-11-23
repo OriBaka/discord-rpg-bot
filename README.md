@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **53 lệnh** prefix + **57 slash command** (40 người chơi + 15 admin)
+- **54 lệnh** prefix + **58 slash command** (40 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -738,3 +738,14 @@ Lưu bộ chiêu nhanh (tối đa **3 tên mỗi class**, không mất phí):
 Tên 1–20 ký tự a-z/0-9/_/-. `save` lưu bộ đang trang bị, trùng tên thì ghi đè; `load` kiểm tra lại toàn bộ cấp/class/chiêu đã học, không tự bỏ chiêu chưa hợp lệ. Có thể đặt tên `boss`, `tower`, `combo` hoặc tên khác. Bộ lưu độc lập theo người và class, tồn tại qua restart. `/skills action:save/load/delete ids:boss` và `action:presets` tương ứng.
 
 Trong trận theo lượt đang active (PvE/Tháp/PvP ở bất kỳ phía nào), chặn save/load/delete và equip/reset; cần kết thúc trận trước. Không viết lại snapshot trận đã bắt đầu. Chỉ hỗ trợ battle/tower như bộ kỹ năng hiện hành, không đổi cơ chế hunt nhanh/duel/raid tuần. Reset nhân vật xóa cả các preset/bộ trang bị kỹ năng đã lưu. Chưa mở nội dung Chương 4.
+
+### 🌍 Nền móng Chương 4 — chưa mở đua
+
+- `%worldstory` (alias `%lichsu`, `%worldlore`) / `/worldstory args:status`: trạng thái chung toàn bot và điều kiện đã hoàn tất Chương 3; không cấp quyền ưu tiên do hoàn thành sớm.
+- `%worldstory rules`: khung luật; `%worldstory history [trang]`: bia lịch sử bất biến, mỗi trang một biến cố, snapshot tên/ID người thắng, giờ về đích, giờ quyết định, lựa chọn và hậu quả. Reset nhân vật không xóa lịch sử hoặc chuyển quyền.
+- **Không có nội dung Chương 4 được phát hành**, không có lịch seed, nhiệm vụ, người thắng, drop hay kết cục mẫu trong DB thật. Catalog `ready:false` khóa cả API lẫn lệnh lập lịch. Không nối sự kiện hunt/gather/craft vào cuộc đua ở bản này.
+- Khung kỹ thuật cho lần phát hành sau: admin bot trong `ADMIN_IDS` có thể lập lịch nội dung đã publish bằng `%worldstory schedule chapter4 YYYY-MM-DDTHH:mm:ssZ`, báo trước tối thiểu **24 giờ thật UTC**. Hiện lệnh này luôn từ chối chapter4 vì nội dung chưa ready. Giờ/thời tiết trong game không ảnh hưởng lịch.
+- Khi có chương đã publish và đến giờ mở, `%worldstory join` dành cho người đã hết Chương 3. Chỉ server hook tin cậy mới ghi tiến độ theo thứ tự bước, dedup bằng ID hành động ổn định; không có lệnh nhập tiến độ hoặc chỉ định người thắng.
+- Giao dịch cuối chốt đúng một người về đích trước khi họ chọn kết cục. `%worldstory choose <id>` chỉ người thắng được dùng; chọn một hướng thiết kế sẵn, lưu đúng một lần cùng bia lịch sử trong một transaction. Không có reset/override lựa chọn qua lệnh admin.
+- SQLite `BEGIN IMMEDIATE` bảo vệ tranh quyền trên **cùng một DB**. Cần một backend chung; không thể tạo lịch sử toàn bot bằng các replica dùng DB rời. Nếu shard/mở rộng phải thiết kế hạ tầng DB chung trước.
+- Chưa triển khai tự chuyển quyền nếu người thắng vắng mặt, thông báo cuộc đua đa server, nhiệm vụ hậu quả cho người đến sau hay nội dung/chính sách vận hành chính thức. Phải chốt và kiểm thử các phần này trước khi publish. Xem `docs/WORLD_STORY_DIRECTION.md`. Kiếm Thất Đại Tội vẫn chỉ lore, không mở nguồn sở hữu.
