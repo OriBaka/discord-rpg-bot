@@ -54,6 +54,9 @@ const JOB_CHOICES = jobChoicesModule.JOB_TYPES.map(t => ({
 }));
 
 const definitions = [
+  { data: new SlashCommandBuilder().setName('worldstory').setDescription('Lịch sử thế giới chung và khung luật Chương 4 (chưa mở)')
+      .addStringOption(o => o.setName('args').setDescription('status / rules / history [trang]; Chapter 4 chưa phát hành')),
+    handler: simpleHandler('worldstory', i => (i.options.getString('args') || '').trim().split(/\s+/).filter(Boolean)) },
   { data: new SlashCommandBuilder().setName('collection').setDescription('Bộ sưu tập cá và cây cỏ đã từng nhận')
       .addStringOption(o => o.setName('kind').setDescription('Sổ sưu tập').addChoices({ name: 'Fish', value: 'fish' }, { name: 'Gather', value: 'gather' }))
       .addIntegerOption(o => o.setName('page').setDescription('Trang').setMinValue(1))

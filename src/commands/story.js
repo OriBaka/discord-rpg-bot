@@ -30,7 +30,7 @@ module.exports = {
         .setDescription(story.STEPS.map((s, i) => `${i < state.step ? '✅' : i === state.step ? '📍' : '🔒'} ${s.chapter.split(' — ')[0]} · ${s.title}`).join('\n'))
         .setFooter({ text: `${p}story để đọc bước hiện tại. Các bước sau mở lần lượt, không khóa zone.` })] });
     }
-    if (!state.current) return msg.reply(notice + '🏁 Đã hoàn thành chính tuyến cá nhân đến hết Chương 3 — Kho Tro không giữ được tên người. Từ Chương 4 là hướng lịch sử chung cho toàn bộ người chơi bot, không tách theo server; chưa phát hành nội dung, luật đua hay giờ mở. Hoàn thành Chương 3 sớm không giữ chỗ, không ghi nhận người thắng hay quyết định lịch sử. Xem lại các mốc bằng `' + p + 'story journal`.');
+    if (!state.current) return msg.reply(notice + '🏁 Đã hoàn thành chính tuyến cá nhân đến hết Chương 3 — Kho Tro không giữ được tên người. Từ Chương 4 là hướng lịch sử chung cho toàn bộ người chơi bot, không tách theo server; chưa phát hành nội dung, luật đua hay giờ mở. Hoàn thành Chương 3 sớm không giữ chỗ, không ghi nhận người thắng hay quyết định lịch sử. Xem nền móng lịch sử chung bằng `' + p + 'worldstory`; xem lại các mốc bằng `' + p + 'story journal`.');
     const step = state.current;
     return msg.reply({ content: notice || undefined, embeds: [new EmbedBuilder().setColor(0xD4AF37)
       .setTitle(`📖 ${step.chapter}`).setDescription(`**${step.title}**\n\n${step.text}`)

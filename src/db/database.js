@@ -335,6 +335,7 @@ renameAll();
 
 // Main story content is additive and seeded after existing balance/lore.
 runMigrate('../game/story', 'migrateStory');
+runMigrate('../game/world_story', 'migrateWorldStory');
 runMigrate('../game/world_weather', 'migrateWorldWeather');
 runMigrate('../game/weather_rares', 'migrateWeatherRares');
 runMigrate('../game/collections', 'migrateCollections');
