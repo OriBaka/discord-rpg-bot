@@ -770,8 +770,9 @@ không chuyển chip trực tiếp, không đổi sang vàng/XP/vật phẩm/ti�
 - `%casino daily`: 1.000 chip miễn phí mỗi 24h, `%casino balance` xem ví.
 - `%casino slot 10`: 3 ô, mỗi ô 6 biểu tượng đều xác suất. Bộ ba trả tổng 10×,
   đúng một đôi hoàn 1×, còn lại mất cược; RTP lý thuyết 69,44%.
-- `%casino blackjack 20`: bộ bài riêng 52 lá; `%casino hit <id>` rút,
-  `%casino stand <id>` dừng. A=1/11, J/Q/K=10, nhà cái dừng cả soft17.
+- `%casino blackjack 20`: bộ bài riêng 52 lá; `%casino hit` rút,
+  `%casino stand` dừng. Tự tìm ván blackjack đang chơi của chính bạn, không cần
+  sao chép mã dài; cú pháp có `<id>` vẫn được hỗ trợ. A=1/11, J/Q/K=10, nhà cái dừng cả soft17.
   Blackjack tự nhiên trả tổng 2,5×, thắng thường 2×, hòa hoàn cược.
   Không split/double/insurance. Hết 5 phút cố định từ lúc chia: xử thua.
 - `%casino dice @user 50` / `%casino rps @user 50`: giữ chip chủ kèo;
