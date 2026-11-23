@@ -749,3 +749,15 @@ Trong trận theo lượt đang active (PvE/Tháp/PvP ở bất kỳ phía nào)
 - Giao dịch cuối chốt đúng một người về đích trước khi họ chọn kết cục. `%worldstory choose <id>` chỉ người thắng được dùng; chọn một hướng thiết kế sẵn, lưu đúng một lần cùng bia lịch sử trong một transaction. Không có reset/override lựa chọn qua lệnh admin.
 - SQLite `BEGIN IMMEDIATE` bảo vệ tranh quyền trên **cùng một DB**. Cần một backend chung; không thể tạo lịch sử toàn bot bằng các replica dùng DB rời. Nếu shard/mở rộng phải thiết kế hạ tầng DB chung trước.
 - Chưa triển khai tự chuyển quyền nếu người thắng vắng mặt, thông báo cuộc đua đa server, nhiệm vụ hậu quả cho người đến sau hay nội dung/chính sách vận hành chính thức. Phải chốt và kiểm thử các phần này trước khi publish. Xem `docs/WORLD_STORY_DIRECTION.md`. Kiếm Thất Đại Tội vẫn chỉ lore, không mở nguồn sở hữu.
+
+### Admin đặt cấp nghề
+
+```text
+%adm player setjoblevel @user mining 50
+%admin setjoblevel @user fishing 25
+/adm setjoblevel user:@user job:foraging level:35
+```
+
+Hỗ trợ `mining`, `fishing`, `foraging`, `cooking`, `crafting`, số nguyên **1–100**; có thể tăng hoặc hạ cấp. XP nghề đặt về **0**, giữ nguyên cooldown, các nghề khác và dữ liệu nhân vật (không dùng công thức setlevel chiến đấu). Quyền giống admin người chơi hiện có: ADMIN_IDS, chủ server hoặc Administrator. Có alias `%admin joblevel`.
+
+Thành tựu được kiểm tra như khi lên cấp nghề bình thường, thưởng thành tựu chỉ cấp một lần (có thể có vàng/XP nhân vật theo cấu hình thành tựu). Hạ cấp không thu hồi thành tựu/thưởng đã nhận; điều kiện công cụ/buff/khu nghề tự áp dụng theo cấp mới, buff không đủ cấp được pause theo cơ chế hiện có. Chưa có cuộc đua Chương 4 được mở bởi thao tác này.

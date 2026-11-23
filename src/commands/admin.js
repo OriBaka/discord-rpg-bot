@@ -65,6 +65,7 @@ module.exports = {
           `\`${prefix}admin takeitem @user <id> [qty]\` — lấy lại item`,
           `\`${prefix}admin sethp @user <hp>\` — set HP`,
           `\`${prefix}admin setlevel @user <lv>\` — set level`,
+          `\`${prefix}admin setjoblevel @user <nghề> <1–100>\` — cấp nghề, XP về 0, giữ cooldown`,
           `\`${prefix}admin heal @user\` — hồi đầy HP`,
           `\`${prefix}admin reset @user\` — xoá nhân vật`,
           `\`${prefix}admin look @user\` — xem chi tiết nhân vật`,
@@ -298,6 +299,18 @@ module.exports = {
     const target = resolveTarget(msg, args[1]);
     if (!target) {
       return msg.reply('❌ Cần mention user hoặc User ID. Vd: `admin gold @abc 1000`');
+    }
+
+    if (sub === 'setjoblevel' || sub === 'joblevel') {
+      const jobs = require('../game/jobs');
+      const job = String(args[2] || '').toLowerCase(), rawLevel = String(args[3] ?? '');
+      const level = Number(rawLevel);
+      if (args.length !== 4 || !jobs.JOB_TYPES.includes(job) || !/^\d+$/.test(rawLevel) || !Number.isSafeInteger(level) || level < 1 || level > 100) {
+        return msg.reply(`❌ Dùng ${prefix}admin setjoblevel @user <${jobs.JOB_TYPES.join('|')}> <1–100>. XP nghề về 0, giữ cooldown.`);
+      }
+      const targetPlayer = await ensurePlayer(target.id, target.username);
+      const result = jobs.setJobLevel(target.id, job, level, { client: msg.client, guildId: msg.guild?.id });
+      return msg.reply(result.error || `✅ Đặt **${jobs.JOB_INFO[job].name}** của **${targetPlayer.name}**: Lv.${result.before.level} → **Lv.${level}**, XP nghề = 0; giữ nguyên cooldown.${result.achievements.length ? '\n🏆 Mở thành tựu: ' + result.achievements.map(a => a.name).join(', ') : ''}`);
     }
 
     const p = await ensurePlayer(target.id, target.username);

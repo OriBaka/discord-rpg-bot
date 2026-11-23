@@ -123,6 +123,18 @@ function getCooldownRemaining(userId, jobType, cooldownMs) {
   return Math.max(0, cooldownMs - elapsed);
 }
 
+// Administrative level change: no XP loop/aura multiplier or cooldown reset.
+function setJobLevel(userId, jobType, level, context = null) {
+  if (!JOB_TYPES.includes(jobType) || !Number.isSafeInteger(level) || level < 1 || level > 100) return { error: 'Nghề không hợp lệ hoặc level phải là số nguyên 1–100.' };
+  if (!db.prepare('SELECT 1 FROM players WHERE user_id=?').get(userId)) return { error: 'Nhân vật chưa tồn tại.' };
+  return db.transaction(() => {
+    const before = getJob(userId, jobType);
+    updateJob(userId, jobType, { level, xp: 0 });
+    const achievements = require('./achievements').checkAndGrant(userId, context);
+    return { before, job: getJob(userId, jobType), achievements };
+  })();
+}
+
 // === BXH theo nghề ===
 function getJobLeaderboard(jobType, limit = 10) {
   return db.prepare(`SELECT pj.user_id, pj.level, pj.xp, p.name
@@ -136,6 +148,6 @@ module.exports = {
   JOB_TYPES, JOB_INFO, GATHER_JOB_TYPES,
   migrate, xpToNext,
   getJob, getAllJobs, updateJob,
-  addJobXp, setCooldown, getCooldownRemaining,
+  addJobXp, setJobLevel, setCooldown, getCooldownRemaining,
   getJobLeaderboard,
 }; 

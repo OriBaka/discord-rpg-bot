@@ -57,6 +57,8 @@ function routeAdm(interaction) {
       return { cmdName: 'admin', args: ['sethp', uArg, interaction.options.getInteger('hp')], _users: [u] };
     case 'heal':
       return { cmdName: 'admin', args: ['heal', uArg], _users: [u] };
+    case 'setjoblevel':
+      return { cmdName: 'admin', args: ['setjoblevel', uArg, interaction.options.getString('job'), interaction.options.getInteger('level')], _users: [u] };
     case 'setlevel':
       return { cmdName: 'admin', args: ['setlevel', uArg, interaction.options.getInteger('level')], _users: [u] };
     case 'reset':
