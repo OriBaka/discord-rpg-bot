@@ -129,7 +129,7 @@ Prefix mặc định `%`. Mọi lệnh đều có slash tương ứng (trừ và
 | `%battle <mob_id>` | Vào trận turn-based có nút bấm + skill |
 | `%heal` | Nghỉ quán trọ hồi đầy HP (tốn vàng, cooldown 10 phút) |
 | `%use <id> [qty]` | Dùng bình máu / mở lootbox |
-| `%daily` / `%daily xem` | Điểm danh chuỗi 7 ngày — thưởng leo thang, ngày 7 tặng vật phẩm (xem bảng không điểm danh bằng `xem`) |
+| `%daily` / `%daily xem` | Điểm danh chu kỳ 30 ngày — mốc lớn 7/14/21/30 tặng vật phẩm (xem bảng không điểm danh bằng `xem`) |
 
 ### Kinh tế & chế tạo
 
@@ -708,3 +708,14 @@ Khu admin tự tạo chưa có ảnh vẫn trả kết quả bình thường; ca
 - 10 thành tựu `first_<item_id>` cho 10 cây/cá hiếm theo thời tiết, mỗi cái **15 điểm thành tựu**, không thưởng vàng/XP/vật phẩm để tránh ảnh hưởng kinh tế. Hiện trong `%ach`; khi tự câu/hái lần đầu có dòng thông báo tại kết quả và dùng kênh achievement hiện có nếu cấu hình.
 - Khi nâng cấp, backfill một lần từ inventory hiện còn của người chơi. Không thể suy ra những món đã bán/dùng hết trước khi có hệ thống này. Ngày backfill là ngày ghi nhận, không phải ngày thu thập thực tế.
 - Reset nhân vật xóa dấu sưu tập và các thành tựu first-item mới. Chỉ track material thuộc nguồn Gather/Fish và các rare thời tiết, không đổi drop, thời tiết hay quy tắc nguồn trang bị/kiếm.
+
+### 📅 Daily 30 ngày
+
+- Giữ nguyên phần thưởng ngày 1–7. Ngày 8–29 lặp nhịp thưởng tuần cũ, riêng mốc 14/21 và ngày 30 tăng thưởng. Ngày 28 vẫn giữ quà trọn tuần.
+- Mốc **14**: vàng bằng 8 lần vàng/kill tham chiếu, XP ×2, **2** vật phẩm hồi phục theo bậc level.
+- Mốc **21**: vàng ×10, XP ×2,5, **3** vật phẩm hồi phục.
+- Mốc **30**: vàng ×12, XP ×3, **5** vật phẩm hồi phục. Đây là toàn bộ thưởng của ngày mốc, không cộng thêm một lần thưởng ngày thường.
+- Vật phẩm theo cấp lúc nhận: Lv.1–10 potion_m, Lv.11–25 potion_l, cao hơn food_seafood_platter; không tặng sách hiếm, hộp sự kiện hay trang bị độc quyền.
+- Sau ngày 30, phần thưởng quay lại ngày 1 nhưng streak/total/best không reset. Mỗi chu kỳ đều có các mốc này. Ngày lẻ trong chu kỳ hồi đầy HP nếu đang thiếu.
+- Vẫn chờ 24h/lượt; từ lần nhận gần nhất tới đủ 44h thì đứt chuỗi, lượt tới về ngày 1. `%daily xem` xem đủ 30 ngày, không tiêu lượt.
+- Không reset dữ liệu khi nâng cấp: ngày tiếp theo tính từ streak hiện tại modulo 30. Không phát bù các mốc đã vượt trước cập nhật. Thưởng và tiến độ lưu trong cùng transaction.
