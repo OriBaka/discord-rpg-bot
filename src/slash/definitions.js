@@ -69,7 +69,7 @@ const definitions = [
       .addStringOption(o => o.setName('filter').setDescription('Lọc bộ sưu tập').addChoices(...['all','missing','owned','rare'].map(value => ({ name: value, value })))),
     handler: simpleHandler('collection', i => { const kind = i.options.getString('kind'); const filter = i.options.getString('filter'); return kind ? [kind, String(i.options.getInteger('page') || 1), ...(filter && ['all','missing','owned','rare'].includes(filter) ? [filter] : [])] : []; }) },
   { data: new SlashCommandBuilder().setName('weather').setDescription('Thời tiết, giờ thế giới và vật sưu tầm hiếm')
-      .addStringOption(o => o.setName('args').setDescription('rares / channel ID / interval phút / time HH:MM / dayhours 6 18')),
+      .addStringOption(o => o.setName('args').setDescription('watch add rain night | watch list/off | rares | channel ID | interval phút | time HH:MM')),
     handler: simpleHandler('weather', i => (i.options.getString('args') || '').trim().split(/\s+/).filter(Boolean)) },
   // ====== Player profile ======
   {

@@ -828,3 +828,40 @@ và thưởng; retry hook không thưởng hai lần. Hook nằm sau thành côn
 **không có outbox replay** khi process chết giữa settlement gameplay và hook, nên
 lượt ấy có thể chưa được ghi. Không đòi vật phẩm hiếm/thời tiết, không tiêu vật phẩm
 để góp; người nhiều tài khoản vẫn có thể tự lập đội, điểm chỉ mang tính sưu tầm.
+
+### 🔔 Đăng ký ping thời tiết / buổi
+
+Người chơi tự đăng ký theo server, không cần nhân vật hoặc quyền admin:
+
+```text
+%weather watch add rain night     # mưa VÀ ban đêm
+%weather watch add snow           # tuyết, mọi buổi
+%weather watch add any day        # ban ngày, bất kỳ thời tiết
+%weather watch list
+%weather watch remove rain night
+%weather watch off
+```
+
+Slash `/weather args:watch add rain night` dùng cùng logic. Giá trị thời tiết:
+`clear`, `rain`, `storm`, `fog`, `snow`, `any`; buổi: `day`, `night`, `any`
+(mặc định any). Có alias không dấu `quang/mua/giong/suong/tuyet`, `ngay/dem`.
+Một dòng là điều kiện **AND**; nhiều dòng là các điều kiện độc lập, không đăng ký
+`any any`. Cùng điều kiện đăng ký lại không tạo trùng.
+
+Admin phải đặt `%weather channel #kênh` trước. Bot ping trực tiếp **chỉ user đã
+opt-in**, không @everyone/role; không cần tạo role hoặc quyền Manage Roles.
+Một người khớp nhiều điều kiện chỉ được ping một lần trong lượt kiểm tra.
+Kiểm tra cùng worker thời tiết mỗi 30 giây; đăng ký khi đang khớp cũng nhắc ở
+lượt tới. Chỉ báo khi chuyển từ không khớp sang khớp; revision mới nhưng vẫn
+mưa/đêm liên tục không ping lại. Dùng giờ game chung do admin cấu hình (mặc định
+Việt Nam), không phải giờ thiết bị. Bản tin định kỳ hiện có vẫn chạy như cũ.
+
+Sở thích và trạng thái đã nhắc lưu DB qua restart/reset nhân vật; mỗi server
+độc lập. Tắt kênh bản tin sẽ tạm dừng nhắc, không xóa sở thích. Không gửi DM hoặc
+backfill các điều kiện thoáng qua trong lúc bot offline/kênh tắt. Bot không biết
+người dùng có mute Discord hay không. Chỉ đánh dấu sau khi gửi thành công, lỗi
+Discord sẽ thử lại lượt sau; crash sau send trước ghi DB có thể nhắc lặp (không
+thể bảo đảm exactly-once với API gửi Discord). Worker hiện có là single-process;
+chưa hỗ trợ nhiều instance gửi đồng thời. Chia nhóm tối đa 40 người/tin nhắn để
+không vượt giới hạn nội dung/mentions. Từ chối kênh khác guild. Không thay đổi
+RNG, thời gian, tỷ lệ cá/cây hiếm hoặc điều kiện thu thập.

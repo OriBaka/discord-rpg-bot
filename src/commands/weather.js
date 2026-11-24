@@ -11,6 +11,24 @@ module.exports = {
       if (error) return msg.reply(error);
       return msg.reply(`✅ Đã lưu cấu hình chung toàn bot. ${world.describe(world.current())}`);
     }
+    if (action === 'watch') {
+      if (!msg.guild) return msg.reply('Đăng ký nhắc trong server có kênh bản tin thời tiết, không phải DM.');
+      const alerts = require('../game/weather_alerts');
+      const sub = (args[1] || 'list').toLowerCase();
+      const weatherAliases = { mua:'rain', quang:'clear', giong:'storm', suong:'fog', tuyet:'snow' };
+      const periodAliases = { ngay:'day', dem:'night' };
+      const rawWeather = (args[2] || '').toLowerCase(), rawPeriod = (args[3] || 'any').toLowerCase();
+      const weather = weatherAliases[rawWeather] || rawWeather;
+      const period = periodAliases[rawPeriod] || rawPeriod;
+      const usage = `Dùng ${p}weather watch add rain night (mưa VÀ đêm), add rain any (mưa bất kỳ buổi), add any night (mọi thời tiết lúc đêm). Thời tiết: clear/rain/storm/fog/snow/any; buổi: day/night/any. Xem: watch list; xóa một điều kiện: watch remove rain night; tắt hết: watch off.`;
+      if (!['list','add','remove','off'].includes(sub) || (['add','remove'].includes(sub) && (args.length < 3 || args.length > 4)) || (['list','off'].includes(sub) && args.length > 2)) return msg.reply(usage);
+      if (sub === 'add' && !require('../db/database').prepare('SELECT 1 FROM weather_channels WHERE guild_id=?').get(msg.guild.id)) return msg.reply(`Server chưa có kênh bản tin. Nhờ quản trị dùng ${p}weather channel #kênh trước khi đăng ký.`);
+      try {
+        const rows = alerts.manage(msg.guild.id, msg.author.id, sub, weather, period);
+        if (sub === 'list') return msg.reply({ content: `🔔 **Nhắc thời tiết của bạn tại server này**\n${rows.length ? rows.map(r => `${world.WEATHER[r.weather] || 'Mọi thời tiết'} · ${{day:'ban ngày',night:'ban đêm',any:'mọi buổi'}[r.period]}`).join('\n') : 'Chưa đăng ký.'}\n${usage}`, allowedMentions: { parse: [] } });
+        return msg.reply(sub === 'add' ? '✅ Đã theo dõi. Bot ping bạn tại kênh bản tin khi điều kiện khớp (kiểm tra mỗi 30 giây, kể cả nếu đang khớp lúc đăng ký). Không ping lại khi điều kiện vẫn liên tục khớp; không cần role.' : sub === 'off' ? '✅ Đã tắt mọi nhắc thời tiết của bạn tại server này.' : '✅ Đã xóa điều kiện nhắc này.');
+      } catch (e) { if (e.code) throw e; return msg.reply(`❌ ${e.message}\n${usage}`); }
+    }
     if (action === 'channel') {
       if (!msg.guild) return msg.reply('Chỉ cấu hình kênh trong server Discord.');
       const permitted = botAdmin || msg.guild.ownerId === msg.author.id || msg.member?.permissions?.has('ManageGuild') || msg.member?.permissions?.has('Administrator');
@@ -34,10 +52,10 @@ module.exports = {
       const rows = require('../game/weather_rares').RARES;
       return msg.reply(rows.map(r => `${r.name} · \`${r.zone}\` · ${world.WEATHER[r.weather]} / ${r.period === 'day' ? 'ngày' : 'đêm'} · ${(r.chance * 100).toFixed(1)}%`).join('\n') + '\nChỉ roll khi đủ cấp nghề/dụng cụ và thực hiện lượt fish/gather hợp lệ. Ngoài điều kiện = 0%; mỗi lần trúng ×1, không nhân bonus.');
     }
-    if (action && action !== 'help') return msg.reply(`Dùng ${p}weather, ${p}weather rares, ${p}weather channel #kênh/off; admin bot: interval <phút>, time HH:MM/reset, dayhours <giờ đầu> <giờ cuối>.`);
+    if (action && action !== 'help') return msg.reply(`Dùng ${p}weather, ${p}weather watch list, ${p}weather rares, ${p}weather channel #kênh/off; admin bot: interval <phút>, time HH:MM/reset, dayhours <giờ đầu> <giờ cuối>.`);
     const s = world.current();
     const db = require('../db/database');
     const channel = msg.guild && db.prepare('SELECT channel_id FROM weather_channels WHERE guild_id=?').get(msg.guild.id);
-    return msg.reply({ content: `🌍 ${world.describe(s)}\nThời tiết chung toàn bot, bốc đều ngẫu nhiên mỗi ${s.interval_ms / 60000} phút, có thể lặp. Lần tới <t:${Math.floor(s.next_at / 1000)}:R>.\nNgày ${s.day_start}:00–${s.day_end}:00; ngoài khung là đêm. Đồng hồ: UTC+7${s.clock_offset ? `, lệch admin ${s.clock_offset / 60000} phút` : ' (giờ Việt Nam)'}.\nKênh bản tin server: ${channel ? `<#${channel.channel_id}>` : 'chưa đặt'}.\n${require('../game/weather_rares').availableText(s)}\n${p}weather rares xem cây/cá hiếm; ${p}weather help xem cấu hình.`, allowedMentions: { parse: [] } });
+    return msg.reply({ content: `🌍 ${world.describe(s)}\nThời tiết chung toàn bot, bốc đều ngẫu nhiên mỗi ${s.interval_ms / 60000} phút, có thể lặp. Lần tới <t:${Math.floor(s.next_at / 1000)}:R>.\nNgày ${s.day_start}:00–${s.day_end}:00; ngoài khung là đêm. Đồng hồ: UTC+7${s.clock_offset ? `, lệch admin ${s.clock_offset / 60000} phút` : ' (giờ Việt Nam)'}.\nKênh bản tin server: ${channel ? `<#${channel.channel_id}>` : 'chưa đặt'}.\n${require('../game/weather_rares').availableText(s)}\n${p}weather watch list đăng ký ping thời tiết/buổi; ${p}weather rares xem cây/cá hiếm; ${p}weather help xem cấu hình.`, allowedMentions: { parse: [] } });
   },
 };
