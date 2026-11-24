@@ -20,14 +20,31 @@ module.exports = {
       const rawWeather = (args[2] || '').toLowerCase(), rawPeriod = (args[3] || 'any').toLowerCase();
       const weather = weatherAliases[rawWeather] || rawWeather;
       const period = periodAliases[rawPeriod] || rawPeriod;
+      if (sub === 'channel') {
+        const permitted = botAdmin || msg.guild.ownerId === msg.author.id || msg.member?.permissions?.has('ManageGuild') || msg.member?.permissions?.has('Administrator');
+        if (!permitted) return msg.reply('🔒 Cần Manage Server hoặc Administrator để đặt kênh cảnh báo.');
+        const db = require('../db/database');
+        if (args[2] === 'off') { db.prepare('DELETE FROM weather_alert_channels WHERE guild_id=?').run(msg.guild.id); return msg.reply('✅ Đã tạm dừng kênh cảnh báo riêng; giữ đăng ký và role.'); }
+        const id = /^<#(\d+)>$/.exec(args[2] || '')?.[1] || (/^\d+$/.test(args[2] || '') ? args[2] : null);
+        if (!id) return msg.reply(`Dùng ${p}weather watch channel #kênh-riêng hoặc off.`);
+        const bulletin = db.prepare('SELECT channel_id FROM weather_channels WHERE guild_id=?').get(msg.guild.id);
+        if (bulletin?.channel_id === id) return msg.reply('Chọn kênh cảnh báo khác kênh bản tin thời tiết.');
+        const channel = await msg.client.channels.fetch(id).catch(() => null);
+        if (!channel || channel.guildId !== msg.guild.id || !channel.isTextBased() || typeof channel.send !== 'function') return msg.reply('Kênh phải là kênh nhắn tin trong server này.');
+        if (!channel.permissionsFor(msg.client.user)?.has(['ViewChannel','SendMessages','MentionEveryone'])) return msg.reply('Bot cần View Channel, Send Messages và Mention Everyone tại kênh cảnh báo để ping role không công khai mentionable.');
+        const me = await msg.guild.members.fetchMe();
+        if (!me.permissions.has('ManageRoles')) return msg.reply('Bot cần Manage Roles; đặt role bot cao hơn các role Weather do bot tạo.');
+        db.prepare('INSERT INTO weather_alert_channels VALUES(?,?) ON CONFLICT(guild_id) DO UPDATE SET channel_id=excluded.channel_id').run(msg.guild.id,id);
+        return msg.reply({content:`✅ Kênh ping role riêng: <#${id}>. Bot tự tạo role theo điều kiện khi cần, chuyển đăng ký cũ trong các lượt kiểm tra tiếp theo. Bản tin thường không đổi.`,allowedMentions:{parse:[]}});
+      }
       const usage = `Dùng ${p}weather watch add rain night (mưa VÀ đêm), add rain any (mưa bất kỳ buổi), add any night (mọi thời tiết lúc đêm). Thời tiết: clear/rain/storm/fog/snow/any; buổi: day/night/any. Xem: watch list; xóa một điều kiện: watch remove rain night; tắt hết: watch off.`;
       if (!['list','add','remove','off'].includes(sub) || (['add','remove'].includes(sub) && (args.length < 3 || args.length > 4)) || (['list','off'].includes(sub) && args.length > 2)) return msg.reply(usage);
-      if (sub === 'add' && !require('../db/database').prepare('SELECT 1 FROM weather_channels WHERE guild_id=?').get(msg.guild.id)) return msg.reply(`Server chưa có kênh bản tin. Nhờ quản trị dùng ${p}weather channel #kênh trước khi đăng ký.`);
+      if (sub === 'add' && !require('../db/database').prepare('SELECT 1 FROM weather_alert_channels WHERE guild_id=?').get(msg.guild.id)) return msg.reply(`Server chưa có kênh cảnh báo riêng. Nhờ quản trị dùng ${p}weather watch channel #kênh-riêng trước khi đăng ký.`);
       try {
-        const rows = alerts.manage(msg.guild.id, msg.author.id, sub, weather, period);
+        const rows = await alerts.change(msg.guild, msg.author.id, sub, weather, period);
         if (sub === 'list') return msg.reply({ content: `🔔 **Nhắc thời tiết của bạn tại server này**\n${rows.length ? rows.map(r => `${world.WEATHER[r.weather] || 'Mọi thời tiết'} · ${{day:'ban ngày',night:'ban đêm',any:'mọi buổi'}[r.period]}`).join('\n') : 'Chưa đăng ký.'}\n${usage}`, allowedMentions: { parse: [] } });
-        return msg.reply(sub === 'add' ? '✅ Đã theo dõi. Bot ping bạn tại kênh bản tin khi điều kiện khớp (kiểm tra mỗi 30 giây, kể cả nếu đang khớp lúc đăng ký). Không ping lại khi điều kiện vẫn liên tục khớp; không cần role.' : sub === 'off' ? '✅ Đã tắt mọi nhắc thời tiết của bạn tại server này.' : '✅ Đã xóa điều kiện nhắc này.');
-      } catch (e) { if (e.code) throw e; return msg.reply(`❌ ${e.message}\n${usage}`); }
+        return msg.reply(sub === 'add' ? '✅ Đã theo dõi. Đã gán role điều kiện. Bot ping role tại kênh cảnh báo riêng khi điều kiện mới khớp (kiểm tra mỗi 30 giây). Nếu nhóm đã được nhắc trong đợt hiện tại, bạn chờ đợt kế tiếp để tránh ping lại cả nhóm.' : sub === 'off' ? '✅ Đã tắt mọi nhắc thời tiết của bạn tại server này.' : '✅ Đã xóa điều kiện nhắc này.');
+      } catch (e) { if (e.code) return msg.reply('❌ Không cập nhật được role. Kiểm tra Manage Roles, thứ tự role bot và quyền truy cập server rồi thử lại; chưa báo thành công.'); return msg.reply(`❌ ${e.message}\n${usage}`); }
     }
     if (action === 'channel') {
       if (!msg.guild) return msg.reply('Chỉ cấu hình kênh trong server Discord.');
@@ -45,6 +62,7 @@ module.exports = {
       if (!channel || channel.guildId !== msg.guild.id || !channel.isTextBased() || typeof channel.send !== 'function') return msg.reply('Kênh phải là kênh nhắn tin trong server này mà bot truy cập được.');
       const permissions = channel.permissionsFor(msg.client.user);
       if (!permissions?.has(['ViewChannel', 'SendMessages'])) return msg.reply('Bot cần quyền View Channel và Send Messages tại kênh này.');
+      if (db.prepare('SELECT channel_id FROM weather_alert_channels WHERE guild_id=?').get(msg.guild.id)?.channel_id === id) return msg.reply('Kênh bản tin phải khác kênh cảnh báo riêng.');
       db.prepare("INSERT INTO weather_channels(guild_id,channel_id) VALUES (?,?) ON CONFLICT(guild_id) DO UPDATE SET channel_id=excluded.channel_id,last_key=''").run(msg.guild.id, id);
       return msg.reply({ content: `✅ Đặt bản tin tại <#${id}>. Gửi điều kiện hiện tại trong vòng 30 giây, sau đó mỗi chu kỳ thời tiết hoặc đổi ngày/đêm.`, allowedMentions: { parse: [] } });
     }

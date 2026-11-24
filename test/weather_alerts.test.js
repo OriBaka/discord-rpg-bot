@@ -1,73 +1,69 @@
 const {test,before}=require('node:test');const assert=require('node:assert/strict');const h=require('./harness');
-let db,alerts,world,commands;
+let db,alerts,commands,world;
 before(()=>{h.quiet();db=require('../src/db/database');alerts=require('../src/game/weather_alerts');world=require('../src/game/world_weather');commands=h.loadCommands();h.loud();});
-function reset(){db.exec('DELETE FROM weather_alerts; DELETE FROM weather_channels;');}
-function channel(g='WA'){db.prepare('INSERT INTO weather_channels(guild_id,channel_id) VALUES(?,?)').run(g,g);}
-function client(out,fail=false){return {channels:{fetch:async id=>({guildId:id,isTextBased:()=>true,send:async p=>{if(fail)throw Error('offline');out.push({id,...p});}})}};}
+function setup(){db.exec('DELETE FROM weather_alerts; DELETE FROM weather_alert_channels; DELETE FROM weather_alert_roles; DELETE FROM weather_channels;');let next=100;const roles=new Map(),members=new Map(),sent=[];const guild={id:'GUILD1',ownerId:'OWNER',roles:{fetch:async id=>roles.get(id)||null,create:async opts=>{assert.deepEqual(opts.permissions,[]);assert.equal(opts.mentionable,false);const role={id:String(++next),editable:true,managed:false,mentionable:false,permissions:{bitfield:0n}};roles.set(role.id,role);return role;}},members:{fetchMe:async()=>({permissions:{has:()=>true}}),fetch:async id=>{if(!members.has(id))members.set(id,new Set());return {roles:{add:async role=>members.get(id).add(role.id),remove:async roleId=>members.get(id).delete(roleId)}};}}};const channel={id:'222',guildId:guild.id,guild,isTextBased:()=>true,permissionsFor:()=>({has:()=>true}),send:async p=>sent.push(p)};const client={user:{id:'BOT'},channels:{fetch:async()=>channel}};db.prepare('INSERT INTO weather_alert_channels VALUES(?,?)').run(guild.id,channel.id);return {guild,channel,client,roles,members,sent};}
 const state=(weather='rain',period='night')=>({weather,period,hour:20,minute:0});
-test('matching supports AND weather/period and either wildcard, validates rules',()=>{
- assert.equal(alerts.matches({weather:'rain',period:'night'},state()),true);
- assert.equal(alerts.matches({weather:'rain',period:'day'},state()),false);
- assert.equal(alerts.matches({weather:'snow',period:'any'},state()),false);
- assert.equal(alerts.matches({weather:'any',period:'night'},state()),true);
- assert.throws(()=>alerts.manage('A','U','add','any','any'));
- assert.throws(()=>alerts.manage('A','U','add','typhoon','day'));
+test('AND/wildcard matching and validation remain unchanged',()=>{setup();assert.equal(alerts.matches({weather:'rain',period:'night'},state()),true);assert.equal(alerts.matches({weather:'rain',period:'day'},state()),false);assert.equal(alerts.matches({weather:'any',period:'night'},state()),true);assert.throws(()=>alerts.manage('A','U','add','any','any'));});
+test('role per condition reused across users; opt-out removes only owned role and own preference',async()=>{
+ const f=setup();await alerts.change(f.guild,'U','add','rain','night');await alerts.change(f.guild,'V','add','rain','night');assert.equal(f.roles.size,1);assert.deepEqual([...f.members.get('U')],[...f.members.get('V')]);
+ await alerts.change(f.guild,'U','remove','rain','night');assert.equal(f.members.get('U').size,0);assert.equal(f.members.get('V').size,1);assert.equal(alerts.manage('GUILD1','V','list').length,1);
+ await alerts.change(f.guild,'V','off');assert.equal(f.members.get('V').size,0);assert.equal(alerts.manage('GUILD1','V','list').length,0);
 });
-test('self-service opt-ins are per guild, deduplicated and removable without touching others',()=>{
- reset();alerts.manage('A','U','add','rain','night');alerts.manage('A','U','add','rain','night');alerts.manage('B','U','add','snow','any');alerts.manage('A','V','add','any','day');
- assert.equal(alerts.manage('A','U','list').length,1);
- alerts.manage('A','U','remove','rain','night');assert.equal(alerts.manage('A','U','list').length,0);
- alerts.manage('B','U','off');assert.equal(alerts.manage('A','V','list').length,1);
+test('large groups ping condition role once with no individual mentions or bulletin dependency',async()=>{
+ const f=setup();for(let i=0;i<100;i++)alerts.manage('GUILD1',String(i),'add','rain','night');
+ await alerts.notify(f.client,state());assert.equal(f.sent.length,1);assert.equal(f.roles.size,1);assert.equal(f.members.size,100);
+ assert.equal(f.sent[0].allowedMentions.roles.length,1);assert.deepEqual(f.sent[0].allowedMentions.users,[]);assert.deepEqual(f.sent[0].allowedMentions.parse,[]);assert.ok(f.sent[0].content.length<500);assert.match(f.sent[0].content,/<@&/);
+ await alerts.notify(f.client,{...state(),revision:999});assert.equal(f.sent.length,1);
+ await alerts.notify(f.client,state('clear','day'));await alerts.notify(f.client,state());assert.equal(f.sent.length,2);
 });
-test('ping only newly matching opt-ins; multiple matching rules coalesce; continuous repeats do not re-ping',async()=>{
- reset();channel();const out=[];const c=client(out);
- alerts.manage('WA','111','add','rain','night');alerts.manage('WA','111','add','rain','any');alerts.manage('WA','222','add','snow','any');
- await alerts.notify(c,state());assert.equal(out.length,1);assert.deepEqual(out[0].allowedMentions,{parse:[],users:['111']});
- await alerts.notify(c,{...state(),revision:999});assert.equal(out.length,1);
- await alerts.notify(c,state('clear','day'));await alerts.notify(c,state());assert.equal(out.length,2);
- assert.ok(out.every(p=>!p.content.includes('<@222>')));
+test('new subscriber in already-notified group does not ping all members again',async()=>{
+ const f=setup();await alerts.change(f.guild,'U','add','rain','night');await alerts.notify(f.client,state());
+ await alerts.change(f.guild,'V','add','rain','night');await alerts.notify(f.client,state());assert.equal(f.sent.length,1);assert.equal(f.members.get('V').size,1);
 });
-test('subscription added while bulletin key already sent is still delivered by weather worker',async()=>{
- reset();const s=world.current();channel();db.prepare('UPDATE weather_channels SET last_key=?').run(s.key);
- alerts.manage('WA','333','add',s.weather,s.period);const out=[];
- await world.tick(client(out));assert.equal(out.length,1);assert.match(out[0].content,/Điều kiện thời tiết/);
- await world.tick(client(out));assert.equal(out.length,1);
+test('legacy subscriptions sync lazily, deleted roles recreate safely; failed send retries',async()=>{
+ const f=setup();alerts.manage('GUILD1','OLD','add','rain','night');await alerts.notify(f.client,state());assert.equal(f.members.get('OLD').size,1);
+ f.roles.clear();await alerts.notify(f.client,state());assert.equal(f.roles.size,1);assert.equal(f.sent.length,2);
+ await alerts.notify(f.client,state('clear','day'));const old=f.channel.send;f.channel.send=async()=>{throw Error('offline');};const log=console.error;console.error=()=>{};try{await alerts.notify(f.client,state());}finally{console.error=log;f.channel.send=old;}
+ assert.equal(f.sent.length,2);await alerts.notify(f.client,state());assert.equal(f.sent.length,3);
 });
-test('failed send retries, successful send persists marker through module reload',async()=>{
- reset();channel();alerts.manage('WA','444','add','rain','night');const out=[];
- const old=console.error;console.error=()=>{};try{await alerts.notify(client(out,true),state());}finally{console.error=old;}
- assert.equal(db.prepare('SELECT matched FROM weather_alerts').get().matched,0);
- await alerts.notify(client(out),state());assert.equal(out.length,1);
- delete require.cache[require.resolve('../src/game/weather_alerts')];await require('../src/game/weather_alerts').notify(client(out),state());assert.equal(out.length,1);
+test('missing channel or permissions and cross guild never ping; bulletin channel does not receive alerts',async()=>{
+ const f=setup();alerts.manage('GUILD1','U','add','rain','night');
+ f.channel.guildId='OTHER';await alerts.notify(f.client,state());assert.equal(f.sent.length,0);
+ f.channel.guildId='GUILD1';f.channel.permissionsFor=()=>({has:()=>false});await alerts.notify(f.client,state());assert.equal(f.sent.length,0);
+ db.prepare('DELETE FROM weather_alert_channels').run();db.prepare('INSERT INTO weather_channels(guild_id,channel_id) VALUES(?,?)').run('GUILD1','222');await alerts.notify(f.client,state());assert.equal(f.sent.length,0);
 });
-test('batching caps explicit mentions and no cross-guild deliveries; wrong guild is rejected',async()=>{
- reset();channel('WA');channel('WB');for(let i=0;i<85;i++)alerts.manage('WA',String(1000+i),'add','rain','any');alerts.manage('WB','9999','add','rain','any');
- const out=[];await alerts.notify(client(out),state());assert.equal(out.length,4);assert.ok(out.every(p=>p.allowedMentions.users.length<=40));
- assert.deepEqual(out.find(p=>p.id==='WB').allowedMentions.users,['9999']);
- alerts.manage('WA','7777','add','rain','any');
- await alerts.notify({channels:{fetch:async()=>({guildId:'OTHER',isTextBased:()=>true,send:async()=>assert.fail('cross guild')})}},state());
- assert.equal(db.prepare("SELECT matched FROM weather_alerts WHERE user_id='7777'").get().matched,0);
+test('modified privileged role is never assigned, role-add failure does not save false success',async()=>{
+ const f=setup();await alerts.change(f.guild,'U','add','rain','night');[...f.roles.values()][0].permissions.bitfield=8n;
+ await assert.rejects(()=>alerts.change(f.guild,'V','add','rain','night'),/Role cảnh báo/);assert.equal(alerts.manage('GUILD1','V','list').length,0);
+ [...f.roles.values()][0].permissions.bitfield=0n;const old=f.guild.members.fetch;f.guild.members.fetch=async()=>({roles:{add:async()=>{throw Error('role error');}}});
+ await assert.rejects(()=>alerts.change(f.guild,'V','add','rain','night'),/role error/);assert.equal(alerts.manage('GUILD1','V','list').length,0);f.guild.members.fetch=old;
 });
-test('commands need no admin/character; server config required, only own subscriptions can be modified',async()=>{
- reset();const m=h.fakeMessage('WPLAYER',{admin:false});await commands.get('weather').execute(m,['watch','add','rain','night']);assert.match(m._text(),/chưa có kênh/);
- channel('GUILD1');await commands.get('weather').execute(m,['watch','add','mua','dem']);assert.equal(alerts.manage('GUILD1','WPLAYER','list').length,1);
+test('command channel permission checks, separate channels, self-service and slash routing',async()=>{
+ const f=setup();db.prepare('DELETE FROM weather_alert_channels').run();const m=h.fakeMessage('U',{admin:false});m.guild=f.guild;m.client=f.client;
+ await commands.get('weather').execute(m,['watch','channel','222']);assert.match(m._text(),/Cần Manage Server/);
+ m.member.permissions.has=()=>true;await commands.get('weather').execute(m,['watch','channel','222']);assert.match(m._text(),/Kênh ping role riêng/);
+ await commands.get('weather').execute(m,['channel','222']);assert.match(m._text(),/phải khác/);
+ await commands.get('weather').execute(m,['watch','add','mua','dem']);assert.equal(f.members.get('U').size,1);
  await commands.get('weather').execute(m,['watch','list']);assert.match(m._text(),/ban đêm/);
- alerts.manage('GUILD1','OTHER','add','snow','any');await commands.get('weather').execute(m,['watch','off']);assert.equal(alerts.manage('GUILD1','WPLAYER','list').length,0);assert.equal(alerts.manage('GUILD1','OTHER','list').length,1);
- const dm=h.fakeMessage('WPLAYER');dm.guild=null;await commands.get('weather').execute(dm,['watch','add','rain']);assert.match(dm._text(),/không phải DM/);
+ await commands.get('weather').execute(m,['watch','off']);assert.equal(f.members.get('U').size,0);
  const slash=require('../src/slash/definitions').definitions.find(d=>d.data.name==='weather');assert.deepEqual(slash.handler.extractArgs({options:{getString:()=> 'watch add any day'}}),['watch','add','any','day']);
 });
-test('opt-out while fetching channel is respected before sending',async()=>{
- reset();channel();alerts.manage('WA','TO_REMOVE','add','rain','night');
- await alerts.notify({channels:{fetch:async()=>{
-  alerts.manage('WA','TO_REMOVE','off');
-  return {guildId:'WA',isTextBased:()=>true,send:async()=>assert.fail('unsubscribed user pinged')};
- }}},state());
- assert.equal(alerts.manage('WA','TO_REMOVE','list').length,0);
+test('channel setup cannot use bulletin channel; does not change bulletin config',async()=>{
+ const f=setup();db.prepare('INSERT INTO weather_channels(guild_id,channel_id) VALUES(?,?)').run('GUILD1','222');const m=h.fakeMessage('OWNER');m.guild=f.guild;m.client=f.client;
+ await commands.get('weather').execute(m,['watch','channel','222']);assert.match(m._text(),/khác kênh bản tin/);assert.equal(db.prepare('SELECT channel_id FROM weather_channels').get().channel_id,'222');
 });
-test('subscriptions and matched state survive an actual process restart',()=>{
- reset();channel();alerts.manage('WA','PERSIST','add','snow','night');
- db.prepare("UPDATE weather_alerts SET matched=1 WHERE user_id='PERSIST'").run();
- const {execFileSync}=require('node:child_process');
- const script=`const db=require('./src/db/database'); const a=require('./src/game/weather_alerts'); const r=db.prepare("SELECT * FROM weather_alerts WHERE user_id='PERSIST'").get(); if(!r||r.matched!==1||a.manage('WA','PERSIST','list').length!==1)process.exit(2); db.close();`;
- execFileSync(process.execPath,['-e',script],{cwd:h.ROOT,env:process.env});
+test('serialized simultaneous subscriptions create exactly one role for same condition',async()=>{
+ const f=setup();await Promise.all(['A','B','C'].map(u=>alerts.change(f.guild,u,'add','snow','any')));assert.equal(f.roles.size,1);assert.equal(db.prepare('SELECT COUNT(*) n FROM weather_alerts').get().n,3);
+});
+test('role mapping and matched marker survive actual process restart',async()=>{
+ const f=setup();await alerts.change(f.guild,'PERSIST','add','snow','night');await alerts.notify(f.client,state('snow','night'));
+ const {execFileSync}=require('node:child_process');execFileSync(process.execPath,['-e',`const db=require('./src/db/database');const r=db.prepare("SELECT * FROM weather_alert_roles WHERE weather='snow'").get();if(!r||r.matched!==1||!db.prepare("SELECT role_synced FROM weather_alerts WHERE user_id='PERSIST'").get().role_synced)process.exit(2);db.close();`],{cwd:h.ROOT,env:process.env});
+});
+test('failed opt-out leaves subscription for retry; deleted role does not prevent opt-out',async()=>{
+ const f=setup();await alerts.change(f.guild,'U','add','rain','night');
+ const original=f.guild.members.fetch;
+ f.guild.members.fetch=async()=>({roles:{remove:async()=>{throw Error('forbidden');}}});
+ await assert.rejects(()=>alerts.change(f.guild,'U','off'),/forbidden/);assert.equal(alerts.manage('GUILD1','U','list').length,1);
+ f.guild.members.fetch=original;f.guild.roles.fetch=async()=>{const e=Error('Unknown Role');e.code=10011;throw e;};
+ await alerts.change(f.guild,'U','off');assert.equal(alerts.manage('GUILD1','U','list').length,0);
 });
