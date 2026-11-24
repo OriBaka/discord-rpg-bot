@@ -65,6 +65,7 @@ async function tick(client) {
         db().prepare('UPDATE weather_channels SET last_key=? WHERE guild_id=? AND channel_id=?').run(state.key, sub.guild_id, sub.channel_id);
       } catch (err) { console.error('[weather notification]', sub.guild_id, err.message); }
     }
+    await require('./weather_alerts').notify(client, state);
   } finally { busy = false; }
 }
 function start(client) {
