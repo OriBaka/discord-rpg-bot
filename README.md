@@ -829,9 +829,23 @@ và thưởng; retry hook không thưởng hai lần. Hook nằm sau thành côn
 lượt ấy có thể chưa được ghi. Không đòi vật phẩm hiếm/thời tiết, không tiêu vật phẩm
 để góp; người nhiều tài khoản vẫn có thể tự lập đội, điểm chỉ mang tính sưu tầm.
 
-### 🔔 Đăng ký ping thời tiết / buổi
+### 🔔 Kênh cảnh báo và role thời tiết riêng
 
-Người chơi tự đăng ký theo server, không cần nhân vật hoặc quyền admin:
+**Thiết lập bởi quản trị:** tạo một kênh text riêng (ví dụ `#nhac-thoi-tiet`), rồi:
+
+```text
+%weather channel #ban-tin-the-gioi
+%weather watch channel #nhac-thoi-tiet
+```
+
+Hai kênh phải khác nhau. Bản tin thông thường vẫn ở kênh cũ, chỉ cảnh báo theo
+đăng ký chuyển sang kênh riêng. `watch channel off` tạm dừng cảnh báo, không xóa
+đăng ký/role. Quyền setup: ADMIN_IDS/chủ server/Manage Server/Administrator.
+Bot cần **Manage Roles**, role bot cao hơn các role Weather. Tại kênh cảnh báo:
+**View Channel, Send Messages, Mention Everyone** (để ping role không mentionable).
+Nên chỉ cấp Mention Everyone tại kênh riêng; bot vẫn dùng allowedMentions giới hạn
+đúng các role điều kiện, không ping everyone/here/người dùng trực tiếp. Bot không
+tự tạo kênh hoặc xin Manage Channels; quản trị chọn quyền truy cập kênh phù hợp.
 
 ```text
 %weather watch add rain night     # mưa VÀ ban đêm
@@ -842,26 +856,32 @@ Người chơi tự đăng ký theo server, không cần nhân vật hoặc quy�
 %weather watch off
 ```
 
-Slash `/weather args:watch add rain night` dùng cùng logic. Giá trị thời tiết:
-`clear`, `rain`, `storm`, `fog`, `snow`, `any`; buổi: `day`, `night`, `any`
-(mặc định any). Có alias không dấu `quang/mua/giong/suong/tuyet`, `ngay/dem`.
-Một dòng là điều kiện **AND**; nhiều dòng là các điều kiện độc lập, không đăng ký
-`any any`. Cùng điều kiện đăng ký lại không tạo trùng.
+Slash `/weather args:watch add rain night` dùng cùng logic. Thời tiết:
+`clear/rain/storm/fog/snow/any`; buổi `day/night/any` (mặc định any). Alias
+`quang/mua/giong/suong/tuyet`, `ngay/dem`. Không nhận `any any`.
 
-Admin phải đặt `%weather channel #kênh` trước. Bot ping trực tiếp **chỉ user đã
-opt-in**, không @everyone/role; không cần tạo role hoặc quyền Manage Roles.
-Một người khớp nhiều điều kiện chỉ được ping một lần trong lượt kiểm tra.
-Kiểm tra cùng worker thời tiết mỗi 30 giây; đăng ký khi đang khớp cũng nhắc ở
-lượt tới. Chỉ báo khi chuyển từ không khớp sang khớp; revision mới nhưng vẫn
-mưa/đêm liên tục không ping lại. Dùng giờ game chung do admin cấu hình (mặc định
-Việt Nam), không phải giờ thiết bị. Bản tin định kỳ hiện có vẫn chạy như cũ.
+Bot **tự tạo một role cho mỗi điều kiện**, tối đa 17 role/server, dạng
+`Weather · rain · night`. Role không có quyền, không mentionable. Chỉ nhận ID
+role do bot tạo/lưu DB, không tái sử dụng role cùng tên. Nếu role bị thêm quyền,
+đổi thành mentionable/managed hoặc cao hơn bot thì dừng dùng và báo lỗi trong log.
+Người chọn cùng điều kiện được gán chung role; remove/off gỡ role đó và đăng ký
+của chính họ. Không xóa role trống để giữ ID ổn định. Role bị xóa sẽ được tạo lại
+và đồng bộ thành viên; lỗi API không báo thành công giả, thử lại khi sửa quyền.
 
-Sở thích và trạng thái đã nhắc lưu DB qua restart/reset nhân vật; mỗi server
-độc lập. Tắt kênh bản tin sẽ tạm dừng nhắc, không xóa sở thích. Không gửi DM hoặc
-backfill các điều kiện thoáng qua trong lúc bot offline/kênh tắt. Bot không biết
-người dùng có mute Discord hay không. Chỉ đánh dấu sau khi gửi thành công, lỗi
-Discord sẽ thử lại lượt sau; crash sau send trước ghi DB có thể nhắc lặp (không
-thể bảo đảm exactly-once với API gửi Discord). Worker hiện có là single-process;
-chưa hỗ trợ nhiều instance gửi đồng thời. Chia nhóm tối đa 40 người/tin nhắn để
-không vượt giới hạn nội dung/mentions. Từ chối kênh khác guild. Không thay đổi
-RNG, thời gian, tỷ lệ cá/cây hiếm hoặc điều kiện thu thập.
+Đăng ký cũ được giữ nguyên và **chuyển sang role sau khi admin cấu hình kênh
+cảnh báo riêng**. Trong thời gian chưa setup, không gửi cảnh báo user mention
+vào kênh cũ nữa; bản tin cũ không đổi. Không cần nhân vật để đăng ký.
+
+Worker 30 giây dùng giờ game chung (mặc định Việt Nam). Chỉ ping role khi điều
+kiện chuyển từ không khớp sang khớp; bốc lại cùng thời tiết không ping lặp. Khi
+nhóm đã được nhắc trong đợt hiện tại, người mới vào nhóm chờ đợt sau — không
+ping lại cả nhóm chỉ vì có một người mới. Một thông báo gọn có nhiều nhất 17
+role, không còn danh sách hàng trăm user. Ai tự giữ/gán role ngoài lệnh cũng có
+thể nhận ping; tránh giao quyền quản lý role này cho người không tin cậy.
+
+Sở thích, role ID, trạng thái nhắc lưu qua restart/reset nhân vật, riêng từng
+server. Không backfill những điều kiện xảy ra lúc bot offline/kênh tắt; Discord
+mute/role notification settings vẫn quyết định thông báo trên thiết bị. Lỗi gửi
+thử lại, crash sau gửi trước lưu DB có thể nhắc lặp. Worker single-process, chưa
+hỗ trợ nhiều replica cùng gửi. Sync legacy có thể mất nhiều lượt/rate-limit trên
+server đông; không thay đổi RNG hoặc tỷ lệ cá/cây hiếm.
