@@ -193,6 +193,7 @@ module.exports = {
         lootText += `\n\n🏆 **Đạt thành tựu mới:** ${newAchs.map(a => `${a.icon} ${a.name}`).join(', ')}`;
       }
 
+      require('../game/evolution').recordAction(msg, 'hunt');
       const contract = require('../game/contracts').recordAction(msg, 'hunt');
       if (contract) lootText += `\n🤝 Hợp đồng ${contract.id}: ${contract.progress.reduce((s,p)=>s+p.amount,0)}/40${contract.status==='completed'?' — hoàn thành, công trạng đã ghi!':''}`;
       embed.setColor(0x57F287).addFields({ name: '🏆 Chiến thắng!', value: lootText });

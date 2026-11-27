@@ -87,6 +87,8 @@ function updateJob(userId, jobType, fields) {
 // job_all_level), nên phải check ở đây — không có sự kiện nào khác.
 function addJobXp(userId, jobType, xpGain, context = null) {
   return db.transaction(() => {
+    const evo = require('./evolution').jobBonus(userId, jobType, getJob(userId, jobType).level);
+    xpGain = Math.floor(xpGain * (1 + (evo.xp || 0)));
     xpGain = require('./aura').jobXp(userId, jobType, xpGain);
     const job = getJob(userId, jobType);
     let xp = job.xp + xpGain;

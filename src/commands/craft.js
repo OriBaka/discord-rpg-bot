@@ -211,7 +211,7 @@ async function handleCommand(msg, args, type) {
     const toolBonus = jobBuffs.bonus(msg.author.id, jobType, job.level);
     // Nguồn của hiệu ứng có thể là công cụ (búa/dao) hoặc buff consumable —
     // trước đây lấy thẳng toolBonus.tool.name nên crash khi chỉ có buff.
-    const effectSource = () => 'Công cụ / buff / Aura';
+    const effectSource = () => 'Công cụ / buff / Aura / chuyên tinh';
     const savedInputs = toolBonus.saveChance > 0 && Math.random() < toolBonus.saveChance;
 
     if (savedInputs) {
@@ -283,6 +283,7 @@ async function handleCommand(msg, args, type) {
     .setDescription(text)
     .setFooter({ text: `Lv.${lastXpRes?.level ?? job.level} (${lastXpRes?.xp ?? job.xp}${lastXpRes ? '/' + lastXpRes.xpToNext : ''} XP)` });
   const { buildAgainRow } = require('../game/again_button');
+  if (done > 0) require('../game/evolution').recordAction(msg, jobType);
   return msg.reply({ embeds: [embed], components: [buildAgainRow(type, msg.author.id, [recipeId, ...(done > 1 ? [`x${done}`] : [])])] });
 }
 

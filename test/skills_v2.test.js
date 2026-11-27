@@ -13,9 +13,9 @@ function action(b, sk, actor = 'a') { const result = battle.processAction(battle
 function enemy(b) { return action(b, 'attack', 'b'); }
 function effects(b, side = 'a') { return JSON.parse(b['buffs_' + side]); }
 test('base and acquired catalog skills have scaling roles, consistent finite damage and documented unlocks/costs', () => {
-  assert.equal(Object.keys(skills.SKILLS).length, 33);
+  assert.equal(Object.keys(skills.SKILLS).length, 39);
   for (const cls of ['melee', 'magic', 'ranged']) {
-    assert.equal(skills.getSkillsForClass(cls).filter(s => !s.book).length, 6);
+    assert.equal(skills.getSkillsForClass(cls).filter(s => !s.book && !s.branch).length, 6);
     assert.equal(builds.unlocked(cls, 1).length, 3);
     assert.equal(builds.unlocked(cls, 12).length, 4);
     assert.equal(builds.unlocked(cls, 25).length, 5);

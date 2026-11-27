@@ -9,7 +9,7 @@ function migrate() {
       user_id TEXT NOT NULL, class_id TEXT NOT NULL, name TEXT NOT NULL, skills TEXT NOT NULL,
       PRIMARY KEY(user_id,class_id,name));`);
 }
-function unlocked(cls, level, user = null) { return require('./skills').getSkillsForClass(cls).filter(s => level >= s.level && (!s.book || (user && require('./skill_tomes').knows(user, s.id)))); }
+function unlocked(cls, level, user = null) { return require('./skills').getSkillsForClass(cls).filter(s => level >= s.level && (!s.branch || (user && require('./evolution').choice(user, 'class', cls) === s.branch)) && (!s.book || (user && require('./skill_tomes').knows(user, s.id)))); }
 function get(user, cls, level) {
   const allowed = unlocked(cls, level, user).map(s => s.id);
   const row = db().prepare('SELECT skills FROM skill_loadouts WHERE user_id=? AND class_id=?').get(user, cls);

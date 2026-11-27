@@ -8,7 +8,7 @@ function count(id, item) { return db.prepare('SELECT qty FROM inventory WHERE us
 function teach(id, skill) { player.addItem(id, tomes.bookId(skill)); const result = tomes.learn(id, tomes.bookId(skill)); assert.ok(!result.error, result.error); }
 function create(guild = 'G', id = `EVENT_${++n}`, skill = 'lantern_oath', max = 2, now = 1000) { assert.ok(tomes.createEvent(guild, id, skill, 1, max, 'ADMIN', now).ok); return id; }
 test('15 acquired skills cover all classes and five level/source bands without auto-opening limited events', () => {
-  assert.equal(tomes.catalog().length, 15); assert.equal(Object.keys(skills.SKILLS).length, 33);
+  assert.equal(tomes.catalog().length, 15); assert.equal(Object.keys(skills.SKILLS).length, 39);
   for (const cls of ['melee', 'magic', 'ranged']) {
     const list = tomes.catalog().filter(s => s.class === cls);
     assert.deepEqual(list.map(s => s.level), [8, 18, 30, 40, 45]);

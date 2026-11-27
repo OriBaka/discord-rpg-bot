@@ -212,11 +212,12 @@ function bonus(userId, job, jobLevel = null) {
   // Existing buffs earned under the old character-level rule pause, not vanish.
   const buff = active && jobLevel >= required ? active : null;
   const aura = require('./aura').jobBonus(userId, job);
+  const evo = require('./evolution').jobBonus(userId, job, jobLevel);
 
   const drop = Math.min(CAPS.drop, (tool.dropMult - 1) + (buff ? buff.drop_bonus : 0) + aura.drop);
   const qty = Math.min(CAPS.qty, (tool.qtyMult - 1) + (buff ? buff.qty_bonus : 0));
-  const extra = Math.min(CAPS.extra, tool.extraChance + (buff ? buff.extra_chance : 0) + aura.extra);
-  const save = Math.min(CAPS.save, tool.saveChance + (buff ? buff.save_chance : 0) + aura.save);
+  const extra = Math.min(CAPS.extra, tool.extraChance + (buff ? buff.extra_chance : 0) + aura.extra + (evo.extra || 0));
+  const save = Math.min(CAPS.save, tool.saveChance + (buff ? buff.save_chance : 0) + aura.save + (evo.save || 0));
 
   return {
     tool: tool.tool,

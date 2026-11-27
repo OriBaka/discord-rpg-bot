@@ -339,6 +339,7 @@ runMigrate('../game/world_story', 'migrateWorldStory');
 runMigrate('../game/casino', 'migrate');
 runMigrate('../game/contracts', 'migrate');
 runMigrate('../game/weather_alerts', 'migrate');
+runMigrate('../game/evolution', 'migrate');
 runMigrate('../game/world_weather', 'migrateWorldWeather');
 runMigrate('../game/weather_rares', 'migrateWeatherRares');
 runMigrate('../game/collections', 'migrateCollections');

@@ -59,13 +59,13 @@ module.exports = {
       const s = catalog.getSkill(args[1]);
       if (!s || s.bossOnly) return msg.reply('Không tìm thấy kỹ năng người chơi.');
       return msg.reply({ embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle(s.name)
-        .setDescription(`${s.desc}\nID: ${s.id} · ${s.class || 'Chung'} · Lv.${s.level || 1}\nChi phí: ${s.cost || 0} NL · CD: ${s.cd || 0} lượt chủ sở hữu.\n${s.book ? `Bí kíp: ${tomes.bookId(s.id)} · ${tomes.knows(p.user_id, s.id) ? 'ĐÃ HỌC' : 'CHƯA HỌC'}\nNguồn: ${tomes.sourceText(s)}\nHọc: ${prefix}use ${tomes.bookId(s.id)} (đủ cấp và đúng class).\n` : ''}Năng lượng +8 cuối mỗi lượt, tối đa 100; đầu trận 60.\nChiêu khống chế không thể bỏ qua bằng Heal; mất lượt vẫn giảm CD và hồi năng lượng.`)] });
+        .setDescription(`${s.desc}\nID: ${s.id} · ${s.class || 'Chung'} · Lv.${s.level || 1}\nChi phí: ${s.cost || 0} NL · CD: ${s.cd || 0} lượt chủ sở hữu.\n${s.branch ? `Nhánh yêu cầu: ${s.branch} (evolve class ${s.class})\n` : ''}${s.book ? `Bí kíp: ${tomes.bookId(s.id)} · ${tomes.knows(p.user_id, s.id) ? 'ĐÃ HỌC' : 'CHƯA HỌC'}\nNguồn: ${tomes.sourceText(s)}\nHọc: ${prefix}use ${tomes.bookId(s.id)} (đủ cấp và đúng class).\n` : ''}Năng lượng +8 cuối mỗi lượt, tối đa 100; đầu trận 60.\nChiêu khống chế không thể bỏ qua bằng Heal; mất lượt vẫn giảm CD và hồi năng lượng.`)] });
     }
     if (action && !['help', 'list'].includes(action)) return msg.reply(`Dùng ${prefix}skills help để xem hướng dẫn.`);
     const equipped = builds.get(p.user_id, p.primary_class, p.level);
     return msg.reply({ embeds: [new EmbedBuilder().setColor(0x5865F2).setTitle(`📖 Kỹ năng · ${p.primary_class} · Lv.${p.level}`)
       .setDescription(`Mang tối đa 4 kỹ năng, không cần trang bị Attack/Defend/Flee. 18 chiêu nền mở miễn phí theo cấp; chiêu bí kíp cần kiếm sách và học. Không phí đổi bộ chiêu.\nBộ hiện tại: ${equipped.join(', ')}\n\n${COMBOS[p.primary_class] || ''}`)
-      .addFields(catalog.getSkillsForClass(p.primary_class).map(s => ({ name: `${p.level < s.level || (s.book && !tomes.knows(p.user_id, s.id)) ? '🔒' : equipped.includes(s.id) ? '✅' : '▫️'} ${s.name} · Lv.${s.level}`, value: `\`${s.id}\` · ${s.cost} NL · CD ${s.cd}\n${s.desc}${s.book ? `\n📜 ${tomes.knows(p.user_id, s.id) ? 'Đã học' : 'Chưa học'} · ${tomes.sourceText(s)}` : ''}` })))
+      .addFields(catalog.getSkillsForClass(p.primary_class).map(s => ({ name: `${p.level < s.level || (s.branch && require('../game/evolution').choice(p.user_id, 'class', p.primary_class) !== s.branch) || (s.book && !tomes.knows(p.user_id, s.id)) ? '🔒' : equipped.includes(s.id) ? '✅' : '▫️'} ${s.name} · Lv.${s.level}`, value: `\`${s.id}\` · ${s.cost} NL · CD ${s.cd}\n${s.desc}${s.branch ? `\n🌿 Nhánh vĩnh viễn: ${s.branch} · xem ${prefix}evolve class ${s.class}` : ''}${s.book ? `\n📜 ${tomes.knows(p.user_id, s.id) ? 'Đã học' : 'Chưa học'} · ${tomes.sourceText(s)}` : ''}` })))
       .setFooter({ text: `${prefix}skills equip id1 id2 id3 id4 • skills info <id> • skills events / claim <id>. skills presets/save/load/delete <tên> • Chỉ battle/tower; hunt nhanh, duel và raid tuần chưa dùng bộ chiêu.` })] });
   },
 };

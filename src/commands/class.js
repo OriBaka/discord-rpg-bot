@@ -55,6 +55,9 @@ module.exports = {
         return msg.reply({ embeds: [embed] });
       }
 
+      const evo = require('../game/evolution');
+      const selected = evo.choice(p.user_id, 'class', p.primary_class);
+      const evolutionName = selected ? evo.definition('class', p.primary_class)?.branches[selected]?.name : 'Chưa tiến hóa';
       const cur = classInfo(p.primary_class);
       const data = getClassData(p);
       const unlockedList = Object.keys(data);
@@ -68,7 +71,7 @@ module.exports = {
       const embed = new EmbedBuilder()
         .setColor(cur?.color || 0x5865F2)
         .setTitle(`🎭 Class của ${p.name}`)
-        .setDescription(`Class hiện tại: **${cur?.name || p.primary_class}**\n*${cur?.desc || ''}*`)
+        .setDescription(`Class hiện tại: **${cur?.name || p.primary_class}** · Nhánh: **${evolutionName}**\n*${cur?.desc || ''}*`)
         .addFields(
           { name: '📜 Các class đã unlock', value: unlockedText || '—' },
           { name: '💡 Lệnh', value:
