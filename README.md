@@ -2,7 +2,7 @@
 
 Bot Discord RPG chơi bằng text: nhân vật, class, trang bị nhiều slot, săn quái, nghề, pet, bang hội, PvP, trade, quest và thành tựu.
 
-- **56 lệnh** prefix + **60 slash command** (40 người chơi + 15 admin)
+- **57 lệnh** prefix + **61 slash command** (40 người chơi + 15 admin)
 - Dữ liệu SQLite, không cần server database riêng
 - Node.js ≥ 18 (khuyến nghị 20)
 
@@ -612,7 +612,9 @@ vẫn chưa triển khai. Xem `%skills info <id>` để lấy hệ số/chi phí
 
 ### 📜 Bí kíp theo cấp & nguồn kiếm kỹ năng
 
-Thêm **15 kỹ năng bí kíp**, nâng tổng lên **33 chiêu (11/class)**. 18 chiêu nền
+Có **15 kỹ năng bí kíp** và **18 chiêu nền** (33 chiêu dùng chung hệ mở cũ),
+cộng **6 chiêu nhánh tiến hóa**: tổng **39 chiêu (13/class)** trong catalog; mỗi
+class chỉ mở một trong hai chiêu nhánh tùy lựa chọn vĩnh viễn. 18 chiêu nền
 vẫn tự mở như trước; không thu lại hoặc khóa chiêu đã có. Bộ chiêu vẫn tối đa 4.
 Bí kíp là consumable `tome_<skill_id>`, nhưng **không phải bình máu**: dùng một
 cuốn để học vĩnh viễn, cần đúng class và đủ cấp. Thiếu cấp/sai class/đã học không
@@ -885,3 +887,65 @@ mute/role notification settings vẫn quyết định thông báo trên thiết 
 thử lại, crash sau gửi trước lưu DB có thể nhắc lặp. Worker single-process, chưa
 hỗ trợ nhiều replica cùng gửi. Sync legacy có thể mất nhiều lượt/rate-limit trên
 server đông; không thay đổi RNG hoặc tỷ lệ cá/cây hiếm.
+
+### 🌿 Tiến hóa tầng I — nhánh vĩnh viễn
+
+`%evolve help` (alias `%tienhoa`, `%chuyentinh`), slash `/evolve args:...`.
+Ba class melee/magic/ranged và năm nghề mining/fishing/foraging/cooking/crafting
+đều có **hai nhánh hoàn chỉnh tầng I**, mở ở cấp tương ứng 25 + 20 hoạt động
+thành công từ khi ra mắt. Không backfill số lần đã làm trước đó, không đòi RNG
+hiếm, không tiêu đồ/vàng. Hunt thắng ghi theo class đang dùng, mine/fish/gather
+chỉ ghi khi có nguyên liệu, craft/cook một lệnh thành công ghi một lượt dù batch.
+Hành động có ID message/interaction được dedupe; Again và slash được tính.
+Admin cấp XP/đồ/level không tự cộng lượt chứng minh, nhưng admin có quyền sửa
+level hiện có vẫn có thể giúp đáp ứng điều kiện cấp — đây không phải cơ chế anti-cheat.
+
+```text
+%evolve class magic
+%evolve trial class magic hexer
+%evolve choose class magic hexer
+%evolve confirm class magic hexer <mã-nhận-từ-choose>
+%evolve job mining
+```
+
+Diễn tập là **mô phỏng một lần resolve kỹ năng với chỉ số chuẩn**, không phải
+trận tương tác đầy đủ và không mô phỏng mọi combo/DoT; không phát thưởng hoặc
+đổi HP/cooldown/túi đồ. Xem thử trước rồi choose nhận cảnh báo và mã 10 phút.
+Confirm kiểm tra lại cấp, lượt, class hiện tại và không đang trong battle/PvP/Tower.
+Chọn nhánh class phải đang dùng class đó; các class khác có nhánh độc lập.
+Đổi class gốc vẫn hoạt động như cũ; quay lại giữ nguyên nhánh đã chọn.
+
+| Gốc | Nhánh A | Nhánh B |
+|---|---|---|
+| melee | guardian — Hộ Vệ: Shield Riposte, 120% ATK + giảm 35% sát thương trực tiếp 1 lượt | berserker — Cuồng Chiến: Frenzy Strike, 180% ATK, dưới 50% HP tăng 25% |
+| magic | elementalist — Nguyên Tố Sư: Elemental Weave, 150% ATK, tiêu Burn tăng 30% | hexer — Chú Thuật Sư: Withering Hex, 110% ATK, giảm 15% ATK địch 3 lượt |
+| ranged | sharpshooter — Thiện Xạ: Precision Bolt, 180% ATK bỏ 35% DEF | hunter — Thợ Săn: Snaring Shot, 130% ATK, mark + giảm 20% ATK địch 2 lượt |
+| mining | vein_miner — Thợ Mạch Quặng: +3 điểm % cơ hội thêm nguyên liệu thường | geologist — Nhà Địa Chất: +10% XP nghề |
+| fishing | net_fisher — Ngư Phủ: +3 điểm % cơ hội thêm cá thường | ichthyologist — Nhà Ngư Học: +10% XP nghề |
+| foraging | herbalist — Dược Thảo Sư: +3 điểm % cơ hội thêm nguyên liệu thường | forest_keeper — Người Giữ Rừng: +10% XP nghề |
+| cooking | chef — Bếp Trưởng: +3 điểm % tiết kiệm nguyên liệu | culinary_scholar — Học Giả Ẩm Thực: +10% XP nghề |
+| crafting | smith — Thợ Rèn: +3 điểm % tiết kiệm nguyên liệu | artisan — Nghệ Nhân: +10% XP nghề |
+
+Các chiêu nhánh đều Lv.25, CD3; Hộ Vệ/Thợ Săn cost20, còn lại cost25. Không
+chiếm nguồn tome; không thay/khóa kỹ năng gốc đã có. Phải tự `%skills equip`
+trong giới hạn 4 slot. `skills`, `class`, `job` hiển thị nhánh; loadout/preset lọc
+đúng nhánh, cấp và class; battle lưu snapshot nên không thể chọn nhánh giữa trận.
+Không tăng chỉ số auto hunt; chiêu mới chỉ dùng trong tactical battle/PvP/Tower
+như kỹ năng hiện có. Chưa đo win-rate diện rộng; đây là bộ sidegrade ban đầu,
+không tuyên bố mọi nhánh cân bằng tuyệt đối.
+
+Bonus nghề cộng vào cùng trần tool/buff/Aura, không cộng vượt trần; XP nghề
+nhân 1,10 và làm tròn xuống trước Aura. Bonus tạm ngưng khi cấp nghề bị hạ dưới25
+nhưng nhánh không mất. Không đổi yêu cầu công cụ, điều kiện thời tiết/ngày đêm,
+không nhân vật phẩm hiếm weather (roll riêng), không mở nguồn kiếm Thất Đại Tội
+hoặc phá nguồn đồ craft/hunt/boss độc quyền. Tiết kiệm vẫn đòi đủ nguyên liệu.
+
+**Không có đổi/tẩy nhánh.** Choices gắn Discord user + class/nghề, SQLite trigger
+chặn UPDATE/DELETE, không cascade theo nhân vật. Reset skill/preset, admin đổi
+class, khóa/unlock class, reset rồi tạo nhân vật lại đều không xóa nhánh. Reset
+nhân vật cũng giữ chứng minh/diễn tập (chỉ cấp mới cần đạt lại), tránh mở đường
+chọn lại; mã confirm vẫn phải kiểm tra lại điều kiện. Chỉ thao tác trực tiếp DB
+bằng quyền vận hành mới có thể phá cơ chế, không có admin command đổi nhánh.
+Tầng II/III chưa công bố/mở; chưa nhận lựa chọn cho cây con chưa có đủ nội dung.
+Hook chưa có outbox replay nếu crash giữa settlement và ghi lượt; không tự khôi
+phục lượt đã thất lạc. Đây không phải cuộc đua lịch sử Chương 4.

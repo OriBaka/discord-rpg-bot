@@ -53,10 +53,13 @@ module.exports = {
     const fields = jobs.JOB_TYPES.map(jt => {
       const j = allJobs[jt];
       const info = jobs.JOB_INFO[jt];
+      const evo = require('../game/evolution');
+      const branch = evo.choice(target.id, 'job', jt);
+      const branchName = branch ? evo.definition('job', jt).branches[branch].name : 'Chưa chuyên tinh';
       const next = jobs.xpToNext(j.level);
       return {
         name: `${info.icon} ${info.name}`,
-        value: `**Lv.${j.level}**\n${progressBar(j.xp, next)}\n${j.xp}/${next} XP`,
+        value: `**Lv.${j.level}** · ${branchName}\n${progressBar(j.xp, next)}\n${j.xp}/${next} XP`,
         inline: true,
       };
     });

@@ -196,6 +196,7 @@ module.exports = {
     }
 
     if (gatherQty > 0) {
+      require('../game/evolution').recordAction(msg, JOB);
       const contract = require('../game/contracts').recordAction(msg, JOB);
       if (contract) dropText += `\n🤝 Hợp đồng ${contract.id}: ${contract.progress.reduce((s,p)=>s+p.amount,0)}/40${contract.status==='completed'?' — hoàn thành, công trạng đã ghi!':''}`;
     }

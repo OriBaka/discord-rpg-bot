@@ -54,6 +54,9 @@ const JOB_CHOICES = jobChoicesModule.JOB_TYPES.map(t => ({
 }));
 
 const definitions = [
+  { data: new SlashCommandBuilder().setName('evolve').setDescription('Tiến hóa class/chuyên tinh nghề vĩnh viễn, xác nhận hai bước')
+      .addStringOption(o => o.setName('args').setDescription('help | class magic | job mining | trial/choose/confirm class magic hexer [mã]')),
+    handler: simpleHandler('evolve', i => (i.options.getString('args') || '').trim().split(/\s+/).filter(Boolean)) },
   { data: new SlashCommandBuilder().setName('contract').setDescription('Hợp đồng tổ đội 2–4 người: săn và thu thập chung')
       .addStringOption(o => o.setName('args').setDescription('help | create | join <mã> | start | status [mã] | cancel | profile')),
     handler: simpleHandler('contract', i => (i.options.getString('args') || '').trim().split(/\s+/).filter(Boolean)) },
